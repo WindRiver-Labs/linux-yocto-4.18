@@ -23,6 +23,11 @@ Optional properties:
               device tree node then controller is assumed to be little endian.
               if this property is present then controller is assumed to be big
               endian.
+- gpr: phandle to general purpose register node. The remote wakeup control
+	bits is stored here.
+- trx_en_gpio : enable gpio
+- trx_stby_gpio : standby gpio
+- trx_nerr_gpio : NERR gpio
 
 Example:
 
