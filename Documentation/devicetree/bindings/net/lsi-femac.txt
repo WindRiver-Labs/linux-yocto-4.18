@@ -1,0 +1,20 @@
+* LSI Fast Ethernet Controller (FEMAC)
+
+Required properties:
+- compatible : Should be "lsi,femac"
+- reg : Address and length of the register set for the device (RX, TX and DMA
+  registers)
+- interrupts : Should contain FEMAC DMA interrupt
+
+Optional properties:
+- local-mac-address or mac-address: 6 bytes, mac address
+
+Example:
+
+ethernet@2010120000 {
+	compatible = "lsi,femac";
+	reg = <0x20 0x10120000 0 0x1000>,
+	      <0x20 0x10121000 0 0x1000>,
+	      <0x20 0x10122000 0 0x1000>;
+	interrupts = <0 4 4>;
+};
