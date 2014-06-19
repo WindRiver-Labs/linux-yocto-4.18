@@ -1,0 +1,88 @@
+/*
+ * arch/arm64/boot/dts/intel/axm5504-sim.dts
+ *
+ * Copyright (C) 2013 LSI
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+#include "axm56xx.dtsi"
+#include "axm5608-cpus.dtsi"
+
+/ {
+	model = "AXM56xx Simulator";
+	compatible = "lsi,axm5616";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0x40000000>;
+	};
+
+	mmc_3v3: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	soc {
+		virtio_block@8021000000 {
+			compatible = "virtio,mmio";
+			reg = <0x80 0x21000000 0x10000>;
+			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		ethernet@8020000000 {
+			compatible = "smsc,lan91c111";
+			reg = <0x80 0x20000000 0x1000000>;
+			interrupts = <GIC_SPI 312 IRQ_TYPE_LEVEL_HIGH>;
+			phy-mode = "mii";
+			reg-io-width = <4>;
+			smsc,irq-active-high;
+			smsc,irq-push-pull;
+		};
+
+		amba {
+			mmci@8021030000 {
+				compatible = "arm,pl18x", "arm,primecell";
+				reg = <0x80 0x21030000 0x10000>;
+				interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH>;
+				vmmc-supply = <&mmc_3v3>;
+				vqmmc-supply = <&mmc_3v3>;
+				clocks = <&clks 0>, <&clks 1>;
+				clock-names = "apb_pclk", "mmc_clk";
+			};
+		};
+	};
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&serial1 {
+	status = "okay";
+};
+
+&serial2 {
+	status = "okay";
+};
+
+&serial3 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
