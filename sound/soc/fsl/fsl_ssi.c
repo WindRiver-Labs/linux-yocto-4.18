@@ -4,7 +4,7 @@
 //
 // Author: Timur Tabi <timur@freescale.com>
 //
-// Copyright 2007-2010 Freescale Semiconductor, Inc.
+// Copyright 2007-2015 Freescale Semiconductor, Inc.
 //
 // Some notes why imx-pcm-fiq is used instead of DMA on some boards:
 //
@@ -40,6 +40,8 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/pm_runtime.h>
+#include <linux/busfreq-imx.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -638,6 +640,8 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream,
 	if (ret)
 		return ret;
 
+	pm_runtime_get_sync(dai->dev);
+
 	/*
 	 * When using dual fifo mode, it is safer to ensure an even period
 	 * size. If appearing to an odd number while DMA always starts its
@@ -656,6 +660,8 @@ static void fsl_ssi_shutdown(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct fsl_ssi *ssi = snd_soc_dai_get_drvdata(rtd->cpu_dai);
+
+	pm_runtime_put_sync(dai->dev);
 
 	clk_disable_unprepare(ssi->clk);
 }
@@ -1551,6 +1557,8 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 		break;
 	}
 
+	pm_runtime_enable(&pdev->dev);
+
 	dev_set_drvdata(dev, ssi);
 
 	if (ssi->soc->imx) {
@@ -1685,8 +1693,24 @@ static int fsl_ssi_resume(struct device *dev)
 }
 #endif /* CONFIG_PM_SLEEP */
 
+#ifdef CONFIG_PM
+static int fsl_ssi_runtime_resume(struct device *dev)
+{
+	request_bus_freq(BUS_FREQ_AUDIO);
+	return 0;
+}
+
+static int fsl_ssi_runtime_suspend(struct device *dev)
+{
+	release_bus_freq(BUS_FREQ_AUDIO);
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops fsl_ssi_pm = {
 	SET_SYSTEM_SLEEP_PM_OPS(fsl_ssi_suspend, fsl_ssi_resume)
+	SET_RUNTIME_PM_OPS(fsl_ssi_runtime_suspend, fsl_ssi_runtime_resume,
+			   NULL)
 };
 
 static struct platform_driver fsl_ssi_driver = {
