@@ -58,6 +58,11 @@ config ARCH_BRCMSTB
 	help
 	  This enables support for Broadcom's ARMv8 Set Top Box SoCs
 
+config ARCH_AXXIA
+	bool "Axxia SoC family"
+	help
+	  This enables support for LSI Axxia 56xx SOC Family
+
 config ARCH_EXYNOS
 	bool "ARMv8 based Samsung Exynos SoC family"
 	select COMMON_CLK_SAMSUNG
