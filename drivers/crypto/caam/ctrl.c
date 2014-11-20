@@ -416,7 +416,20 @@ static int caam_get_era_from_hw(struct caam_ctrl __iomem *ctrl)
 		{0x0A11, 2, 5},
 		{0x0A12, 2, 5},
 		{0x0A13, 1, 5},
-		{0x0A1C, 1, 5}
+		{0x0A1C, 1, 5},
+		{0x0A12, 4, 6},
+		{0x0A13, 2, 6},
+		{0x0A16, 2, 6},
+		{0x0A17, 1, 6},
+		{0x0A18, 2, 6},
+		{0x0A1A, 1, 6},
+		{0x0A1C, 2, 6},
+		{0x0A14, 3, 7},
+		{0x0A10, 4, 8},
+		{0x0A11, 3, 8},
+		{0x0A11, 4, 8},
+		{0x0A12, 5, 8},
+		{0x0A16, 3, 8}
 	};
 	u32 ccbvid, id_ms;
 	u8 maj_rev, era;
