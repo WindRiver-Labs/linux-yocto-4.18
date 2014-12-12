@@ -102,3 +102,11 @@
 &i2c3 {
 	status = "okay";
 };
+
+&gpdma0 {
+	status = "okay";
+};
+
+&gpdma1 {
+	status = "okay";
+};

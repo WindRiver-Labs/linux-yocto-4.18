@@ -28,6 +28,8 @@
 		i2c1	  = &i2c1;
 		i2c2	  = &i2c2;
 		i2c3	  = &i2c3;
+		gpdma0	  = &gpdma0;
+		gpdma1	  = &gpdma1;
 	};
 
 	clocks {
@@ -90,6 +92,7 @@
 			syscon = <&syscon>;
 		};
 
+
 		nemac: ethernet@8080240000 {
 			compatible = "lsi,nemac";
 			reg = <0x80 0x80240000 0x1000>;
@@ -127,14 +130,33 @@
 			status = "disabled";
 		};
 
-		dma0: dma-controller@8030520000 {
+		gpdma0: gpdma@8004120000 {
 			compatible = "lsi,dma32";
-			interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
+			reg = <0x80 0x04120000 0x10000>;
+			interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
+			channel0 {
+				interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			channel1 {
+				interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
+			};
 		};
 
-		dma1: dma-controller@8030530000 {
+		gpdma1: gpdma@8004130000 {
 			compatible = "lsi,dma32";
-			interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
+			reg = <0x80 0x04130000 0x10000>;
+			interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+			channel0 {
+				interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			channel1 {
+				interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
+			};
 		};
 
 		i2c0: i2c@8080080000 {
