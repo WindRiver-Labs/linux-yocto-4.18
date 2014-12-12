@@ -97,6 +97,16 @@ config AT_XDMAC
 	help
 	  Support the Atmel XDMA controller.
 
+config LSI_DMA
+	tristate "LSI General Purpose DMA support"
+	depends on ARCH_AXXIA
+	select DMA_ENGINE
+	select DMA_VIRTUAL_CHANNELS
+	select ASYNC_TX_ENABLE_CHANNEL_SWITCH
+	help
+	  Enable support for the LSI General Purpose DMA controller found
+	  on ACP34xx, AXM25xx, AXM55xx and AXM56xx devices.
+
 config AXI_DMAC
 	tristate "Analog Devices AXI-DMAC DMA support"
 	depends on MICROBLAZE || NIOS2 || ARCH_ZYNQ || ARCH_SOCFPGA || COMPILE_TEST
