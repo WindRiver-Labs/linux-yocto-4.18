@@ -110,3 +110,15 @@
 &gpdma1 {
 	status = "okay";
 };
+&pci0 {
+
+	status = "okay";
+};
+
+&pci1 {
+	status = "okay";
+};
+
+&pci2 {
+	status = "okay";
+};

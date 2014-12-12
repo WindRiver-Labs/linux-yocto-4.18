@@ -210,6 +210,78 @@
 			status = "disabled";
 		};
 
+		pci0: pci@c000000000 {
+			compatible = "lsi,plb-pciex";
+			device_type = "pci";
+			#interrupt-cells = <1>;
+			#size-cells = <2>;
+			#address-cells = <3>;
+			reg = < 0xc0 0x38000000 0x01000000
+				0xa0 0x02000000 0x00008000 >;
+			/* Outbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU (PLB) addr>
+			<2-cell size> >*/
+			ranges = <0x03000000 0x00000000 0x80000000
+				0xc0 0x00000000
+				0x00 0x20000000>;
+			/* Inbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU addr>
+			<2-cell size> > */
+			dma-ranges = <0x03000000 0x00000000 0x00000000
+				0x00 0x00000000
+				0x00 0x40000000>;
+			interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		pci1: pci@c800000000 {
+			compatible = "lsi,plb-pciex";
+			device_type = "pci";
+			#interrupt-cells = <1>;
+			#size-cells = <2>;
+			#address-cells = <3>;
+			reg = < 0xc8 0x38000000 0x01000000
+				0xa0 0x04000000 0x00008000 >;
+			/* Outbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU (PLB) addr>
+			<2-cell size> >*/
+			ranges = <0x03000000 0x00000000 0xa0000000
+				  0xc8 0x00000000
+				  0x00 0x20000000>;
+			/* Inbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU addr>
+			<2-cell size> > */
+			dma-ranges = <0x03000000 0x00000000 0x00000000
+				      0x00 0x00000000
+				      0x00 0x40000000>;
+			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		pci2: pci@0xd000000000 {
+			compatible = "lsi,plb-pciex";
+			device_type = "pci";
+			#interrupt-cells = <1>;
+			#size-cells = <2>;
+			#address-cells = <3>;
+			reg = < 0xd0 0x38000000 0x01000000
+				0xa0 0x06000000 0x00008000 >;
+			/* Outbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU (PLB) addr>
+			<2-cell size> >*/
+			ranges = <0x03000000 0x00000000 0xc0000000
+				  0xd0 0x00000000
+				  0x00 0x20000000>;
+			/* Inbound ranges */
+			/* < <3-cell PCI addr> <2-cell CPU addr>
+			<2-cell size> > */
+			dma-ranges = <0x03000000 0x00000000 0x00000000
+				      0x00 0x00000000
+				      0x00 0x40000000>;
+			interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		amba {
 			compatible = "arm,amba-bus";
 			#address-cells = <2>;
