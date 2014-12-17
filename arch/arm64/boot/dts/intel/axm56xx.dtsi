@@ -46,7 +46,7 @@
 
 		clks: dummy-clock {
 			compatible = "fixed-clock";
-			#clock-cells = <0>;
+			#clock-cells = <1>;
 			clock-frequency = <100000000>;
 		};
 	};
@@ -370,6 +370,7 @@
 
 			spi0: ssp@8080100000 {
 				compatible = "arm,pl022", "arm,primecell";
+				arm,primecell-periphid = <0x000b6022>;
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x80 0x80100000 0x1000>;
