@@ -87,6 +87,28 @@
 	status = "okay";
 };
 
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "s25fl016k";
+		reg = <0x0>;
+		spi-max-frequency = <25000000>;
+		pl022,com-mode = <1>;
+
+		partition@0 {
+			label = "bl2a";
+			reg = <0x0 0x40000>;
+		};
+		partition@40000 {
+			label = "bl2b";
+			reg = <0x40000 0x40000>;
+		};
+	};
+};
+
 &i2c0 {
 	status = "okay";
 };
