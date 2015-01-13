@@ -1,0 +1,184 @@
+/*
+ * arch/arm64/boot/dts/intel/axc6704-sim.dts
+ *
+ * Copyright (C) 2015 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+#include "axc67xx.dtsi"
+#include "axc6704-cpus.dtsi"
+
+/ {
+	model = "Lionfish Simulator";
+	compatible = "lsi,axc6732";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0x40000000>;
+	};
+
+	soc {
+		virtio_block@8021000000 {
+			compatible = "virtio,mmio";
+			reg = <0x80 0x34000000 0x1000>;
+			interrupts = <GIC_SPI 671 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		vmfs@8034010000 {
+			compatible = "arm,messagebox";
+			reg = <0x80 0x34010000 0x1000>;
+			interrupts = <GIC_SPI 670 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		ethernet@8020000000 {
+			compatible = "smsc,lan91c111";
+			reg = <0x80 0x33000000 0x1000000>;
+			interrupts = <GIC_SPI 672 IRQ_TYPE_LEVEL_HIGH>;
+			phy-mode = "mii";
+			reg-io-width = <4>;
+			smsc,irq-active-high;
+			smsc,irq-push-pull;
+		};
+	};
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&serial1 {
+	status = "okay";
+};
+
+&serial2 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&gpio6 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "s25fl016k";
+		reg = <0x0>;
+		spi-max-frequency = <25000000>;
+		pl022,com-mode = <1>;
+
+		partition@0 {
+			label = "bl2a";
+			reg = <0x0 0x40000>;
+		};
+		partition@40000 {
+			label = "bl2b";
+			reg = <0x40000 0x40000>;
+		};
+	};
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&spi2 {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+};
+
+&i2c6 {
+	status = "okay";
+};
+
+&i2c7 {
+	status = "okay";
+};
+
+&i2c8 {
+	status = "okay";
+};
+
+&i2c9 {
+	status = "okay";
+};
+
+&i2c10 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+
+&gpdma0 {
+	status = "okay";
+};
+
+&gpdma1 {
+	status = "okay";
+};
+
+&pci0 {
+
+	status = "okay";
+};
