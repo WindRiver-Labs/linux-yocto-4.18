@@ -38,6 +38,12 @@
 			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		vmfs@8021010000 {
+			compatible = "arm,messagebox";
+			reg = <0x80 21010000 0x1000>;
+			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		ethernet@8020000000 {
 			compatible = "smsc,lan91c111";
 			reg = <0x80 0x20000000 0x1000000>;
