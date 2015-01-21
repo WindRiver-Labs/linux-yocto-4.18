@@ -1,0 +1,72 @@
+config NET_VENDOR_LSI
+	bool "LSI AXM55xx Ethernet support"
+	select MII
+	select PHYLIB
+	default y if ARCH_AXXIA
+	---help---
+	If you have a network interface driver for LSI AXXIA series, say Y
+
+	Note that the answer to this question doesn't directly affect the
+	kernel: saying N will just cause the configurator to skip all
+	the questions about LSI devices. If you say Y, you will be
+	asked for your specific card in the following questions.
+
+if NET_VENDOR_LSI
+
+config NET_LSI_MDIO
+	bool "LSI AXM55xx MDIO bus driver"
+	default y
+	---help---
+	  The MDIO controller in AXM55xx devices.
+
+	  If your board uses an external PHY connected to FEMAC, say Y.
+
+config NET_LSI_FEMAC
+	tristate "LSI FEMAC Ethernet controller"
+	select LSI_MDIO
+	default y
+	---help---
+	  Say Y here if you want to use the built-in 10/100 Fast ethernet
+	  controller (FEMAC) on the AXM55xx devices.
+
+endif # NET_VENDOR_LSI
+
+
+config LSI_NET
+	bool "LSI ACP34XX Ethernet support"
+	select MII
+	select PHYLIB
+	help
+	  Network interface driver for LSI's APP and AXXIA series boards.
+
+if LSI_NET
+
+config LSI_NET_NUM_RX_DESC
+	int "LSI Axxia Network Driver: Number of receive descriptors"
+	depends on LSI_NET
+	default "4"
+	help
+          The number of receive descriptors to allocate.
+
+config LSI_NET_RX_BUF_SZ
+	int "NIC driver: Size of the receive buffer"
+	depends on LSI_NET
+	default "32768"
+	help
+          The size of the receive buffer.
+
+config LSI_NET_NUM_TX_DESC
+	int "NIC driver: Number of transmit descriptors"
+	depends on LSI_NET
+	default "4"
+	help
+	  The number of transmit descriptors to allocate.
+
+config LSI_NET_TX_BUF_SZ
+	int "NIC driver: Size of the transmit buffer"
+	depends on LSI_NET
+	default "32768"
+	help
+	  The size of the transmit buffer.
+
+endif # LSI_NET
