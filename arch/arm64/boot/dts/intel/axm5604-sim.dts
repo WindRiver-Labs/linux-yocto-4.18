@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/intel/axm5504-sim.dts
+ * arch/arm64/boot/dts/intel/axm5604-sim.dts
  *
  * Copyright (C) 2013 LSI
  *
@@ -40,7 +40,7 @@
 
 		vmfs@8021010000 {
 			compatible = "arm,messagebox";
-			reg = <0x80 21010000 0x1000>;
+			reg = <0x80 0x21010000 0x1000>;
 			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
