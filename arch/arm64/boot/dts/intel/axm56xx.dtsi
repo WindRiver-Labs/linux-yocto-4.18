@@ -41,7 +41,8 @@
 		clk_ref {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clock-frequency = <125000000>;
+			clock-frequency = <4000000>;
+			//clock-frequency = <125000000>;
 		};
 
 		clks: dummy-clock {
@@ -58,6 +59,8 @@
 		interrupt-controller;
 		reg = <0x80 0x10000000 0x10000>,
 		      <0x80 0x10200000 0x200000>;
+		//reg = <0x80 0x10010000 0x10000>,
+		//      <0x80 0x10100000 0x200000>;
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -291,7 +294,8 @@
 			serial0: uart@8080000000 {
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80000000 0x10000>;
-				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+				//interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
