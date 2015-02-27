@@ -2050,8 +2050,10 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 			quot -= 2;
 	}
 	/* Set baud rate */
+#if 0
 	pl011_write(quot & 0x3f, uap, REG_FBRD);
 	pl011_write(quot >> 6, uap, REG_IBRD);
+#endif
 
 	/*
 	 * ----------v----------v----------v----------v-----
