@@ -210,7 +210,6 @@ void __init axxia_dt_init(void)
 			     axxia_auxdata_lookup, NULL);
 	pm_power_off = NULL; /* TBD */
 
-	ncr_init();
 	axxia_ddr_retention_init();
 
 	axxia_pcie_init();
