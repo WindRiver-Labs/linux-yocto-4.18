@@ -62,9 +62,6 @@ static const char *const axxia_dt_match[] __initconst = {
 };
 
 static void __iomem *base;
-
-#ifdef CONFIG_KEXEC
-
 static void __iomem *dickens;
 
 static void set_l3_pstate(u32 newstate)
@@ -94,13 +91,11 @@ static void set_l3_pstate(u32 newstate)
 static void
 flush_l3(void)
 {
-	/* Shutdown to flush */
-	set_l3_pstate(0);
+	/* Switch to SFONLY to flush */
+	set_l3_pstate(1);
 	/* ...and then back up again */
 	set_l3_pstate(3);
 }
-
-#endif
 
 static struct map_desc axxia_static_mappings[] __initdata = {
 #ifdef CONFIG_DEBUG_LL
@@ -202,12 +197,13 @@ static struct notifier_block axxia_amba_nb = {
 void __init axxia_dt_init(void)
 {
 	base = ioremap(0x2010000000, 0x40000);
-#ifdef CONFIG_KEXEC
 	if (!of_find_compatible_node(NULL, NULL, "lsi,axm5500-sim")) {
 		dickens = ioremap(0x2000000000, SZ_4M);
+#ifdef CONFIG_KEXEC
 		kexec_reinit = flush_l3;
-	}
 #endif
+		flush_l3();
+	}
 
 	bus_register_notifier(&platform_bus_type, &axxia_platform_nb);
 	bus_register_notifier(&amba_bustype, &axxia_amba_nb);
