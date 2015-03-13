@@ -697,14 +697,27 @@ static int imx_sata_enable(struct ahci_host_priv *hpriv)
 				   IMX6Q_GPR13_SATA_MPLL_CLK_EN);
 
 		usleep_range(100, 200);
+	}
 
+	if (imxpriv->type == AHCI_IMX6Q) {
 		ret = imx_sata_phy_reset(hpriv);
-		if (ret) {
-			dev_err(dev, "failed to reset phy: %d\n", ret);
-			goto disable_clk;
-		}
+	} else if (imxpriv->type == AHCI_IMX6QP) {
+		/* 6qp adds the sata reset mechanism, use it for 6qp sata */
+		regmap_update_bits(imxpriv->gpr, IOMUXC_GPR5,
+				   BIT(10), 0);
+
+		regmap_update_bits(imxpriv->gpr, IOMUXC_GPR5,
+				   BIT(11), 0);
+		udelay(50);
+		regmap_update_bits(imxpriv->gpr, IOMUXC_GPR5,
+				   BIT(11), BIT(11));
 	} else if (imxpriv->type == AHCI_IMX8QM) {
 		ret = imx8_sata_enable(hpriv);
+	}
+
+	if (ret) {
+		dev_err(dev, "failed to reset phy: %d\n", ret);
+		goto disable_clk;
 	}
 
 	usleep_range(1000, 2000);
