@@ -12,10 +12,10 @@
 /dts-v1/;
 
 #include "axm56xx.dtsi"
-#include "axm5608-cpus.dtsi"
+#include "axm5601-cpus.dtsi"
 
 / {
-	model = "AXM56xx Simulator";
+	model = "AXM56xx Emulation";
 	compatible = "lsi,axm5616";
 
 	memory {
@@ -37,4 +37,20 @@
 
 &serial0 {
 	status = "okay";
+};
+
+&femac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x5>;
+	lsi,mdio-clk-period = <0xc>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x3>;
+	};
 };

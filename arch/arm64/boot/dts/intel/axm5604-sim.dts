@@ -11,8 +11,8 @@
 
 /dts-v1/;
 
-#include "axm56xx.dtsi"
-#include "axm5608-cpus.dtsi"
+#include "axm56xx-sim.dtsi"
+#include "axm5604-cpus.dtsi"
 
 / {
 	model = "AXM56xx Simulator";
