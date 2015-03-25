@@ -118,7 +118,7 @@ struct axxia_pciex_port {
 	unsigned int	    index;
 	u8                  root_bus_nr;
 	bool                link_up;
-	int                 irq[17]; /* 1 legacy, 16 MSI */
+	int                 irq[18]; /* 1 legacy, 1 Doorbell (EP), 16 MSI */
 	void __iomem	    *regs;
 	void __iomem	    *cfg_data;
 	u32                 last_mpage;
@@ -465,17 +465,11 @@ pcie_legacy_isr(int irq, void *arg)
 			if (intr_status & 0x00020000) {
 				pr_info("PCIE%d: t2a_fn_indp_err_stat = %#x\n",
 					port->index, readl(mbase+0x1170));
-				int_enb = readl(mbase + PCIE_INT0_ENABLE);
-				int_enb &= 0xfffdffff;
-				writel(int_enb, mbase + PCIE_INT0_ENABLE);
 			}
 
 			if (intr_status & 0x00040000) {
 				pr_info("PCIE%d: t2a_fn_indp_other_err_stat = %#x\n",
 					port->index, readl(mbase+0x1174));
-				int_enb = readl(mbase + PCIE_INT0_ENABLE);
-				int_enb &= 0xfffbffff;
-				writel(int_enb, mbase + PCIE_INT0_ENABLE);
 			}
 
 			if (intr_status & 0x00000800) {
@@ -483,9 +477,6 @@ pcie_legacy_isr(int irq, void *arg)
 					port->index,
 					readl(mbase + PCIE_CONFIG),
 					readl(mbase + PCIE_STATUS));
-				int_enb = readl(mbase + PCIE_INT0_ENABLE);
-				int_enb &= 0xfffff7ff;
-				writel(int_enb, mbase + PCIE_INT0_ENABLE);
 			}
 
 			/*
@@ -692,7 +683,8 @@ static int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 		pr_err("PCIE%d: Device is not Root Complex\n", port->index);
 		if (sys->domain == 0) {
 			/* PEI0 */
-			err = request_irq(port->irq[0]+3, pcie_doorbell_isr,
+			port->irq[1] = irq_of_parse_and_map(port->node, 1);
+			err = request_irq(port->irq[1], pcie_doorbell_isr,
 			IRQF_SHARED, "pcie_db", port);
 			if (err) {
 				pr_err("PCIE%d: Failed to request IRQ#%d (%d)\n",
@@ -702,7 +694,8 @@ static int axxia_pcie_setup(int portno, struct pci_sys_data *sys)
 			}
 		} else if (sys->domain == 1) {
 			/* PEI1 */
-			err = request_irq(port->irq[0]+2, pcie_doorbell_isr,
+			port->irq[1] = irq_of_parse_and_map(port->node, 1);
+			err = request_irq(port->irq[1], pcie_doorbell_isr,
 			IRQF_SHARED, "pcie_db", port);
 			if (err) {
 				pr_err("PCIE%d: Failed to request IRQ#%d (%d)\n",
