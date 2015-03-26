@@ -27,12 +27,14 @@
 #include "lsi_power_management.h"
 #include <mach/axxia-gic.h>
 
-extern void axxia_secondary_startup(void);
-
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
+#define DICKENS_PHYS_ADDR 0x2000000000
 
 static int __cpuinitdata wfe_fixup;
 static int wfe_available;
+
+void __iomem *syscon;
+void __iomem *dickens;
 
 inline void
 __axxia_arch_wfe(void)
@@ -59,7 +61,7 @@ static void __init check_fixup_sev(void __iomem *syscon)
 	pr_info("axxia: Cross-cluster SEV fixup: %s\n", wfe_fixup ? "yes" : "no");
 }
 
-static void __cpuinit do_fixup_sev(void)
+static void  do_fixup_sev(void)
 {
 	u32 tmp;
 
@@ -88,26 +90,37 @@ static void __cpuinit write_pen_release(int val)
 
 static DEFINE_RAW_SPINLOCK(boot_lock);
 
-void __cpuinit axxia_secondary_init(unsigned int cpu)
+void  axxia_secondary_init(unsigned int cpu)
 {
-	int phys_cpu, cluster;
+	int phys_cpu;
+	int phys_cluster;
 
 	phys_cpu = cpu_logical_map(cpu);
-	cluster = (phys_cpu / 4) << 8;
+	phys_cluster = phys_cpu / 4;
 
 	/*
 	 * Only execute this when powering up a cpu for hotplug.
 	 */
-	if (!pm_in_progress[cpu]) {
+	if (!pm_in_progress[phys_cpu]) {
 		/* Fixup for cross-cluster SEV */
 		do_fixup_sev();
 
 		axxia_gic_secondary_init();
 	} else {
-		axxia_gic_secondary_init();
+
+#ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
+		if (cluster_power_up[phys_cluster])
+			pm_cluster_logical_powerup();
 		pm_cpu_logical_powerup();
-		pm_in_progress[cpu] = false;
-		cluster_power_up[cluster] = false;
+#endif
+		get_cpu();
+		axxia_gic_secondary_init();
+		put_cpu();
+
+#ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
+		cluster_power_up[phys_cluster] = false;
+		pm_in_progress[phys_cpu] = false;
+#endif
 	}
 
 	/*
@@ -123,13 +136,12 @@ void __cpuinit axxia_secondary_init(unsigned int cpu)
 	_raw_spin_unlock(&boot_lock);
 }
 
-int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
+int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 
 	int phys_cpu, cluster;
 	unsigned long timeout;
 	unsigned long powered_down_cpu;
-	int rVal = 0;
 
 
 	/*
@@ -143,14 +155,8 @@ int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	powered_down_cpu = pm_get_powered_down_cpu();
 
 	if (powered_down_cpu & (1 << phys_cpu)) {
-		pm_in_progress[cpu] = true;
-
-		rVal = pm_cpu_powerup(phys_cpu);
-		if (rVal) {
-			_raw_spin_unlock(&boot_lock);
-			return rVal;
-		}
-
+		pm_in_progress[phys_cpu] = true;
+		pm_cpu_powerup(phys_cpu);
 	}
 
 	/*
@@ -171,7 +177,6 @@ int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 * Bits:   |11 10 9 8|7 6 5 4 3 2|1 0
 	 *         | CLUSTER | Reserved  |CPU
 	 */
-	phys_cpu = cpu_logical_map(cpu);
 	cluster = (phys_cpu / 4) << 8;
 	phys_cpu = cluster + (phys_cpu % 4);
 
@@ -219,12 +224,15 @@ static __init struct device_node *get_cpu_node(int cpu)
 
 static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 {
-	void __iomem *syscon;
 	int cpu_count = 0;
 	int cpu;
 
 	syscon = ioremap(SYSCON_PHYS_ADDR, SZ_64K);
 	if (WARN_ON(!syscon))
+		return;
+
+	dickens = ioremap(DICKENS_PHYS_ADDR, SZ_4M);
+	if (WARN_ON(!dickens))
 		return;
 
 	check_fixup_sev(syscon);
@@ -291,8 +299,6 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 				iounmap(release_virt);
 		}
 	}
-
-	iounmap(syscon);
 }
 
 struct smp_operations axxia_smp_ops __initdata = {

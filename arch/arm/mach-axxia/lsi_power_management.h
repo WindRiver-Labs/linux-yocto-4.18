@@ -150,11 +150,19 @@
 #define		PORESET_CLUSTER2		(0x40000)
 #define		PORESET_CLUSTER3		(0x80000)
 
+/* IPI Masks */
+#define		IPI0_MASK				(0x1111)
+#define		IPI1_MASK				(0x2222)
+#define		IPI2_MASK				(0x4444)
+#define 	IPI3_MASK				(0x8888)
+
 /* SYSCON KEY Value */
 #define VALID_KEY_VALUE			(0xAB)
 
 #define MAX_NUM_CLUSTERS    (4)
 #define CORES_PER_CLUSTER   (4)
+#define MAX_IPI				(19)
+#define MAX_CPUS			(MAX_NUM_CLUSTERS * CORES_PER_CLUSTER)
 
 typedef struct {
 	u32 cpu;
@@ -166,18 +174,19 @@ void pm_cpu_shutdown(u32 cpu);
 int pm_cpu_powerup(u32 cpu);
 void pm_debug_read_pwr_registers(void);
 void pm_dump_L2_registers(void);
-void pm_cpu_logical_shutdown(void *data);
 int pm_cpu_logical_die(pm_data *pm_request);
 int pm_cpul2_logical_die(pm_data *pm_request);
 unsigned long pm_get_powered_down_cpu(void);
 bool pm_cpu_last_of_cluster(u32 cpu);
-void pm_L2_logical_shutdown(void *data);
 void pm_dump_dickens(void);
 void pm_init_cpu(u32 cpu);
 void pm_cpu_logical_powerup(void);
-
+void pm_cluster_logical_powerup(void);
+bool pm_cpu_active(u32 cpu);
+void pm_init_syscon(void);
 extern bool pm_in_progress[];
 extern bool cluster_power_up[];
+extern u32 pm_cpu_powered_down;
 
 
 #endif /* LSI_POWER_MANAGEMENT_H_ */
