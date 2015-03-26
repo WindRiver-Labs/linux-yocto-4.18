@@ -11,7 +11,7 @@
 
 /dts-v1/;
 
-#include "axc67xx.dtsi"
+#include "axc67xx-sim.dtsi"
 #include "axc6704-cpus.dtsi"
 
 / {
