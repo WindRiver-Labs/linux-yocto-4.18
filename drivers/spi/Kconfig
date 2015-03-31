@@ -308,6 +308,13 @@ config SPI_LP8841_RTC
 	  Say N here unless you plan to run the kernel on an ICP DAS
 	  LP-8x4x industrial computer.
 
+config SPI_LSI_ACP
+	tristate "LSI ACP34xx SPI Controller"
+	depends on PPC_OF
+	help
+	  This is the driver for the LSI SPI controller, present in
+	  ACP34xx devices. The controller is essentially a AMBA pl022.
+
 config SPI_MPC52xx
 	tristate "Freescale MPC52xx SPI (non-PSC) controller support"
 	depends on PPC_MPC52xx
