@@ -8,3 +8,5 @@ config RAPIDIO_TSI721
 	default "n"
 	---help---
 	  Include support for IDT Tsi721 PCI Express Serial RapidIO controller.
+
+source "drivers/rapidio/devices/lsi/Kconfig"
