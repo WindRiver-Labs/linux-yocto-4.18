@@ -1,15 +1,33 @@
 # SPDX-License-Identifier: GPL-2.0
-config ARCH_AXXIA
-	bool "LSI Axxia platforms"
-	depends on ARCH_MULTI_V7 && ARM_LPAE
-	select ARM_AMBA
-	select ARM_GIC
-	select ARM_TIMER_SP804
-	select HAVE_ARM_ARCH_TIMER
-	select MFD_SYSCON
-	select ZONE_DMA
+menu "Axxia platform type"
+	depends on ARCH_AXXIA
+
+config ARCH_AXXIA_GIC
+        bool "Multi-cluster ARM GIC support for the LSI Axxia platforms"
+        select IRQ_DOMAIN
+        select MULTI_IRQ_HANDLER
 	help
-	  This enables support for the LSI Axxia devices.
+	  The LSI Axxia platforms can have up to four clusters, each having
+	  four cores (so a total of 16 cores). This requires the use of a
+	  distributed interrupt system in lieu of of a single ARM GIC.
+
+	  This option enables support for this multi-cluster setup.
+
+config ARCH_AXXIA_DT
+	bool "Device Tree support for LSI Axxia platforms"
+	select ARCH_AXXIA_GIC
+	select ARM_PATCH_PHYS_VIRT
+	select AUTO_ZRELADDR
+	select CPU_V7
+	select HAVE_SMP
+	select MIGHT_HAVE_CACHE_L2X0
+	select USE_OF
+	help
 
 	  The LSI Axxia platforms require a Flattened Device Tree to be passed
 	  to the kernel.
+
+	  If your bootloader supports Flattened Device Tree based booting,
+	  say Y here.
+
+endmenu
