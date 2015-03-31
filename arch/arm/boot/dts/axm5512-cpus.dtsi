@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/axm5516-cpus.dtsi
+ * arch/arm/boot/dts/axm5512-cpus.dtsi
  *
  * Copyright (C) 2013 LSI
  *
@@ -110,36 +110,5 @@
 			clock-frequency = <0>;  // Placeholder
 		};
 
-		cpu@12 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0c>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@13 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0d>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@14 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0e>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@15 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0f>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
 	};
 };

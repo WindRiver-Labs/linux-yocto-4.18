@@ -1,0 +1,73 @@
+/*
+ * arch/arm/boot/dts/axm5508-cpus.dtsi
+ *
+ * Copyright (C) 2013 LSI
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x00>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x01>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x02>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x03>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x04>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x05>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x06>;
+			cpu-release-addr = <0>; // Fixed by the boot loader
+			clock-frequency = <0>;  // Placeholder
+		};
+	};
+};
