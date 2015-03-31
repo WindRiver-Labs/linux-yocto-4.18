@@ -1310,6 +1310,21 @@ config SCx200_ACB
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
 
+config I2C_AXXIA
+	tristate "Axxia I2C bus support"
+	select I2C_ALGOBIT
+	help
+	  Say yes if you want to support the I2C bus on Axxia platforms.
+
+	  If you don't know, say Y.
+
+config ACP3400_I2C
+	tristate "ACP3400 I2C support"
+	depends on ACP
+	default y
+	help
+	  I2C adapter for acp476 based boards
+
 config I2C_OPAL
 	tristate "IBM OPAL I2C driver"
 	depends on PPC_POWERNV
