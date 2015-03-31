@@ -1,6 +1,19 @@
 config MTD_NAND_CORE
 	tristate
 
+config MTD_NAND_EP501X
+	tristate "Driver for Eureka EP501/EP501G1/EP501G3 Controllers"
+	depends on MTD_NAND
+	help
+	  Enables NAND flash support for the Eureka EP501, EP501G1
+	  and EP501G3 controllers.
+
+config MTD_NAND_EP501X_UBOOTENV
+	tristate "U-Boot Environment Access for LSI's APP and ACP"
+	depends on ( MTD_NAND_EP501X && CRC32 )
+	help
+	  Add U-Boot environment access on LSI's APP/ACP boards.
+
 source "drivers/mtd/nand/onenand/Kconfig"
 
 source "drivers/mtd/nand/raw/Kconfig"
