@@ -56,6 +56,7 @@ config CX_ECAT
 	  will be called ec_bhf.
 
 source "drivers/net/ethernet/davicom/Kconfig"
+source "drivers/net/ethernet/lsi/Kconfig"
 
 config DNET
 	tristate "Dave ethernet support (DNET)"
@@ -185,5 +186,6 @@ source "drivers/net/ethernet/via/Kconfig"
 source "drivers/net/ethernet/wiznet/Kconfig"
 source "drivers/net/ethernet/xilinx/Kconfig"
 source "drivers/net/ethernet/xircom/Kconfig"
+source "drivers/net/ethernet/lsi/Kconfig"
 
 endif # ETHERNET
