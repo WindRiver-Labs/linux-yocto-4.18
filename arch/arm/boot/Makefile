@@ -65,6 +65,10 @@ $(obj)/compressed/vmlinux: $(obj)/Image FORCE
 
 $(obj)/zImage:	$(obj)/compressed/vmlinux FORCE
 	$(call if_changed,objcopy)
+ifeq ($(MACHINE),arch/arm/mach-axxia/)
+		$(Q)$(MAKE) $(build)=$(obj)/fmboot $(obj)/linux.img
+endif
+
 
 endif
 
