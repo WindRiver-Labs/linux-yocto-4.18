@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/axm5516-cpus.dtsi
+ * arch/arm/boot/dts/axm5508-cpus.dtsi
  *
  * Copyright (C) 2013 LSI
  *
@@ -74,70 +74,6 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
 			reg = <0x07>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@8 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x08>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@9 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x09>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@10 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0a>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@11 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0b>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@12 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0c>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@13 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0d>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@14 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0e>;
-			cpu-release-addr = <0>; // Fixed by the boot loader
-			clock-frequency = <0>;  // Placeholder
-		};
-
-		cpu@15 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a15";
-			reg = <0x0f>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};

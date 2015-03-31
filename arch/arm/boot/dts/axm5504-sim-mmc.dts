@@ -1,0 +1,127 @@
+/*
+ * arch/arm/boot/dts/axm5504-amarillo.dts
+ *
+ * Copyright (C) 2013 LSI
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+/memreserve/ 0x00000000 0x00400000;
+
+/include/ "axm55xx.dtsi"
+/include/ "axm5504-cpus.dtsi"
+
+/ {
+	model = "Simulation Platform AXM5500";
+	compatible = "lsi,axm5500-sim", "lsi,axm5500";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0 0x40000000>;
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu {
+			frequency = <1400000000>;
+		};
+
+		peripheral {
+			frequency = <400000000>;
+		};
+
+		emmc {
+			frequency = <25000000>;
+		};
+	};
+
+	sim {
+		compatible = "arm,amba-bus", "simple-bus";
+		device_type = "soc";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&gic>;
+		ranges;
+
+		mmci@020101E0000 {
+			compatible = "arm,pl180", "arm,primecell";
+			reg = <0x20 0x101E0000 0x00 0x1000>;
+			interrupts = <0 222 4>,
+				     <0 223 4>;
+		};
+
+		ethernet@201100000000 {
+			compatible = "smsc,lan91c111";
+			device_type = "network";
+			reg = <0x20 0x11000000 0 0x10000>;
+			interrupts = <0 1 4>;
+			phy-mode = "mii";
+			reg-io-width = <4>;
+			smsc,irq-active-high;
+			smsc,irq-push-pull;
+		};
+	};
+};
+
+&mtc {
+	status = "okay";
+};
+
+&pcie0 {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&serial1 {
+	status = "okay";
+};
+
+&serial2 {
+	status = "okay";
+};
+
+&serial3 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&spics {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
