@@ -453,7 +453,6 @@ pcie_legacy_isr(int irq, void *arg)
 
 	/* check if this is a PCIe message not from an external device */
 	if (intr_status & INT0_ERROR) {
-			u32 int_enb;
 			u32 offset;
 
 			pr_info("PCIE%d: Error interrupt %#x\n",
