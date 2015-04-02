@@ -30,10 +30,10 @@
 #include <asm/io.h>
 #include <asm/cacheflush.h>
 #include <mach/ncr.h>
-#include "axxia.h"
 
 static void __iomem *nca;
 static void __iomem *apb;
+static void __iomem *dickens;
 static int ddr_retention_enabled;
 
 enum {
@@ -340,6 +340,7 @@ axxia_ddr_retention_init(void)
 		} else {
 			apb = ioremap(0x2010000000, 0x80000);
 			nca = ioremap(0x002020100000ULL, 0x20000);
+			dickens = ioremap(0x2000000000, 0x1000000);
 			ddr_retention_enabled = 1;
 			pr_info("DDR Retention Reset Initialized\n");
 		}
