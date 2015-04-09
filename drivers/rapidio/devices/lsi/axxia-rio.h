@@ -60,9 +60,10 @@
 #define AXXIA_DEVID_ACP34XX		0x5101000a
 #define AXXIA_DEVID_ACP25XX		0x5108000a
 #define AXXIA_DEVID_AXM55XX		0x5120000a
-#define   AXXIA_DEVREV_AXM55XX_V1_0	  0x00000000
-#define   AXXIA_DEVREV_AXM55XX_V1_1	  0x00000001
 #define AXXIA_DEVID_AXM35XX		0x5102000a
+#define   AXXIA_DEVREV_AXM55XX_V1_0	  0x00000000
+#define   AXXIA_DEVREV_AXM55XX_V1_1	  0x80000000
+#define   AXXIA_DEVREV_AXM55XX_V1_2	  0x40000000
 
 /* End Point Controller Specific Registers (0x1_0000-0x1_FFFC) */
 #define EPC_REG_BASE            0x10000
@@ -410,6 +411,9 @@
 #define RIO_PLTOCCSR            0x120
 #define RIO_PRTOCCSR            0x124
 #define RIO_GCCSR		0x13c
+
+#define RIO_LINK_TIMEOUT_VAL		(0x40)
+#define RIO_RESPONSE_TIMEOUT_VAL	(0xfa0)
 
 #define RIO_MNT_REQ_CSR(x)      (0x140+((x)*0x20))
 #define  RIO_MNT_REQ_MASK       0x00000007

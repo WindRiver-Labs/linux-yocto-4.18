@@ -37,6 +37,24 @@ static ssize_t axxia_rio_stat_show(struct device *dev,
 	char *str = buf;
 	u32 reg_val = 0;
 
+	if (priv->devid  == AXXIA_DEVID_AXM55XX) {
+		str += sprintf(str, "AXM 55xx sRIO Controller");
+		switch (priv->devrev) {
+		case AXXIA_DEVREV_AXM55XX_V1_0:
+			str += sprintf(str, "Revision 0\n");
+			break;
+		case AXXIA_DEVREV_AXM55XX_V1_1:
+			str += sprintf(str, "Revision 1\n");
+			break;
+		case AXXIA_DEVREV_AXM55XX_V1_2:
+			str += sprintf(str, "Revision 2\n");
+			break;
+		default:
+			str += sprintf(str, "Revision Unknown\n");
+			break;
+		}
+	}
+
 	axxia_rio_port_get_state(mport, 0);
 	str += sprintf(str, "Master Port state:\n");
 	axxia_local_config_read(priv, RIO_ESCSR(priv->port_ndx), &reg_val);

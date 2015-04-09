@@ -1518,8 +1518,18 @@ int axxia_rio_start_port(struct rio_mport *mport)
 	 * Set port line request ack timout 1.5 - 3 s
 	 * Set port response timeout 1.5 - 3 s
 	 */
-	__rio_local_write_config_32(mport, RIO_PLTOCCSR, 0x7fffff);
-	__rio_local_write_config_32(mport, RIO_PRTOCCSR, 0x7fffff);
+	if ((priv->devid == AXXIA_DEVID_AXM55XX) &&
+		(priv->devrev == AXXIA_DEVREV_AXM55XX_V1_0)) {
+		__rio_local_write_config_32(mport, RIO_PLTOCCSR,
+					((RIO_LINK_TIMEOUT_VAL * 100) << 8));
+		__rio_local_write_config_32(mport, RIO_PRTOCCSR,
+				((RIO_RESPONSE_TIMEOUT_VAL * 100) << 8));
+	} else {
+		__rio_local_write_config_32(mport, RIO_PLTOCCSR,
+					((RIO_LINK_TIMEOUT_VAL) << 8));
+		__rio_local_write_config_32(mport, RIO_PRTOCCSR,
+					((RIO_RESPONSE_TIMEOUT_VAL) << 8));
+	}
 
 	/* Check port training state:
 	 */
@@ -1694,9 +1704,21 @@ static int axxia_rio_setup(struct platform_device *dev)
 		priv->outb_dmes[1] = 0x00000000;
 		break;
 	case AXXIA_DEVID_AXM55XX:
+		priv->outb_dmes[1] = 0x00000000;
 		switch (priv->devrev) {
 		case AXXIA_DEVREV_AXM55XX_V1_0:
-			priv->outb_dmes[1] = 0x00000000;
+			pr_info(
+			"RIO: AXM 55xx sRIO Dev Rev 0 (Base DID Lock issue)\n");
+			break;
+		case AXXIA_DEVREV_AXM55XX_V1_1:
+			pr_info(
+			"RIO: AXM 55xx sRIO Device Rev 1 Controller %d\n",
+								priv->ndx);
+			break;
+		case AXXIA_DEVREV_AXM55XX_V1_2:
+			pr_info(
+			"RIO: AXM 55xx sRIO Device Rev 2 Controller %d\n",
+								priv->ndx);
 			break;
 		default:
 			break;
