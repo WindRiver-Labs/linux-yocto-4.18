@@ -33,6 +33,9 @@
 #include <linux/ktime.h>
 
 #include "axxia-rio.h"
+#define OB_DME_ENTRIES		(CONFIG_OB_DME_ENTRY_SIZE)
+#define LINK_DOWN_TIMEOUT	(0x4BF0)
+
 unsigned int axxia_dme_tmr_mode[2] = { AXXIA_IBDME_INTERRUPT_MODE,
 					AXXIA_IBDME_TIMER_MODE };
 static int axxia_timer_mode_setup(char *str)
@@ -623,15 +626,32 @@ static void misc_release_handler(struct rio_irq_handler *h)
  */
 static void linkdown_irq_handler(struct rio_irq_handler *h/*, u32 state*/)
 {
-#if 0
-	struct rio_mport *mport = h->mport;
+	struct rio_priv *priv = h->data;
+	struct rio_mport *mport = priv->mport;
+	u32 val;
+	u32 val1;
+	u32 rstate;
 
-	/**
-	 * Reset platform if port is broken
-	 */
-	if (state & RAB_SRDS_STAT1_LINKDOWN_INT)
-		srio_sw_reset(mport);
-#endif
+	__rio_local_read_config_32(mport, RAB_SRDS_STAT1, &rstate);
+	__rio_local_read_config_32(mport, RAB_SRDS_CTRL2, &val);
+	__rio_local_read_config_32(mport, RAB_SRDS_CTRL1, &val1);
+	pr_info("Link Down: RAB_SRDS STAT1 = %x CTRL1 = %x CTRL2 = %x\n",
+					rstate, val1, val);
+	while (1) {
+		axxia_local_config_read(priv, RIO_ESCSR(priv->port_ndx), &val);
+		if (val & 0x2) {
+			pr_info("Link up, Exiting Linkdown monitor Handler\n");
+			__rio_local_read_config_32(mport, RAB_SRDS_CTRL1, &val);
+			__rio_local_write_config_32(mport, RAB_SRDS_CTRL1,
+								(val | 0x2));
+			__rio_local_write_config_32(mport, RAB_SRDS_CTRL2,
+							LINK_DOWN_TIMEOUT);
+			break;
+		}
+	}
+	__rio_local_read_config_32(mport, RAB_SRDS_STAT1, &rstate);
+	__rio_local_read_config_32(mport, RAB_SRDS_CTRL2, &val);
+	__rio_local_read_config_32(mport, RAB_SRDS_CTRL1, &val1);
 }
 
 /**
@@ -1219,12 +1239,11 @@ static int alloc_ob_dme_shared(struct rio_priv *priv,
 	struct rio_msg_desc *desc = NULL;
 	u32 dw0, dw1, dw2, dw3;
 	u64  desc_chn_start = 0;
-	int entries = CONFIG_OB_DME_ENTRY_SIZE;
+	int entries = OB_DME_ENTRIES;
 	int i;
 
 	sz = RIO_OUTB_DME_TO_BUF_SIZE(priv, dme_no);
 	entries = roundup_pow_of_two(entries);
-	pr_info("Configuring DME %d with %d entries\n", dme_no, entries);
 	me = alloc_message_engine(mport,
 				dme_no, NULL, sz, entries);
 	if (IS_ERR(me)) {
@@ -1990,6 +2009,12 @@ int axxia_rio_port_irq_enable(struct rio_mport *mport)
 	if (rc)
 		goto out;
 
+	__rio_local_write_config_32(mport, RAB_SRDS_CTRL1, 0x0);
+	__rio_local_write_config_32(mport, RAB_SRDS_CTRL2,
+					/*LINK_DOWN_TIMEOUT*/0x0);
+	rc = alloc_irq_handler(&priv->linkdown_irq, priv, "rio-ld");
+	if (rc)
+		goto err1;
 	rc = alloc_irq_handler(&priv->apio_irq, priv, "rio-apio");
 	if (rc)
 		goto err2;
@@ -2023,6 +2048,8 @@ err4:
 err3:
 	release_irq_handler(&priv->apio_irq);
 err2:
+	release_irq_handler(&priv->linkdown_irq);
+err1:
 	release_irq_handler(&priv->misc_irq);
 	goto err0;
 }
@@ -2656,6 +2683,8 @@ void axxia_rio_port_irq_init(struct rio_mport *mport)
 		priv->ob_mbox[i] = NULL;
 
 /* Pre-Allocating the Outbound DME Descriptors*/
+	i = roundup_pow_of_two(OB_DME_ENTRIES);
+	pr_info("RIO: Configuring each outbound DME with %d entries\n", i);
 /* MultiSegment DME*/
 	for (i = 0; i < priv->num_outb_dmes[0]; i++)
 		alloc_ob_dme_shared(priv, &priv->ob_dme_shared[i], i);
