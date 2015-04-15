@@ -106,7 +106,8 @@ static int rionet_rx_clean(struct net_device *ndev)
 		if (!rnet->rx_skb[i])
 			continue;
 
-		if (!(data = rio_get_inb_message(rnet->mport, RIONET_MAILBOX)))
+		data = rio_get_inb_message(rnet->mport, RIONET_MAILBOX);
+		if (!data)
 			break;
 
 		rnet->rx_skb[i]->data = data;
@@ -164,8 +165,7 @@ static int rionet_queue_tx_msg(struct sk_buff *skb, struct net_device *ndev,
 	rnet->tx_slot &= (RIONET_TX_RING_SIZE - 1);
 
 	if (netif_msg_tx_queued(rnet))
-		printk(KERN_INFO "%s: queued skb len %8.8x\n", DRV_NAME,
-		       skb->len);
+		pr_info("%s: queued skb len %8.8x\n", DRV_NAME, skb->len);
 
 	return 0;
 }
@@ -187,7 +187,7 @@ static int rionet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	if ((rnet->tx_cnt + add_num) > RIONET_TX_RING_SIZE) {
 		netif_stop_queue(ndev);
 		spin_unlock_irqrestore(&rnet->tx_lock, flags);
-		printk(KERN_ERR "%s: BUG! Tx Ring full when queue awake!\n",
+		pr_err("%s: BUG! Tx Ring full when queue awake!\n",
 		       ndev->name);
 		return NETDEV_TX_BUSY;
 	}
@@ -198,20 +198,17 @@ static int rionet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		for (i = 0; i < RIO_MAX_ROUTE_ENTRIES(rnet->mport->sys_size);
 				i++)
 			if (nets[rnet->mport->id].active[i]) {
-				rionet_queue_tx_msg(skb, ndev,
-					nets[rnet->mport->id].active[i]);
+				rionet_queue_tx_msg(skb, ndev, nets[rnet->mport->id].active[i]);
 				if (count)
 					refcount_inc(&skb->users);
 				count++;
 			}
 	} else if (RIONET_MAC_MATCH(eth->h_dest)) {
 		destid = RIONET_GET_DESTID(eth->h_dest);
-		if (nets[rnet->mport->id].active[destid])
-			rionet_queue_tx_msg(skb, ndev,
-					nets[rnet->mport->id].active[destid]);
-		else {
-			/*
-			 * If the target device was removed from the list of
+		if (nets[rnet->mport->id].active[destid]) {
+			rionet_queue_tx_msg(skb, ndev, nets[rnet->mport->id].active[destid]);
+		} else {
+			/* If the target device was removed from the list of
 			 * active peers but we still have TX packets targeting
 			 * it just report sending a packet to the target
 			 * (without actual packet transfer).
@@ -236,7 +233,9 @@ static void rionet_dbell_event(struct rio_mport *mport, void *dev_id, u16 sid, u
 	unsigned char netid = rnet->mport->id;
 
 	if (netif_msg_intr(rnet))
-		printk(KERN_INFO "%s: doorbell sid %4.4x tid %4.4x info %4.4x",
+		pr_info(
+				"%s: doorbell sid %4.4x tid %4.4x info %4.4x",
+				DRV_NAME, sid, tid, info);
 		       DRV_NAME, sid, tid, info);
 	if (info == RIONET_DOORBELL_JOIN) {
 		if (!nets[netid].active[sid]) {
@@ -261,8 +260,7 @@ static void rionet_dbell_event(struct rio_mport *mport, void *dev_id, u16 sid, u
 		spin_unlock(&nets[netid].lock);
 	} else {
 		if (netif_msg_intr(rnet))
-			printk(KERN_WARNING "%s: unhandled doorbell\n",
-			       DRV_NAME);
+			pr_warn("%s: unhandled doorbell\n", DRV_NAME);
 	}
 }
 
@@ -273,11 +271,13 @@ static void rionet_inb_msg_event(struct rio_mport *mport, void *dev_id, int mbox
 	struct rionet_private *rnet = netdev_priv(ndev);
 
 	if (netif_msg_intr(rnet))
-		printk(KERN_INFO "%s: inbound message event, mbox %d slot %d\n",
+		pr_info(
+				"%s: inbound message event, mbox %d slot %d\n",
 		       DRV_NAME, mbox, slot);
 
 	spin_lock(&rnet->lock);
-	if ((n = rionet_rx_clean(ndev)) != rnet->rx_slot)
+	n = rionet_rx_clean(ndev);
+	if (n != rnet->rx_slot)
 		rionet_rx_fill(ndev, n);
 	spin_unlock(&rnet->lock);
 }
@@ -290,7 +290,7 @@ static void rionet_outb_msg_event(struct rio_mport *mport, void *dev_id, int mbo
 	spin_lock(&rnet->tx_lock);
 
 	if (netif_msg_intr(rnet))
-		printk(KERN_INFO
+		pr_info(
 		       "%s: outbound message event, mbox %d slot %d\n",
 		       DRV_NAME, mbox, slot);
 
@@ -318,27 +318,31 @@ static int rionet_open(struct net_device *ndev)
 	unsigned long flags;
 
 	if (netif_msg_ifup(rnet))
-		printk(KERN_INFO "%s: open\n", DRV_NAME);
+		pr_info("%s: open\n", DRV_NAME);
 
-	if ((rc = rio_request_inb_dbell(rnet->mport,
-					(void *)ndev,
-					RIONET_DOORBELL_JOIN,
-					RIONET_DOORBELL_LEAVE,
-					rionet_dbell_event)) < 0)
+	rc = rio_request_inb_dbell(
+			rnet->mport,
+			(void *)ndev,
+			RIONET_DOORBELL_JOIN,
+			RIONET_DOORBELL_LEAVE,
+			rionet_dbell_event);
+	if (rc < 0)
 		goto out;
 
-	if ((rc = rio_request_inb_mbox(rnet->mport,
-				       (void *)ndev,
-				       RIONET_MAILBOX,
-				       RIONET_RX_RING_SIZE,
-				       rionet_inb_msg_event)) < 0)
+	rc = rio_request_inb_mbox(
+			rnet->mport,
+			(void *)ndev,
+			RIONET_MAILBOX,
+			RIONET_RX_RING_SIZE,
+			rionet_inb_msg_event);
+	if (rc < 0)
 		goto out;
 
-	if ((rc = rio_request_outb_mbox(rnet->mport,
-					(void *)ndev,
-					RIONET_MAILBOX,
-					RIONET_TX_RING_SIZE,
-					rionet_outb_msg_event)) < 0)
+	rc = rio_request_outb_mbox(
+			rnet->mport, (void *)ndev, RIONET_MAILBOX,
+			RIONET_TX_RING_SIZE,
+			rionet_outb_msg_event);
+	if (rc  < 0)
 		goto out;
 
 	/* Initialize inbound message ring */
@@ -375,7 +379,7 @@ static int rionet_close(struct net_device *ndev)
 	int i;
 
 	if (netif_msg_ifup(rnet))
-		printk(KERN_INFO "%s: close %s\n", DRV_NAME, ndev->name);
+		pr_info("%s: close %s\n", DRV_NAME, ndev->name);
 
 	netif_stop_queue(ndev);
 	netif_carrier_off(ndev);
@@ -532,15 +536,15 @@ static int rionet_setup_netdev(struct rio_mport *mport, struct net_device *ndev)
 		goto out;
 	}
 
-	printk(KERN_INFO "%s: %s %s Version %s, MAC %pM, %s\n",
-	       ndev->name,
+	pr_info(
+			"%s: %s %s Version %s, MAC %pM, %s\n",
 	       DRV_NAME,
 	       DRV_DESC,
 	       DRV_VERSION,
 	       ndev->dev_addr,
 	       mport->name);
 
-      out:
+out:
 	return rc;
 }
 
@@ -567,22 +571,20 @@ static int rionet_add_dev(struct device *dev, struct subsys_interface *sif)
 		rio_local_read_config_32(rdev->net->hport, RIO_DST_OPS_CAR,
 					 &ldst_ops);
 		if (!is_rionet_capable(lsrc_ops, ldst_ops)) {
-			printk(KERN_ERR
-			       "%s: local device %s is not network capable\n",
-			       DRV_NAME, rdev->net->hport->name);
+			pr_err("%s: local device %s is not network capable\n", DRV_NAME, rdev->net->hport->name);
 			goto out;
 		}
 
 		/* Allocate our net_device structure */
 		ndev = alloc_etherdev(sizeof(struct rionet_private));
-		if (ndev == NULL) {
+		if (!ndev) {
 			rc = -ENOMEM;
 			goto out;
 		}
 
 		rc = rionet_setup_netdev(rdev->net->hport, ndev);
 		if (rc) {
-			printk(KERN_ERR "%s: failed to setup netdev (rc=%d)\n",
+			pr_err("%s: failed to setup netdev (rc=%d)\n",
 			       DRV_NAME, rc);
 			free_netdev(ndev);
 			goto out;
