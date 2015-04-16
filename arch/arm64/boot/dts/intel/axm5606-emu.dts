@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/intel/axm5601-emu.dts
+ * arch/arm64/boot/dts/intel/axm5606-emu.dts
  *
  * Copyright (C) 2013 LSI
  *
@@ -12,7 +12,7 @@
 /dts-v1/;
 
 #include "axm56xx.dtsi"
-#include "axm5604-cpus.dtsi"
+#include "axm5606-cpus.dtsi"
 
 / {
 	model = "AXM56xx Emulation";
