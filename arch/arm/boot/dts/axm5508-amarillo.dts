@@ -72,6 +72,10 @@
 	status = "okay";
 };
 
+&trng {
+	status = "okay";
+};
+
 &serial0 {
 	status = "okay";
 };
