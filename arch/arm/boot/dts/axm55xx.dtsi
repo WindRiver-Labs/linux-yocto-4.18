@@ -328,6 +328,13 @@
 			status = "disabled";
 		};
 
+		trng: trng@20101a0000 {
+			compatible = "lsi,trng";
+			reg = <0x20 0x101a0000 0 0x20000>;
+			interrupts = <0 8 4>;
+			status = "disabled";
+		};
+
 		nca@2020100000 {
 			compatible = "lsi,nca";
 			reg = <0x20 0x20100000 0 0x20000>;
