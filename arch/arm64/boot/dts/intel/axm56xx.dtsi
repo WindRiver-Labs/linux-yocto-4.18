@@ -23,7 +23,7 @@
 		serial2	  = &serial2;
 		serial3	  = &serial3;
 		timer	  = &timer0;
-		ethernet0 = &femac;
+		ethernet0 = &nemac;
 		i2c0	  = &i2c0;
 		i2c1	  = &i2c1;
 		i2c2	  = &i2c2;
