@@ -54,3 +54,6 @@
 		max-speed = <10>;
 	};
 };
+&mtc {
+	status = "okay";
+};

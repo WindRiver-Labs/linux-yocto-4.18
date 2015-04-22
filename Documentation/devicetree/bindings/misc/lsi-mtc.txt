@@ -1,0 +1,15 @@
+* LSI Master Test Controller (MTC)
+
+Required properties:
+- compatible : Should be "lsi,mtc"
+- reg : Address and length of the register set for the device
+  registers)
+- interrupts : Should contain MTC interrupt
+
+
+Example:
+mtc: mtc@8080210000 {
+		compatible = "lsi,mtc";
+		reg = <0x80 0x80210000 0x10000>;
+		interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+};

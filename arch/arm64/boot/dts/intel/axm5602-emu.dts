@@ -54,3 +54,6 @@
 		reg = <0x3>;
 	};
 };
+&mtc {
+	status = "okay";
+};
