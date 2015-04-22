@@ -39,11 +39,6 @@
 	status = "okay";
 };
 
-&femac {
-	status = "disabled";
-	phy-handle = <&phy0>;
-};
-
 &nemac {
 	status = "okay";
 	phy-handle = <&phy0>;

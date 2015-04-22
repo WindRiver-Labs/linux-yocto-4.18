@@ -39,7 +39,7 @@
 	status = "okay";
 };
 
-&femac {
+&nemac {
 	status = "okay";
 	phy-handle = <&phy0>;
 };
