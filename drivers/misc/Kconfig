@@ -484,6 +484,28 @@ config SRAM
 config SRAM_EXEC
 	bool
 
+config LSI_MTC
+	tristate "LSI Master Test Controller driver"
+	depends on ARCH_AXXIA
+	help
+	  The Master Test Controller (MTC) is a test generator that is fully
+	  compliant with IEEE 1149.1 and can run JTAG test sequences on
+	  external devices.
+	  Say N if you are unsure
+
+config LSI_NCR
+	tristate "LSI NCR Access"
+	depends on ARCH_AXXIA || ACP
+	help
+	  Provides access to the LSI Axxia NCR bus.
+
+config LSI_SMMON
+	tristate "LSI System Memory Monitor"
+	depends on ARCH_AXXIA || ACP
+	depends on !EDAC_AXXIA
+	help
+	  Monitor the system memory controllers for errors.
+
 config VEXPRESS_SYSCFG
 	bool "Versatile Express System Configuration driver"
 	depends on VEXPRESS_CONFIG
