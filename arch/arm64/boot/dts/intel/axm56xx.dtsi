@@ -142,7 +142,7 @@
 		gpdma0: gpdma@8004120000 {
 			compatible = "lsi,dma32";
 			reg = <0x80 0x04120000 0x10000>;
-			interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>,
+			interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 			channel0 {
 				interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
@@ -156,7 +156,7 @@
 		gpdma1: gpdma@8004130000 {
 			compatible = "lsi,dma32";
 			reg = <0x80 0x04130000 0x10000>;
-			interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 			channel0 {
