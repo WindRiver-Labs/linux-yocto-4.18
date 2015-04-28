@@ -114,7 +114,7 @@ ssp_gpio_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id ssp_gpio_id_table[] = {
-	{ .compatible = "lsi, ssp-gpio" },
+	{ .compatible = "lsi,ssp-gpio" },
 	{}
 };
 MODULE_DEVICE_TABLE(platform, ssp_gpio_id_table);
