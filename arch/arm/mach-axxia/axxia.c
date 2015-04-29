@@ -65,7 +65,7 @@ static void __iomem *base;
 
 #ifdef CONFIG_KEXEC
 
-static void __iomem *dickens;
+//static void __iomem *dickens;
 
 static void set_l3_pstate(u32 newstate)
 {

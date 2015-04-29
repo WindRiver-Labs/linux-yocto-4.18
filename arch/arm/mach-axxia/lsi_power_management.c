@@ -547,12 +547,12 @@ int pm_cpu_powerup(u32 cpu)
 	if (first_cpu) {
 
 		rval = pm_L2_logical_powerup(cluster, cpu);
-		if (rval)
-			pr_info("CPU %d is powered up with cluster: %d\n", reqcpu, cluster);
-		else {
+		if (rval) {
 			pr_err("CPU: Failed the logical L2 power up\n");
 			goto pm_power_up;
-		}
+		} else
+			pr_info("CPU %d is powered up with cluster: %d\n", reqcpu, cluster);
+
 		cluster_power_up[cluster] = true;
 		pm_clear_bits_syscon_register(NCP_SYSCON_GIC_DISABLE, cluster_mask);
 

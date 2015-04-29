@@ -30,10 +30,14 @@
 #include <asm/io.h>
 #include <asm/cacheflush.h>
 #include <mach/ncr.h>
+#include "axxia.h"
 
 static void __iomem *nca;
 static void __iomem *apb;
-static void __iomem *dickens;
+#ifndef CONFIG_SMP
+void __iomem *dickens;
+#endif
+
 static int ddr_retention_enabled;
 
 enum {
