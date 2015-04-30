@@ -82,13 +82,13 @@
 		interrupt-parent = <&gic>;
 		ranges;
 
-		syscon: syscon@8002000000 {
-			compatible = "lsi,axxia-syscon", "syscon";
-			reg = <0x80 0x02000000 0x40000>;
+		syscon: syscon@8002c00000 {
+			compatible = "intel,axxia-syscon", "syscon";
+			reg = <0x80 0x02c00000 0x40000>;
 		};
 
 		reset: reset@2010031000 {
-			compatible = "lsi,axm55xx-reset";
+			compatible = "intel,axm56xx-reset";
 			syscon = <&syscon>;
 		};
 

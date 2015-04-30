@@ -25,15 +25,10 @@
 #include <linux/reboot.h>
 #include <linux/regmap.h>
 
-#define SC_CRIT_WRITE_KEY	0x1000
-#define SC_LATCH_ON_RESET	0x1004
-#define SC_RESET_CONTROL	0x1008
-#define   RSTCTL_RST_ZERO	(1<<3)
-#define   RSTCTL_RST_FAB	(1<<2)
+#define SC_CRIT_WRITE_KEY      0x2000
+#define SC_RESET_CONTROL       0x2008
 #define   RSTCTL_RST_CHIP	(1<<1)
 #define   RSTCTL_RST_SYS	(1<<0)
-#define SC_EFUSE_INT_STATUS	0x180c
-#define   EFUSE_READ_DONE	(1<<31)
 
 static struct regmap *syscon;
 
@@ -42,10 +37,7 @@ static int axxia_restart_handler(struct notifier_block *this,
 {
 	/* Access Key (0xab) */
 	regmap_write(syscon, SC_CRIT_WRITE_KEY, 0xab);
-	/* Select internal boot from 0xffff0000 */
-	regmap_write(syscon, SC_LATCH_ON_RESET, 0x00000040);
-	/* Assert ResetReadDone (to avoid hanging in boot ROM) */
-	regmap_write(syscon, SC_EFUSE_INT_STATUS, EFUSE_READ_DONE);
+
 	/* Assert chip reset */
 	regmap_update_bits(syscon, SC_RESET_CONTROL,
 			   RSTCTL_RST_CHIP, RSTCTL_RST_CHIP);
@@ -77,7 +69,7 @@ static int axxia_reset_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id of_axxia_reset_match[] = {
-	{ .compatible = "lsi,axm55xx-reset", },
+	{ .compatible = "intel,axm56xx-reset",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_axxia_reset_match);
