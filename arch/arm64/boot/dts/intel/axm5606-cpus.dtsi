@@ -17,42 +17,42 @@
 		cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
-			reg = <0x00>;
+			reg = <0x0>;
 			enable-method = "psci";
 		};
 
 		cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
-			reg = <0x01>;
+			reg = <0x1>;
+			enable-method = "psci";
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x100>;
+			enable-method = "psci";
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x101>;
 			enable-method = "psci";
 		};
 
 		cpu@4 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
-			reg = <0x04>;
+			reg = <0x200>;
 			enable-method = "psci";
 		};
 
 		cpu@5 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
-			reg = <0x05>;
-			enable-method = "psci";
-		};
-
-		cpu@8 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x08>;
-			enable-method = "psci";
-		};
-
-		cpu@9 {
-			device_type = "cpu";
-			compatible = "arm,armv8";
-			reg = <0x09>;
+			reg = <0x201>;
 			enable-method = "psci";
 		};
 	};
