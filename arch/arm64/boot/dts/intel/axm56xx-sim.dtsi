@@ -56,8 +56,8 @@
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
-		reg = <0x80 0x10010000 0x10000>,
-		      <0x80 0x10100000 0x200000>;
+		reg = <0x80 0x10000000 0x10000>,
+		      <0x80 0x10200000 0x200000>;
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -101,9 +101,11 @@
 		};
 
 		nemac: ethernet@8080240000 {
-			compatible = "lsi,nemac";
-			reg = <0x80 0x80240000 0x1000>;
-			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+			compatible = "intel,nemac";
+			reg = <0x80 0x80240000 0x10000>;
+			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>;
+			dma-coherent;
 			status = "disabled";
 		};
 
