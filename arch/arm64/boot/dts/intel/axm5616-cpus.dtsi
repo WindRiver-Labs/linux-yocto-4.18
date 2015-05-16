@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/intel/axm5608-cpus.dtsi
+ * arch/arm64/boot/dts/intel/axm5616-cpus.dtsi
  *
  * Copyright (C) 2014 Avago Technologies
  *
@@ -67,6 +67,62 @@
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x103>;
+			enable-method = "psci";
+		};
+
+		cpu@8 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x200>;
+			enable-method = "psci";
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x201>;
+			enable-method = "psci";
+		};
+
+		cpu@10 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x202>;
+			enable-method = "psci";
+		};
+
+		cpu@11 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x203>;
+			enable-method = "psci";
+		};
+
+		cpu@12 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x300>;
+			enable-method = "psci";
+		};
+
+		cpu@13 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x301>;
+			enable-method = "psci";
+		};
+
+		cpu@14 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x302>;
+			enable-method = "psci";
+		};
+
+		cpu@15 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x303>;
 			enable-method = "psci";
 		};
 	};
