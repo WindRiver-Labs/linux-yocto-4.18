@@ -5,7 +5,7 @@ menu "PCI controller drivers"
 
 config PCI_AXXIA
 	bool "AXXIA PCIe controller"
-	depends on ARCH_AXXIA
+	depends on ARCH_AXXIA && ARM64
 	default ARCH_AXXIA
 	help
 	 Enables support for the Axxia PCIe controller. There are three PEI
