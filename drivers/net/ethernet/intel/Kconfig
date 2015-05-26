@@ -18,7 +18,7 @@ if NET_VENDOR_INTEL
 config AXXIA_NEMAC
 	tristate "Axxia GigE NEMAC support"
 	default y
-	depends on ARCH_AXXIA
+	depends on ARCH_AXXIA && ARM64
 	select MII
 	---help---
 	  This driver supports the Axxia NEMAC gigabit Ethernet controller
