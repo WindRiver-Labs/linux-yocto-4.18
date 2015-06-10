@@ -363,7 +363,7 @@ int axxia_pcie_link_up(struct pcie_port *pp)
 
 	axxia_cc_gpreg_readl(pp, PEI_SII_PWR_MGMT_REG, &smlh_state);
 	smlh_state = (smlh_state & PEI_SMLH_LINK_STATE) >> 4;
-	if (smlh_state != 0xb) {
+	if (smlh_state != 0x11) {
 		pr_info("smlh_state = 0x%x\n", smlh_state);
 		pr_err("PCIe LINK IS NOT UP\n");
 		return 0;
