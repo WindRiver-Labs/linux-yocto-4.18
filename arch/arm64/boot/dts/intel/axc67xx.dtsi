@@ -68,7 +68,7 @@
 		#address-cells = <0>;
 		interrupt-controller;
 		reg = <0x80 0x10000000 0x10000>,
-		      <0x80 0x10200000 0x200000>;
+		      <0x80 0x10400000 0x200000>;
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
