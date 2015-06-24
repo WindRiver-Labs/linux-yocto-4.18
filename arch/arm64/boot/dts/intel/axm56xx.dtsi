@@ -93,13 +93,6 @@
 		};
 
 
-		femac: ethernet@8080600000 {
-			compatible = "lsi,femac";
-			reg = <0x80 0x80600000 0x4000>;
-			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
-			status = "disabled";
-		};
-
 		nemac: ethernet@8080240000 {
 			compatible = "intel,nemac";
 			reg = <0x80 0x80240000 0x10000>;
