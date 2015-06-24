@@ -95,13 +95,14 @@
 
 		syscon: syscon@8002000000 {
 			compatible = "lsi,axxia-syscon", "syscon";
-			reg = <0x80 0x02000000 0x40000>;
+			reg = <0x80 0x02c00000 0x40000>;
 		};
 
 		nemac: ethernet@8080240000 {
-			compatible = "lsi,nemac";
-			reg = <0x80 0x80240000 0x1000>;
-			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+			compatible = "intel,nemac";
+			reg = <0x80 0x80240000 0x10000>;
+			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
@@ -350,7 +351,7 @@
 			serial0: uart@8080000000 {
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80000000 0x10000>;
-				interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -359,7 +360,7 @@
 			serial1: uart@8080010000 {
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80010000 0x10000>;
-				interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -368,7 +369,7 @@
 			serial2: uart@8080020000 {
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80020000 0x10000>;
-				interrupts = <GIC_SPI 73 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -377,14 +378,14 @@
 			timer0: timer@8080220000 {
 				compatible = "arm,sp804", "arm,primecell";
 				reg = <0x80 0x80220000 0x10000>;
-				interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 			};
