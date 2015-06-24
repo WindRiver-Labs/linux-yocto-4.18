@@ -12,7 +12,7 @@
 /dts-v1/;
 
 #include "axc67xx.dtsi"
-#include "axc6704-cpus.dtsi"
+#include "axc6701-cpus.dtsi"
 
 / {
 	model = "Lionfish Emulation";
@@ -29,4 +29,20 @@
 
 &serial0 {
 	status = "okay";
+};
+
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio0 {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x5>;
+	lsi,mdio-clk-period = <0xc>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x3>;
+	};
 };
