@@ -2,7 +2,7 @@
 //
 // Freescale ESAI ALSA SoC Digital Audio Interface (DAI) driver
 //
-// Copyright (C) 2014 Freescale Semiconductor, Inc.
+// Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
 
 #include <linux/clk.h>
 #include <linux/dmaengine.h>
@@ -800,6 +800,7 @@ static int fsl_esai_probe(struct platform_device *pdev)
 	const __be32 *iprop;
 	void __iomem *regs;
 	int irq, ret;
+	u32 buffer_size;
 
 	esai_priv = devm_kzalloc(&pdev->dev, sizeof(*esai_priv), GFP_KERNEL);
 	if (!esai_priv)
@@ -911,7 +912,10 @@ static int fsl_esai_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = imx_pcm_dma_init(pdev, IMX_ESAI_DMABUF_SIZE);
+	if (of_property_read_u32(np, "fsl,dma-buffer-size", &buffer_size))
+		buffer_size = IMX_ESAI_DMABUF_SIZE;
+
+	ret = imx_pcm_dma_init(pdev, buffer_size);
 	if (ret)
 		dev_err(&pdev->dev, "failed to init imx pcm dma: %d\n", ret);
 
