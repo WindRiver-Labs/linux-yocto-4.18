@@ -12,7 +12,7 @@
 /dts-v1/;
 
 #include "axc67xx.dtsi"
-#include "axc6701-cpus.dtsi"
+#include "axc6704-cpus.dtsi"
 
 / {
 	model = "Lionfish Emulation";
