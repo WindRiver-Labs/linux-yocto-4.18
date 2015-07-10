@@ -474,7 +474,12 @@ void gpmi_nfc_apply_timings(struct gpmi_nand_data *this)
 	void __iomem *gpmi_regs = r->gpmi_regs;
 	unsigned int dll_wait_time_us;
 
+	pm_runtime_get_sync(this->dev);
+	clk_disable_unprepare(r->clock[0]);
 	clk_set_rate(r->clock[0], hw->clk_rate);
+	clk_prepare_enable(r->clock[0]);
+	pm_runtime_mark_last_busy(this->dev);
+	pm_runtime_put_autosuspend(this->dev);
 
 	writel(hw->timing0, gpmi_regs + HW_GPMI_TIMING0);
 	writel(hw->timing1, gpmi_regs + HW_GPMI_TIMING1);
