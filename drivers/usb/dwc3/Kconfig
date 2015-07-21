@@ -88,6 +88,14 @@ config USB_DWC3_KEYSTONE
 	  Support of USB2/3 functionality in TI Keystone2 platforms.
 	  Say 'Y' or 'M' here if you have one such device
 
+config USB_DWC3_AXXIA
+	tristate "Intel Axxia Platforms"
+	depends on ARCH_AXXIA
+	default USB_DWC3
+	help
+	  Support of USB3 functionality in Intel's Axxia platforms.
+	  Say 'Y' or 'M' here if you have one such device
+
 config USB_DWC3_OF_SIMPLE
        tristate "Generic OF Simple Glue Layer"
        depends on OF && COMMON_CLK

@@ -111,11 +111,17 @@
 		};
 
 		usb0: usb@9000000000 {
-			compatible = "synopsys,dwc3";
-			reg = <0x90 0x00000000 0x10000>;
-			interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
+			compatible = "intel,axxia-dwc3";
 			dma-coherent;
 			status = "disabled";
+			#address-cells = <2>;
+			#size-cells = <1>;
+			ranges;
+			dwc3 {
+				compatible = "snps,dwc3";
+				reg = <0x90 0x00000000 0x10000>;
+				interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
+			};
 		};
 
 		sata0: sata@a000000000 {
