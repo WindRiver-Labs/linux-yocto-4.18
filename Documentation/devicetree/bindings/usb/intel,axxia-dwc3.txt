@@ -1,0 +1,22 @@
+Intel Axxia DWC3 USB SoC controller
+
+Required properties:
+- compatible:	should contain "intel,axxia-dwc3"
+
+Required child node:
+A child node must exist to represent the core DWC3 IP block. The content
+of the node is defined in dwc3.txt.
+
+	usb0: usb@9000000000 {
+		compatible = "intel,axxia-dwc3";
+		dma-coherent;
+		status = "disabled";
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+		dwc3 {
+			compatible = "synopsys,dwc3";
+			reg = <0x90 0x00000000 0x10000>;
+			interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
+		};
+	};
