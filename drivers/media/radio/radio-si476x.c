@@ -778,7 +778,8 @@ static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
 		if (err)
 			goto unlock;
 		rangelow = si476x_to_v4l2(radio->core, rangelow);
-	}
+	} else
+		rangelow = seek->rangelow;
 	if (!rangehigh) {
 		err = regmap_read(radio->core->regmap,
 				  SI476X_PROP_SEEK_BAND_TOP,
@@ -786,7 +787,8 @@ static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
 		if (err)
 			goto unlock;
 		rangehigh = si476x_to_v4l2(radio->core, rangehigh);
-	}
+	} else
+		rangehigh = seek->rangehigh;
 
 	if (rangelow > rangehigh) {
 		err = -EINVAL;
