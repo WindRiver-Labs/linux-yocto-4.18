@@ -678,7 +678,7 @@ static int gpdma_of_probe(struct platform_device *op)
 	dma->device_tx_status = gpdma_tx_status;
 	dma->device_prep_dma_memcpy = gpdma_prep_memcpy;
 	dma->device_issue_pending = gpdma_issue_pending;
-	dma->device_control = gpdma_device_control;
+//	dma->device_control = gpdma_device_control;
 	INIT_LIST_HEAD(&dma->channels);
 
 	/* Map device I/O memory
