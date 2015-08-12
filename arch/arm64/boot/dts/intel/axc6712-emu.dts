@@ -1,0 +1,48 @@
+/*
+ * arch/arm64/boot/dts/axc6712-emu.dts
+ *
+ * Copyright (C) 2015 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+#include "axc67xx.dtsi"
+#include "axc6712-cpus.dtsi"
+
+/ {
+	model = "Lionfish Emulation";
+	compatible = "lsi,axc6732";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0x40000000>;
+	};
+
+	soc {
+	};
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio0 {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x5>;
+	lsi,mdio-clk-period = <0xc>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x3>;
+		max-speed = <10>;
+	};
+};

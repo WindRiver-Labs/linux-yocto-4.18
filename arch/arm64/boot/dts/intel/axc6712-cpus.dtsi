@@ -1,0 +1,103 @@
+/*
+ * arch/arm64/boot/dts/intel/axc6712-cpus.dtsi
+ *
+ * Copyright (C) 2015 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0>;
+			enable-method = "psci";
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <1>;
+			enable-method = "psci";
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <2>;
+			enable-method = "psci";
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <3>;
+			enable-method = "psci";
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x100>;
+			enable-method = "psci";
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x101>;
+			enable-method = "psci";
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x102>;
+			enable-method = "psci";
+		};
+
+		cpu@7 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x103>;
+			enable-method = "psci";
+
+		};
+
+		cpu@8 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x200>;
+			enable-method = "psci";
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x201>;
+			enable-method = "psci";
+		};
+
+		cpu@10 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x202>;
+			enable-method = "psci";
+		};
+
+		cpu@11 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x203>;
+			enable-method = "psci";
+
+		};
+	};
+};
