@@ -6,7 +6,7 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	memory@10000000 {
+	memory:	memory@10000000 {
 		reg = <0x10000000 0x80000000>;
 	};
 
