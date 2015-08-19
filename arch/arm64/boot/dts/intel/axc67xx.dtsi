@@ -325,21 +325,57 @@
 			status = "disabled";
 		};
 
-		pci0: pci@c000000000 {
-			compatible = "lsi,plb-pciex";
+		pci0: pcie@c000000000 {
+			compatible = "intel,axxia-pcie";
 			device_type = "pci";
+			reg = <0xa0 0x02000000 0x00100000 /* dbi */
+				0xa0 0x03000000 0x00008000 /* AXI gpreg */
+				0xa0 0x03008000 0x00008000>; /* CC gpreg */
+			reg-names = "dbi", "axi_gpreg", "cc_gpreg";
 			#interrupt-cells = <1>;
-			#size-cells = <2>;
 			#address-cells = <3>;
-			reg = <0xc0 0x38000000 0x01000000>,
-			      <0xa0 0x02000000 0x00008000>;
-			/* Outbound: <PCI addr (3)> <CPU addr (2)> <Size (2)>*/
-			ranges = <0x03000000 0x00000000 0x80000000
-				  0xc0 0x00000000 0x00 0x20000000>;
-			/* Inbound: <PCI addr (3)> <CPU addr (2)> <Size (2)>*/
-			dma-ranges = <0x03000000 0x00000000 0x00000000
-				      0x00 0x00000000 0x00 0x40000000>;
-			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+			#size-cells = <2>;
+			num-lanes = <1>;
+			ranges = <0x00000000 0x000000c0 0x40000000
+				0xc0 0x40000000
+				0x00 0x10000000         /* config space */
+				0x03000000 0x00000000 0xa0000000
+				0xc0 0x00000000
+				0x00 0x40000000>;       /* outbound mem */
+			interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 

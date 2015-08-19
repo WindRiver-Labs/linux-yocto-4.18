@@ -46,3 +46,7 @@
 		max-speed = <10>;
 	};
 };
+
+&pci0 {
+	status = "okay";
+};

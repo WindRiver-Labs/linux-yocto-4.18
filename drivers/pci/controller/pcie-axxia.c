@@ -99,6 +99,25 @@
 #define AXI_GPREG_MSTR		0x0
 #define CFG_MSI_MODE		(0x1 << 29)
 
+/* SYSCON */
+#define AXXIA_SYSCON_BASE             0x8002C00000
+
+static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
+{
+	return *(uint32_t *)addr;
+}
+
+int
+axxia_is_x9(void)
+{
+	unsigned int pfuse;
+	static void __iomem *base;
+
+	base = ioremap(AXXIA_SYSCON_BASE, 0x1024);
+	pfuse = axxia_mmio_read_32((uintptr_t)(base + 0x34));
+	return (0xb == (pfuse & 0x1f));
+}
+
 struct axxia_pcie {
 	struct pcie_port	pp;
 };
@@ -192,6 +211,8 @@ static void axxia_pcie_prog_viewport_cfg0(struct pcie_port *pp, u32 busdev)
 		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX0,
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base, PCIE_ATU_LOWER_BASE);
+if (!axxia_is_x9())
+	axxia_pcie_writel_rc(pp, (pp->cfg0_base >> 32), PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base + pp->cfg0_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
@@ -209,6 +230,8 @@ static void axxia_pcie_prog_viewport_cfg1(struct pcie_port *pp, u32 busdev)
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_CFG1, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->cfg1_base, PCIE_ATU_LOWER_BASE);
+if (!axxia_is_x9())
+	axxia_pcie_writel_rc(pp, (pp->cfg1_base >> 32), PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->cfg1_base + pp->cfg1_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
@@ -224,6 +247,8 @@ static void axxia_pcie_prog_viewport_mem_outbound(struct pcie_port *pp)
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_MEM, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base, PCIE_ATU_LOWER_BASE);
+if (!axxia_is_x9())
+	axxia_pcie_writel_rc(pp, (pp->mem_mod_base >> 32), PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base + pp->mem_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, pp->mem_bus_addr, PCIE_ATU_LOWER_TARGET);
