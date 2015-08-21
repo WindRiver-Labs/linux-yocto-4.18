@@ -70,5 +70,34 @@
 			enable-method = "psci";
 
 		};
+
+		cpu@8 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x400>;
+			enable-method = "psci";
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x401>;
+			enable-method = "psci";
+		};
+
+		cpu@10 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x402>;
+			enable-method = "psci";
+		};
+
+		cpu@11 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x403>;
+			enable-method = "psci";
+
+		};
 	};
 };
