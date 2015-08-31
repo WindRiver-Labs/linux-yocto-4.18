@@ -82,6 +82,10 @@ obj-$(CONFIG_VIDEO_STM32_DCMI)		+= stm32/
 
 obj-$(CONFIG_VIDEO_MXC_OUTPUT)		+= mxc/output/
 
+obj-$(CONFIG_VIDEO_MXC_CAPTURE)	+= mxc/capture/
+obj-$(CONFIG_VIDEO_MXC_CAPTURE)	+= mxc/subdev/
+obj-$(CONFIG_VIDEO_MXC_OUTPUT)  += mxc/output/
+
 obj-$(CONFIG_VIDEO_MEDIATEK_VPU)	+= mtk-vpu/
 
 obj-$(CONFIG_VIDEO_MEDIATEK_VCODEC)	+= mtk-vcodec/
