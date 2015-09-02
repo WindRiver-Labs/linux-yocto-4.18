@@ -3515,6 +3515,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		break;
 
+#if 0
 	case MTC_AXI_EXT_PRGM_MEM_ENABLE:
 
 		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
@@ -3888,7 +3889,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		break;
-
+#endif
 
 	default:
 		pr_debug("Invalid ioctl cmd=%d MTC_DEBUG_OP=%ld\n",
