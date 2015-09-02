@@ -214,7 +214,7 @@ axxia_timer_clockevents_init(void __iomem *base,
 	evt->reload             = DIV_ROUND_CLOSEST(rate, HZ);
 
 	evt->irqaction.name     = name;
-	evt->irqaction.flags    = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL;
+	evt->irqaction.flags    = IRQF_TIMER | IRQF_IRQPOLL;
 	evt->irqaction.handler	= axxia_timer_handler;
 	evt->irqaction.dev_id	= evt;
 
