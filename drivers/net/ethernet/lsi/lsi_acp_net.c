@@ -954,7 +954,7 @@ static int appnic_open(struct net_device *dev)
 	napi_enable(&pdata->napi);
 
 	/* Install the interrupt handlers. */
-	return_code = request_irq(dev->irq, appnic_isr, IRQF_DISABLED, LSI_DRV_NAME, dev);
+	return_code = request_irq(dev->irq, appnic_isr, 0x00, LSI_DRV_NAME, dev);
 	if (0 != return_code) {
 		pr_err("%s: request_irq() failed, returned 0x%x/%d\n",
 		       LSI_DRV_NAME, return_code, return_code);
