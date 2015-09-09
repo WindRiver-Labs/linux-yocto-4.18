@@ -8,7 +8,6 @@ obj-y					+= io.o
 obj-y					+= ssp-gpio.o
 #obj-y					+= ncr.o
 obj-y					+= timers.o
-obj-y					+= pci.o
 obj-y					+= ddr_retention.o ddr_shutdown.o
 obj-$(CONFIG_SMP)			+= platsmp.o headsmp.o
 obj-$(CONFIG_ARCH_AXXIA_GIC)		+= axxia-gic.o
