@@ -218,8 +218,6 @@ void __init axxia_dt_init(void)
 
 	axxia_ddr_retention_init();
 
-	axxia_pcie_init();
-
 #ifdef CONFIG_AXXIA_RIO
 	axxia_rapidio_init();
 #endif

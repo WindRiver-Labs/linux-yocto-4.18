@@ -69,6 +69,14 @@
 	};
 };
 
+&pcie0 {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
+};
+
 &mtc {
 	status = "okay";
 };
