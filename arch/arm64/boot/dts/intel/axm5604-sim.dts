@@ -53,19 +53,6 @@
 			smsc,irq-active-high;
 			smsc,irq-push-pull;
 		};
-
-		amba {
-			mmci@8021030000 {
-				compatible = "arm,pl18x", "arm,primecell";
-				reg = <0x80 0x21030000 0x10000>;
-				interrupts = <GIC_SPI 281 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 282 IRQ_TYPE_LEVEL_HIGH>;
-				vmmc-supply = <&mmc_3v3>;
-				vqmmc-supply = <&mmc_3v3>;
-				clocks = <&clks 0>, <&clks 1>;
-				clock-names = "apb_pclk", "mmc_clk";
-			};
-		};
 	};
 };
 
