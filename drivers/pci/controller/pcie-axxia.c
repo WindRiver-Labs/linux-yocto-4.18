@@ -600,6 +600,9 @@ static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 		pr_info("RADM_INTB_ASSERTED\n");
 	if (val & RADM_INTA_ASSERTED)
 		pr_info("RADM_INTA_ASSERTED\n");
+	/* Clear the legacy interrupts */
+	axxia_cc_gpreg_writel(pp, val,
+				CC_GPREG_EDG_IRQ_STAT);
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_STAT_HI, &val);
