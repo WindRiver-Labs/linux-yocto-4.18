@@ -83,6 +83,14 @@
 &spi0 {
 	status = "okay";
 
+	icm@0 {
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+		compatible = "spidev";
+		reg = <0x1>;
+		spi-max-frequency = <0xf4240>;
+		pl022,com-mode = <0x1>;
+	};
 	flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
