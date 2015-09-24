@@ -53,13 +53,6 @@ PORESET_CLUSTER1,
 PORESET_CLUSTER2,
 PORESET_CLUSTER3 };
 
-static const u32 cluster_to_mask[MAX_CLUSTER] = {
-		IPI0_MASK,
-		IPI1_MASK,
-		IPI2_MASK,
-		IPI3_MASK
-};
-
 static const u32 ipi_register[MAX_IPI] = {
 		NCP_SYSCON_MASK_IPI0,
 		NCP_SYSCON_MASK_IPI1,
@@ -99,7 +92,6 @@ u32 pm_cpu_powered_down;
 
 /*======================= LOCAL FUNCTIONS ==============================*/
 static void pm_set_bits_syscon_register(u32 reg, u32 data);
-static void pm_or_bits_syscon_register(u32 reg, u32 data);
 static void pm_clear_bits_syscon_register(u32 reg, u32 data);
 static bool pm_test_for_bit_with_timeout(u32 reg, u32 bit);
 static bool pm_wait_for_bit_clear_with_timeout(u32 reg,
@@ -247,18 +239,12 @@ bool pm_cpu_last_of_cluster(u32 cpu)
 
 static void pm_set_bits_syscon_register(u32 reg, u32 data)
 {
-	writel(data, syscon + reg);
-}
-
-static void pm_or_bits_syscon_register(u32 reg, u32 data)
-{
 	u32 tmp;
 
 	tmp = readl(syscon + reg);
 	tmp |= data;
 	writel(tmp, syscon + reg);
 }
-
 
 static void pm_clear_bits_syscon_register(u32 reg, u32 data)
 {
@@ -434,23 +420,22 @@ dickens_power_up:
 	return rval;
 }
 
-static void pm_disable_ipi_interrupts(u32 cpu)
-{
-	pm_clear_bits_syscon_register(ipi_register[cpu], IPI_IRQ_MASK);
-}
-
-static void pm_enable_ipi_interrupts(u32 cpu)
+static int pm_enable_ipi_interrupts(u32 cpu)
 {
 
 	u32 i;
+	u32 cpumask = 1 << cpu;
 	u32 powered_on_cpu = (~(pm_cpu_powered_down) & IPI_IRQ_MASK);
 
+	/* Enable the CPU IPI */
 	pm_set_bits_syscon_register(ipi_register[cpu], powered_on_cpu);
 
-	for (i = 0; i < MAX_CPUS; i++) {
+	for (i = 0; i < MAX_IPI; i++) {
 		if ((1 << i) & powered_on_cpu)
-			pm_or_bits_syscon_register(ipi_register[i], (1 << cpu));
+			pm_set_bits_syscon_register(ipi_register[i], cpumask);
 	}
+
+	return 0;
 }
 
 void pm_init_syscon(void)
@@ -498,7 +483,7 @@ void pm_cpu_shutdown(u32 cpu)
 	if (last_cpu) {
 
 		/* Disable all the interrupts to the cluster gic */
-		pm_or_bits_syscon_register(NCP_SYSCON_GIC_DISABLE, cluster_mask);
+		pm_set_bits_syscon_register(NCP_SYSCON_GIC_DISABLE, cluster_mask);
 
 		/* Remove the cluster from the Dickens coherency domain */
 		pm_dickens_logical_shutdown(cluster);
@@ -516,7 +501,7 @@ void pm_cpu_shutdown(u32 cpu)
 		}
 
 		/* Turn off the ACE */
-		pm_or_bits_syscon_register(NCP_SYSCON_PWR_ACEPWRDNRQ, cluster_mask);
+		pm_set_bits_syscon_register(NCP_SYSCON_PWR_ACEPWRDNRQ, cluster_mask);
 
 		/* Wait for ACE to complete power off */
 		success = pm_wait_for_bit_clear_with_timeout(NCP_SYSCON_PWR_NACEPWRDNACK, cluster);
@@ -527,7 +512,7 @@ void pm_cpu_shutdown(u32 cpu)
 		}
 
 		/* Isolate the cluster */
-		pm_or_bits_syscon_register(NCP_SYSCON_PWR_ISOLATEL2MISC, cluster_mask);
+		pm_set_bits_syscon_register(NCP_SYSCON_PWR_ISOLATEL2MISC, cluster_mask);
 
 		/* Wait for WFI L2 to go to standby */
 		success = pm_test_for_bit_with_timeout(NCP_SYSCON_PWR_STANDBYWFIL2, cluster);
@@ -569,8 +554,19 @@ int pm_cpu_powerup(u32 cpu)
 	u32 reqcpu = cpu_logical_map(cpu);
 	u32 cluster = reqcpu / CORES_PER_CLUSTER;
 	u32 cluster_mask = (0x01 << cluster);
+	u32 timeout;
 
 	pm_init_syscon();
+
+	/*
+	 * The key value has to be written before the CPU RST can be written.
+	 */
+	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWRUP_CPU_RST, cpu_mask);
+
+	/* Hold the CPU in reset */
+	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
+	pm_set_bits_syscon_register(NCP_SYSCON_HOLD_CPU, cpu_mask);
 
 	/*
 	 * Is this the first cpu of a cluster to come back on?
@@ -584,17 +580,9 @@ int pm_cpu_powerup(u32 cpu)
 			pr_err("CPU: Failed the logical L2 power up\n");
 			goto pm_power_up;
 		}
-		cluster_power_up[cluster] = true;
 		pm_clear_bits_syscon_register(NCP_SYSCON_GIC_DISABLE, cluster_mask);
-
-
-	} else {
-		/* Set the CPU into reset */
-		pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
-		pm_or_bits_syscon_register(NCP_SYSCON_PWRUP_CPU_RST, cpu_mask);
-
+		cluster_power_up[cluster] = true;
 	}
-
 
 	/*
 	 * Power up the CPU
@@ -605,11 +593,33 @@ int pm_cpu_powerup(u32 cpu)
 		goto pm_power_up;
 	}
 
+	timeout = 30;
+
+	/* wait max 10 ms until cpuX is on */
+	while (!pm_cpu_active(cpu)) {
+
+		if (timeout-- == 0)
+			break;
+
+		mdelay(1);
+	}
+
+	if (timeout == 0) {
+		rval =  -ETIMEDOUT;
+		goto pm_power_up;
+	}
+
 	/*
 	 * The key value must be written before the CPU RST can be written.
 	 */
 	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWRUP_CPU_RST,	cpu_mask);
+
+	/*
+	 * The key value must be written before HOLD CPU can be written.
+	 */
+	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
+	pm_clear_bits_syscon_register(NCP_SYSCON_HOLD_CPU, cpu_mask);
 
 	/*
 	 * Clear the powered down mask
@@ -619,9 +629,8 @@ int pm_cpu_powerup(u32 cpu)
 	/* Enable the CPU IPI */
 	pm_enable_ipi_interrupts(cpu);
 
-
-
 pm_power_up:
+
 	iounmap(syscon);
 	return rval;
 }
@@ -643,60 +652,18 @@ inline void pm_cpu_logical_powerup(void)
 	"	mrc	p15, 0, %0, c1, c0, 0\n"
 	"	orr	%0, %0, %2\n"
 	"	mcr	p15, 0, %0, c1, c0, 0\n"
+	"	mrc	p15, 0, %0, c1, c0, 1\n"
+	"	orr	%0, %0, %3\n"
+	"	mcr	p15, 0, %0, c1, c0, 1\n"
 	  : "=&r" (v)
-	  : "Ir" (CR_C), "Ir" (CR_I)
+	  : "Ir" (CR_C), "Ir" (CR_I), "Ir" (0x40)
 	  : "cc");
 
-	/*
-	 *  Iniitalize the ACTLR2 register (all cores).
-	 */
-
 	asm volatile(
-	"	mrc		p15, 1, %0, c15, c0, 4\n"
-	"	bic	%0, %0, %1\n"
-	"	mcr		p15, 1, %0, c15, c0, 4\n"
+	"       mrc     p15, 1, %0, c9, c0, 2\n"
 	: "=&r" (v)
 	: "Ir" (0x1)
 	: "cc");
-
-	isb();
-	dsb();
-}
-
-inline void pm_cluster_logical_powerup(void)
-{
-	unsigned int v;
-
-	/*
-	 * Initialize the L2CTLR register (primary core in each cluster).
-	 */
-	asm volatile(
-	"	mrc	p15, 1, %0, c9, c0, 2\n"
-	"	orr	%0, %0, %1\n"
-	"	orr	%0, %0, %2\n"
-	"	mcr	p15, 1, %0, c9, c0, 2"
-	  : "=&r" (v)
-	  : "Ir" (0x01), "Ir" (0x1 << 21)
-	  : "cc");
-	isb();
-	dsb();
-
-	/*
-	 * Initialize the L2ACTLR register (primary core in each cluster).
-	 */
-	asm volatile(
-	"	mrc	p15, 1, r0, c15, c0, 0\n"
-	"	orr	%0, %0, %1\n"
-	"	orr	%0, %0, %2\n"
-	"	orr	%0, %0, %3\n"
-	"	orr	%0, %0, %4\n"
-	"	orr	%0, %0, %5\n"
-	"	mcr	p15, 1, %0, c15, c0, 0"
-	  : "=&r" (v)
-	  : "Ir" (0x1 << 3), "Ir" (0x1 << 7), "Ir" (0x1 << 12), "Ir" (0x1 << 13), "Ir" (0x1 << 14)
-	  : "cc");
-	isb();
-	dsb();
 
 }
 
@@ -709,7 +676,7 @@ static int pm_cpu_physical_isolation_and_power_down(int cpu)
 	u32 mask = (0x01 << cpu);
 
 	/* Disable the CPU IPI */
-	pm_disable_ipi_interrupts(cpu);
+	pm_clear_bits_syscon_register(ipi_register[cpu], IPI_IRQ_MASK);
 
 	/* Initiate power down of the CPU's HS Rams */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPURAM, mask);
@@ -723,12 +690,12 @@ static int pm_cpu_physical_isolation_and_power_down(int cpu)
 	}
 
 	/* Activate the CPU's isolation clamps */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_ISOLATECPU, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_ISOLATECPU, mask);
 
 	/* Initiate power down of the CPU logic */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG2, mask);
 
-	udelay(16);
+	udelay(10);
 
 	/* Continue power down of the CPU logic */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG1, mask);
@@ -753,7 +720,7 @@ static int pm_cpu_physical_connection_and_power_up(int cpu)
 	u32 mask = (0x01 << cpu);
 
 	/* Initiate power up of the CPU */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG1, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG1, mask);
 
 	/* Wait until CPU logic power is compete */
 	success = pm_wait_for_bit_clear_with_timeout(NCP_SYSCON_PWR_NPWRUPCPUSTG1_ACK, cpu);
@@ -764,12 +731,12 @@ static int pm_cpu_physical_connection_and_power_up(int cpu)
 	}
 
 	/* Continue stage 2 power up of the CPU*/
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG2, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPUSTG2, mask);
 
-	udelay(16);
+	udelay(20);
 
 	/* Initiate power up of HS Rams */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPURAM, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPCPURAM, mask);
 
 	/* Wait until the RAM power up is complete */
 	success = pm_wait_for_bit_clear_with_timeout(NCP_SYSCON_PWR_NPWRUPCPURAM_ACK, cpu);
@@ -781,8 +748,6 @@ static int pm_cpu_physical_connection_and_power_up(int cpu)
 
 	/* Release the CPU's isolation clamps */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_ISOLATECPU, mask);
-
-	udelay(16);
 
 power_up_cleanup:
 
@@ -798,7 +763,7 @@ static void pm_L2_isolation_and_power_down(int cluster)
 	u32 mask = (0x1 << cluster);
 
 	/* Enable the chip select for the cluster */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_CHIPSELECTEN, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_CHIPSELECTEN, mask);
 
 	/* Disable the hsram */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2HSRAM, mask);
@@ -933,7 +898,7 @@ static int pm_L2_physical_connection_and_power_up(u32 cluster)
 	int rval = 0;
 
 	/* Power up stage 1 */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2LGCSTG1, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2LGCSTG1, mask);
 
 	/* Wait for the stage 1 power up to complete */
 	success = pm_wait_for_bit_clear_with_timeout(NCP_SYSCON_PWR_NPWRUPL2LGCSTG1_ACK, cluster);
@@ -944,13 +909,13 @@ static int pm_L2_physical_connection_and_power_up(u32 cluster)
 	}
 
 	/* Power on stage 2 */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2LGCSTG2, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2LGCSTG2, mask);
 
 	/* Set the chip select */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_CHIPSELECTEN, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_CHIPSELECTEN, mask);
 
 	/* Power up the snoop ram */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2HSRAM, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_PWRUPL2HSRAM, mask);
 
 	/* Wait for the stage 1 power up to complete */
 	success = pm_wait_for_bit_clear_with_timeout(NCP_SYSCON_PWR_NPWRUPL2HSRAM_ACK, cluster);
@@ -994,7 +959,7 @@ static int pm_L2_physical_connection_and_power_up(u32 cluster)
 
 		pm_set_bits_syscon_register(syscon,
 				NCP_SYSCON_PWR_PWRUPL21RAM_PWRUPL2RAM1, RAM_BANK0_MASK);
-	udelay(20);
+		udelay(20);
 		pm_set_bits_syscon_register(syscon,
 				NCP_SYSCON_PWR_PWRUPL21RAM_PWRUPL2RAM1, RAM_BANK1_LS_MASK);
 		pm_set_bits_syscon_register(syscon,
@@ -1092,36 +1057,27 @@ static int pm_L2_logical_powerup(u32 cluster, u32 cpu)
 
 	u32 mask = (0x1 << cluster);
 	int rval = 0;
-	u32 cluster_mask;
-
-	if (cluster == 0)
-		cluster_mask = 0xe;
-	else
-		cluster_mask = 0xf << (cluster * 4);
 
 	/* put the cluster into a cpu hold */
-	pm_or_bits_syscon_register(NCP_SYSCON_RESET_AXIS,
+	pm_set_bits_syscon_register(NCP_SYSCON_RESET_AXIS,
 			cluster_to_poreset[cluster]);
 
-	/*
-	 * The key value has to be written before the CPU RST can be written.
-	 */
-	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
-	pm_or_bits_syscon_register(NCP_SYSCON_PWRUP_CPU_RST, cluster_mask);
+	/* Allow the L2 to be reset */
+	pm_clear_bits_syscon_register(NCP_SYSCON_LRSTDISABLE, mask);
 
 	/* Hold the chip debug cluster */
 	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
-	pm_or_bits_syscon_register(NCP_SYSCON_HOLD_DBG, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_HOLD_DBG, mask);
 
 	/* Hold the L2 cluster */
 	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
-	pm_or_bits_syscon_register(NCP_SYSCON_HOLD_L2, mask);
-
+	pm_set_bits_syscon_register(NCP_SYSCON_HOLD_L2, mask);
 
 	/* Cluster physical power up */
 	rval = pm_L2_physical_connection_and_power_up(cluster);
 	if (rval)
 		goto exit_pm_L2_logical_powerup;
+
 
 	udelay(16);
 
@@ -1132,7 +1088,7 @@ static int pm_L2_logical_powerup(u32 cluster, u32 cpu)
 	udelay(64);
 
 	/* Enable the system counter */
-	pm_or_bits_syscon_register(NCP_SYSCON_PWR_CSYSREQ_CNT, mask);
+	pm_set_bits_syscon_register(NCP_SYSCON_PWR_CSYSREQ_CNT, mask);
 
 	/* Release the L2 cluster */
 	pm_set_bits_syscon_register(NCP_SYSCON_KEY, VALID_KEY_VALUE);
@@ -1149,6 +1105,11 @@ static int pm_L2_logical_powerup(u32 cluster, u32 cpu)
 
 	/* start L2 */
 	pm_clear_bits_syscon_register(NCP_SYSCON_PWR_ACINACTM, mask);
+
+	/* Disable the L2 reset */
+	pm_set_bits_syscon_register(NCP_SYSCON_LRSTDISABLE, mask);
+
+	udelay(64);
 
 exit_pm_L2_logical_powerup:
 
