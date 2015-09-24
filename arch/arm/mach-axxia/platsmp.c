@@ -28,8 +28,6 @@
 #include <mach/axxia-gic.h>
 
 extern void axxia_secondary_startup(void);
-extern void axxia_cpu_power_management_gic_control(u32 cpu, bool enable);
-extern void axxia_dist_power_management_gic_control(bool enable);
 
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
 
@@ -92,11 +90,10 @@ static DEFINE_RAW_SPINLOCK(boot_lock);
 
 void __cpuinit axxia_secondary_init(unsigned int cpu)
 {
-	int phys_cpu;
-	int phys_cluster;
+	int phys_cpu, cluster;
 
 	phys_cpu = cpu_logical_map(cpu);
-	phys_cluster = phys_cpu / 4;
+	cluster = (phys_cpu / 4) << 8;
 
 	/*
 	 * Only execute this when powering up a cpu for hotplug.
@@ -107,20 +104,10 @@ void __cpuinit axxia_secondary_init(unsigned int cpu)
 
 		axxia_gic_secondary_init();
 	} else {
-
-#ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
-		pm_cpu_logical_powerup();
-		mdelay(16);
-#endif
-
 		axxia_gic_secondary_init();
-
-#ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
 		pm_cpu_logical_powerup();
-		if (cluster_power_up[phys_cluster])
-			cluster_power_up[phys_cluster] = false;
-		pm_in_progress[phys_cpu] = false;
-#endif
+		pm_in_progress[cpu] = false;
+		cluster_power_up[cluster] = false;
 	}
 
 	/*
@@ -156,13 +143,14 @@ int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	powered_down_cpu = pm_get_powered_down_cpu();
 
 	if (powered_down_cpu & (1 << phys_cpu)) {
-		pm_in_progress[phys_cpu] = true;
+		pm_in_progress[cpu] = true;
 
 		rVal = pm_cpu_powerup(phys_cpu);
 		if (rVal) {
 			_raw_spin_unlock(&boot_lock);
 			return rVal;
 		}
+
 	}
 
 	/*
@@ -183,6 +171,7 @@ int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 * Bits:   |11 10 9 8|7 6 5 4 3 2|1 0
 	 *         | CLUSTER | Reserved  |CPU
 	 */
+	phys_cpu = cpu_logical_map(cpu);
 	cluster = (phys_cpu / 4) << 8;
 	phys_cpu = cluster + (phys_cpu % 4);
 
@@ -192,13 +181,11 @@ int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	/* Send a wakeup IPI to get the idled cpu out of WFI state */
 	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
-
 	/* Wait for so long, then give up if nothing happens ... */
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
 		/* Remove memroy barrier */
 		smp_rmb();
-
 		if (pen_release == -1)
 			break;
 
