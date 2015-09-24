@@ -85,18 +85,12 @@ static inline void pm_L2_logical_shutdown(u32 cpu)
 			: "Ir" (0x400)
 			: "cc");
 
-	asm volatile(
-	"	mrc		p15, 1, %0, c15, c0, 4\n"
-	"	orr	%0, %0, %1\n"
-	"	mcr		p15, 1, %0, c15, c0, 4\n"
-	: "=&r" (val)
-	: "Ir" (0x1)
-	: "cc");
-
 	isb();
 	dsb();
 
+	/* Clear and invalidate all L1 and L2 data cache */
 	flush_cache_all();
+
 
 	/* Turn the DBG Double Lock quiet */
 	asm volatile(
@@ -169,8 +163,6 @@ static inline void cpu_leave_lowpower(void)
 			: "=&r" (v)
 			: "Ir" (CR_C), "Ir" (0x40)
 			: "cc");
-	isb();
-	dsb();
 }
 
 static void __ref platform_do_lowpower(unsigned int cpu, int *spurious)
@@ -219,9 +211,7 @@ int axxia_platform_cpu_kill(unsigned int cpu)
 {
 
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
-	get_cpu();
 	pm_cpu_shutdown(cpu);
-	put_cpu();
 #endif
 	return 1;
 }
@@ -237,6 +227,21 @@ void axxia_platform_cpu_die(unsigned int cpu)
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
 	bool last_cpu;
 
+	int timeout;
+	timeout = 30;
+
+	/* make sure no migrations are happening */
+	while (!axxia_is_empty(&axxia_circ_q)) {
+
+		if (timeout-- == 0)
+			break;
+
+		mdelay(1);
+	}
+
+	if (timeout == 0)
+		pr_err("ERROR: tried to shut down and Q was still full\n");
+
 	last_cpu = pm_cpu_last_of_cluster(cpu);
 	if (last_cpu)
 		pm_L2_logical_shutdown(cpu);
@@ -245,6 +250,7 @@ void axxia_platform_cpu_die(unsigned int cpu)
 
 	for (;;)
 		wfi();
+
 
 #else /* CPU low power mode */
 

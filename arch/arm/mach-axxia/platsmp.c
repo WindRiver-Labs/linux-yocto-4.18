@@ -25,13 +25,11 @@
 
 #include "axxia.h"
 #include "lsi_power_management.h"
-#include "axxia_circular_queue.h"
 #include <mach/axxia-gic.h>
 
 extern void axxia_secondary_startup(void);
 extern void axxia_cpu_power_management_gic_control(u32 cpu, bool enable);
 extern void axxia_dist_power_management_gic_control(bool enable);
-extern struct circular_queue_t axxia_circ_q;
 
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
 
@@ -63,7 +61,7 @@ static void __init check_fixup_sev(void __iomem *syscon)
 	pr_info("axxia: Cross-cluster SEV fixup: %s\n", wfe_fixup ? "yes" : "no");
 }
 
-static void  do_fixup_sev(void)
+static void __cpuinit do_fixup_sev(void)
 {
 	u32 tmp;
 
@@ -80,7 +78,7 @@ static void  do_fixup_sev(void)
  * observers, irrespective of whether they're taking part in coherency
  * or not.  This is necessary for the hotplug code to work reliably.
  */
-static void  write_pen_release(int val)
+static void __cpuinit write_pen_release(int val)
 {
 	pen_release = val;
 
@@ -92,7 +90,7 @@ static void  write_pen_release(int val)
 
 static DEFINE_RAW_SPINLOCK(boot_lock);
 
-void  axxia_secondary_init(unsigned int cpu)
+void __cpuinit axxia_secondary_init(unsigned int cpu)
 {
 	int phys_cpu;
 	int phys_cluster;
@@ -103,7 +101,7 @@ void  axxia_secondary_init(unsigned int cpu)
 	/*
 	 * Only execute this when powering up a cpu for hotplug.
 	 */
-	if (!pm_in_progress[phys_cpu]) {
+	if (!pm_in_progress[cpu]) {
 		/* Fixup for cross-cluster SEV */
 		do_fixup_sev();
 
@@ -111,16 +109,16 @@ void  axxia_secondary_init(unsigned int cpu)
 	} else {
 
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
-		if (cluster_power_up[phys_cluster])
-			pm_cluster_logical_powerup();
 		pm_cpu_logical_powerup();
+		mdelay(16);
 #endif
-		get_cpu();
+
 		axxia_gic_secondary_init();
-		put_cpu();
 
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
-		cluster_power_up[phys_cluster] = false;
+		pm_cpu_logical_powerup();
+		if (cluster_power_up[phys_cluster])
+			cluster_power_up[phys_cluster] = false;
 		pm_in_progress[phys_cpu] = false;
 #endif
 	}
@@ -138,14 +136,13 @@ void  axxia_secondary_init(unsigned int cpu)
 	_raw_spin_unlock(&boot_lock);
 }
 
-int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
+int __cpuinit axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 
 	int phys_cpu, cluster;
 	unsigned long timeout;
 	unsigned long powered_down_cpu;
-	u32 i;
-	u32 dummy;
+	int rVal = 0;
 
 
 	/*
@@ -160,7 +157,12 @@ int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 	if (powered_down_cpu & (1 << phys_cpu)) {
 		pm_in_progress[phys_cpu] = true;
-		pm_cpu_powerup(phys_cpu);
+
+		rVal = pm_cpu_powerup(phys_cpu);
+		if (rVal) {
+			_raw_spin_unlock(&boot_lock);
+			return rVal;
+		}
 	}
 
 	/*
@@ -200,9 +202,7 @@ int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 		if (pen_release == -1)
 			break;
 
-		/* Wait 10 cycles */
-		for (i = 0; i < 10; i++)
-			dummy = i;
+		udelay(10);
 	}
 
 	/*
