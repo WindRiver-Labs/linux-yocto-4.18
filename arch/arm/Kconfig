@@ -1484,46 +1484,12 @@ config NR_CPUS
 	depends on SMP
 	default "4"
 
-menu "Support for hot-pluggable CPUs"
-
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs"
 	depends on SMP
 	help
 	  Say Y here to experiment with turning CPUs off and on.  CPUs
 	  can be controlled through /sys/devices/system/cpu.
-choice
-	prompt "CPU Power Down Mode"
-	default HOTPLUG_CPU_COMPLETE_POWER_DOWN
-	help
-		This is used to select how the CPU is going to be powered down. If LOW POWER
-		is selected then the CPU enters a WFI state and waits for an interrupt to
-		wake up. If COMPLETE POWER down is selected the CPU power is turned off. The only
-		way to power on the CPU is to execute a command.
-
-config HOTPLUG_CPU_COMPLETE_POWER_DOWN
-	bool "Power off the CPU"
-	help
-		This will power off the CPU completely. The irqs are migrated
-		to another CPU.
-
-config HOTPLUG_CPU_LOW_POWER
-	bool "Low Power CPU (wfi)"
-	help
-		This will put the CPU into a low power mode wfi mode. When an interrupt
-		is received the CPU will power on again.
-
-endchoice
-
-config HOTPLUG_CPU_L2_POWER_DOWN
-	bool "Power Off L2 Cache"
-	depends on HOTPLUG_CPU_COMPLETE_POWER_DOWN
-	default n if HOTPLUG_CPU_LOW_POWER
-	help
-		Select this if you want to power down the L2 cache when
-		all CPUS of a cluster have been powered off.
-
-endmenu
 
 config ARM_PSCI
 	bool "Support for the ARM Power State Coordination Interface (PSCI)"
