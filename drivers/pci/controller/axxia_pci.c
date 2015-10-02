@@ -119,6 +119,7 @@ struct axxia_pciex_port {
 	struct device_node  *node;
 	struct resource     utl_regs;
 	struct resource     cfg_space;
+	struct pci_sys_data sysdata;
 	/* Outbound PCI base address */
 	u64                 pci_addr;
 	/* Outbound range in (physical) CPU addresses */
@@ -193,13 +194,19 @@ axxia_pciex_get_config_base(struct axxia_pciex_port *port,
 	return port->cfg_data;
 }
 
+static inline struct axxia_pciex_port *sys_to_pcie(struct pci_sys_data *sys)
+{
+	return sys->private_data;
+}
+
 /*
 * Validate the Bus#/Device#/Function#
 */
 static int
 axxia_pciex_validate_bdf(struct pci_bus *bus, unsigned int devfn)
 {
-	struct axxia_pciex_port *port = bus->sysdata;
+	struct pci_sys_data *sys = bus->sysdata;
+	struct axxia_pciex_port *port = sys_to_pcie(sys);
 
 	/* Endpoint can not generate upstream(remote) config cycles */
 	if (port->endpoint)
@@ -221,7 +228,8 @@ static int
 axxia_pciex_read_config(struct pci_bus *bus, unsigned int devfn,
 			int offset, int len, u32 *val)
 {
-	struct axxia_pciex_port *port = bus->sysdata;
+	struct pci_sys_data *sys = bus->sysdata;
+	struct axxia_pciex_port *port = sys_to_pcie(sys);
 	void __iomem *addr;
 	u32 val32;
 	int bo = offset & 0x3;
@@ -304,7 +312,8 @@ static int
 axxia_pciex_write_config(struct pci_bus *bus, unsigned int devfn,
 			 int offset, int len, u32 val)
 {
-	struct axxia_pciex_port *port = bus->sysdata;
+	struct pci_sys_data *sys = bus->sysdata;
+	struct axxia_pciex_port *port = sys_to_pcie(sys);
 	void __iomem *addr;
 	u32 val32;
 
@@ -663,6 +672,7 @@ axxia_probe_pciex_bridge(struct platform_device *pdev)
 	u64 size;
 	LIST_HEAD(res);
 	struct pci_bus *bus;
+	int lastbus;
 
 	port = devm_kzalloc(&pdev->dev, sizeof *port, GFP_KERNEL);
 	if (port == NULL)
@@ -781,11 +791,15 @@ axxia_probe_pciex_bridge(struct platform_device *pdev)
 		port->inbound.start, port->inbound.end);
 
 	if (axxia_pcie_setup(port, &res)) {
+		port->sysdata.private_data = port;
 		bus = pci_create_root_bus(&pdev->dev, 0,
-					  &axxia_pciex_pci_ops, port, &res);
+					  &axxia_pciex_pci_ops,
+					  &port->sysdata, &res);
 		if (!bus)
 			return 1;
-		pci_scan_child_bus(bus);
+
+		lastbus = pci_scan_child_bus(bus);
+		pci_bus_update_busn_res_end(bus, lastbus);
 		pci_assign_unassigned_bus_resources(bus);
 		pci_bus_add_devices(bus);
 
