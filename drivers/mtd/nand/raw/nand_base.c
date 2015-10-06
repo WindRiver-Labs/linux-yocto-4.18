@@ -4552,7 +4552,15 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 	 * if we don't do this. I have no clue why, but I seem to have 'fixed'
 	 * it in the doc2000 driver in August 1999.  dwmw2.
 	 */
-	nand_reset(chip, chipnr);
+	/*
+	 * Nand onfi compatible devices may support different data interface
+	 * modes like SDR, NVDDR and NVDDR2. Giving reset to device places the
+	 * device in to power-up state and places the target in the SDR data
+	 * interface mode. This will be the problem for devices configured for
+	 * NVDDR modes. So, limiting the reset operation to Toshiba devices.
+	 */
+	if (chip->parameters.onfi.jedec_id == NAND_MFR_TOSHIBA)
+		nand_reset(chip, chipnr);
 
 	chip->select_chip(mtd, chipnr);
 
@@ -5258,6 +5266,7 @@ static int nand_flash_detect_onfi(struct nand_chip *chip)
 	chip->parameters.onfi.tCCS = le16_to_cpu(p->t_ccs);
 	chip->parameters.onfi.async_timing_mode =
 		le16_to_cpu(p->async_timing_mode);
+	chip->parameters.onfi.jedec_id = le16_to_cpu(p->jedec_id);
 	chip->parameters.onfi.vendor_revision =
 		le16_to_cpu(p->vendor_revision);
 	memcpy(chip->parameters.onfi.vendor, p->vendor,
