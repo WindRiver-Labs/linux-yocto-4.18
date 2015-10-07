@@ -47,6 +47,10 @@
 	};
 };
 
+
+&trng {
+	status = "okay";
+};
 &pci0 {
 	status = "okay";
 };
