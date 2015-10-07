@@ -36,6 +36,10 @@
 	phy-handle = <&phy0>;
 };
 
+&mtc {
+	status = "okay";
+};
+
 &mdio0 {
 	status = "okay";
 	lsi,mdio-clk-offset = <0x5>;

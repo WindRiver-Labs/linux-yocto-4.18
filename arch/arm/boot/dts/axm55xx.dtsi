@@ -321,14 +321,14 @@
 			status = "disabled";
 		};
 
-		mtc: mtc@2010098000 {
+		mtc: mtc@0x2010098000 {
 			compatible = "lsi,mtc";
 			reg = <0x20 0x10098000 0 0x3000>;
 			interrupts = <0 45 4>;
 			status = "disabled";
 		};
 
-		trng: trng@20101a0000 {
+		trng: trng@0x20101a0000 {
 			compatible = "lsi,trng";
 			reg = <0x20 0x101a0000 0 0x20000>;
 			interrupts = <0 8 4>;

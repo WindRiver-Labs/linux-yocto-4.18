@@ -3515,10 +3515,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		break;
 
-#if 0
 	case MTC_AXI_EXT_PRGM_MEM_ENABLE:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
 							= {0};
 			int ext_prgm_mode;
@@ -3548,7 +3548,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case MTC_AXI_CAPT_WINDOW_PARAM_SET:
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_capt_window_param_t wndparm;
 
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
@@ -3612,7 +3615,9 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_CAPT_WINDOW_PARAM_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_capt_window_param_t wndparm;
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
 								= {0};
@@ -3651,7 +3656,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case MTC_AXI_WATER_MARK_SET:
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_extmem_wm_t wm;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 								 = {0};
@@ -3685,7 +3693,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case MTC_AXI_WATER_MARK_GET:
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_extmem_wm_t wm;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 						 = {0};
@@ -3707,7 +3718,8 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_M_ARPROT_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
 			int arprot;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 								 = {0};
@@ -3740,7 +3752,9 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_M_ARPROT_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			int arprot;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 							 = {0};
@@ -3760,7 +3774,9 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_MASTER_ADDR_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_master_addr_t addr;
 
 			struct ncp_axis_mtc_MTC_CONFIG5_REG_ADDR_r_5600_t cfg3
@@ -3832,7 +3848,9 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_MASTER_ADDR_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_master_addr_t addr;
 			struct ncp_axis_mtc_MTC_CONFIG5_REG_ADDR_r_5600_t cfg3
 									 = {0};
@@ -3874,7 +3892,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case MTC_AXI_READ_STATUS:
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5600")) {
+
+		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+
 			struct lsi_mtc_axi_status_regs_t status;
 
 			status.axiStatusReg0 = dev->regs->axi_status0;
@@ -3889,7 +3910,6 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		break;
-#endif
 
 	default:
 		pr_debug("Invalid ioctl cmd=%d MTC_DEBUG_OP=%ld\n",
@@ -4030,12 +4050,12 @@ static void mtc_destroy(struct kref *ref)
 #ifdef CONFIG_PM
 static int mtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	return -ENOSYS;
+	return -1;
 }
 
 static int mtc_resume(struct platform_device *pdev)
 {
-	return -ENOSYS;
+	return -1;
 }
 #else
 #define mtc_suspend	NULL
