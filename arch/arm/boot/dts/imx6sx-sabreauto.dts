@@ -430,6 +430,10 @@
 	status = "okay";
 };
 
+&pxp {
+	status = "okay";
+};
+
 &iomuxc {
 	pinctrl_egalax_int: egalax-intgrp {
 		fsl,pins = <
