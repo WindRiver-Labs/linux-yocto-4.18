@@ -25,7 +25,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/edac.h>
-#include <mach/ncr.h>
+#include "../misc/lsi-ncr.h"
 #include <linux/of_platform.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
