@@ -29,7 +29,7 @@
 #include <linux/io.h>
 #include <linux/signal.h>
 
-#include <mach/ncr.h>
+#include "../../drivers/misc/lsi-ncr.h"
 #include <mach/rio.h>
 
 /**

@@ -22,7 +22,7 @@
 
 #ifndef NCP_REGION_ID
 #define NCP_REGION_ID(node, target) \
-((unsigned long) ((((node) & 0xffff) << 16) | ((target) & 0xffff)))
+(unsigned long) ((((node) & 0xffff) << 16) | ((target) & 0xffff))
 #endif
 
 #ifndef NCP_NODE_ID
@@ -37,5 +37,7 @@ unsigned long ncr_register_read(unsigned *);
 void ncr_register_write(const unsigned, unsigned *);
 int ncr_read(unsigned long, unsigned long, int, void *);
 int ncr_write(unsigned long, unsigned long, int, void *);
+int ncr_read_nolock(unsigned long, unsigned long, int, void *);
+int ncr_write_nolock(unsigned long, unsigned long, int, void *);
 
 #endif /*  __DRIVERS_LSI_ACP_NCR_H */

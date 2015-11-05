@@ -29,8 +29,8 @@
 #include <linux/of.h>
 #include <asm/io.h>
 #include <asm/cacheflush.h>
-#include <mach/ncr.h>
 #include "axxia.h"
+#include "../../drivers/misc/lsi-ncr.h"
 
 static void __iomem *nca;
 static void __iomem *apb;
