@@ -20,14 +20,13 @@
 
 #include <linux/module.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include "lsi-ncr.h"
-#ifdef CONFIG_ARM
-#include <../../arch/arm/mach-axxia/axxia.h>
-#endif
 
 #ifdef CONFIG_ARCH_AXXIA
 #define NCA_PHYS_ADDRESS 0x002020100000ULL
 #define APB2SER_PHY_PHYS_ADDRESS 0x002010000000ULL
+#define SYSCON_PHYS_ADDR 0x002010030000ULL
 #else
 #define NCA_PHYS_ADDRESS 0x002000520000ULL
 #endif
@@ -726,14 +725,24 @@ EXPORT_SYMBOL(ncr_write);
 static int
 ncr_init(void)
 {
+#ifdef CONFIG_ARCH_AXXIA
+	u32 pfuse;
+	u32 chip_type;
+	u32 chip_ver;
+	void __iomem *syscon;
+
+	syscon = ioremap(SYSCON_PHYS_ADDR, SZ_64K);
+
+	if (WARN_ON(!syscon))
+		return -ENODEV;
 
 	/*
 	 * read chip type/revision to determine if low-level locking
 	 * is required and select the appropriate io_fns.
 	 */
-	u32 pfuse = readl(syscon + 0x34);
-	u32 chip_type = pfuse & 0x1f;
-	u32 chip_ver  = (pfuse >> 8) & 0x7;
+	pfuse = readl(syscon + 0x34);
+	chip_type = pfuse & 0x1f;
+	chip_ver  = (pfuse >> 8) & 0x7;
 
 	if ((chip_type == 0 || chip_type == 9) && (chip_ver == 0)) {
 		/* AXM5516v1.0 needs low-level locking */
@@ -742,6 +751,15 @@ ncr_init(void)
 		/* no low-level locking needed */
 		default_io_fn = &ncr_io_fn_nolock;
 	}
+
+	iounmap(syscon);
+#else
+	/* 3500 doesn't need the lock, 3400 does. */
+	if (of_find_compatible_node(NULL, NULL, "lsi,acp3500"))
+		default_io_fn = &ncr_io_fn_nolock;
+	else
+		default_io_fn = &ncr_io_fn_lock;
+#endif
 
 	nca_address = ioremap(NCA_PHYS_ADDRESS, 0x20000);
 
