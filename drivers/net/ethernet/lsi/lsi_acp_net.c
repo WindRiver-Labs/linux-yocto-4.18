@@ -75,10 +75,9 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
+#include <linux/lsi-ncr.h>
 
 #include <asm/dma.h>
-
-#include "../../../misc/lsi-ncr.h"
 
 #include "lsi_acp_net.h"
 

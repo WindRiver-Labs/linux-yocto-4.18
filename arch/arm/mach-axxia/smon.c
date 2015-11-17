@@ -17,9 +17,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.
  */
+
 #include <linux/io.h>
 
-#include <../../../drivers/misc/lsi-ncr.h>
+#include <linux/lsi-ncr.h>
 
 #include "smon.h"
 

@@ -20,8 +20,8 @@
 
 #include <linux/module.h>
 #include <linux/io.h>
+#include <linux/lsi-ncr.h>
 #include <linux/of.h>
-#include "lsi-ncr.h"
 
 #ifdef CONFIG_ARCH_AXXIA
 #define NCA_PHYS_ADDRESS 0x002020100000ULL
