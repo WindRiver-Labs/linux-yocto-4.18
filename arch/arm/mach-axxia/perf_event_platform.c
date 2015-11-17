@@ -45,8 +45,8 @@
 #include <linux/proc_fs.h>
 
 #include <linux/io.h>
+#include <linux/lsi-ncr.h>
 #include <asm/cacheflush.h>
-#include <../../../drivers/misc/lsi-ncr.h>
 
 #include "perf_event_platform.h"
 

@@ -49,7 +49,7 @@
 #include <mach/timers.h>
 #include <mach/axxia-gic.h>
 #include <linux/irqchip/arm-gic.h>
-#include "../../drivers/misc/lsi-ncr.h"
+#include <linux/lsi-ncr.h>
 #include "axxia.h"
 #include "pci.h"
 #ifdef CONFIG_AXXIA_RIO
