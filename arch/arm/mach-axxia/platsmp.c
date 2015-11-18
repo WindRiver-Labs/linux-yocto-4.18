@@ -28,19 +28,19 @@
 #include <mach/axxia-gic.h>
 
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
-#define DICKENS_PHYS_ADDR 0x2000000000
 
 static int __cpuinitdata wfe_fixup;
 static int wfe_available;
 
 void __iomem *syscon;
-void __iomem *dickens;
 
 inline void
 __axxia_arch_wfe(void)
 {
 	if (0 != wfe_available)
 		wfe();
+
+	return;
 }
 EXPORT_SYMBOL(__axxia_arch_wfe);
 
@@ -78,11 +78,9 @@ static void  do_fixup_sev(void)
  * observers, irrespective of whether they're taking part in coherency
  * or not.  This is necessary for the hotplug code to work reliably.
  */
-static void __cpuinit write_pen_release(int val)
+static void  write_pen_release(int val)
 {
 	pen_release = val;
-
-	/* Set up memory barrier */
 	smp_wmb();
 	__cpuc_flush_dcache_area((void *)&pen_release, sizeof(pen_release));
 	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
@@ -142,6 +140,8 @@ int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	int phys_cpu, cluster;
 	unsigned long timeout;
 	unsigned long powered_down_cpu;
+	u32 i;
+	u32 dummy;
 
 
 	/*
@@ -186,15 +186,18 @@ int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	/* Send a wakeup IPI to get the idled cpu out of WFI state */
 	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
+
 	/* Wait for so long, then give up if nothing happens ... */
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
-		/* Remove memroy barrier */
 		smp_rmb();
+
 		if (pen_release == -1)
 			break;
 
-		udelay(10);
+		/* Wait 10 cycles */
+		for (i = 0; i < 10; i++)
+			dummy = i;
 	}
 
 	/*
@@ -212,7 +215,6 @@ static __init struct device_node *get_cpu_node(int cpu)
 
 	for_each_node_by_type(np, "cpu") {
 		u32 reg;
-
 		if (of_property_read_u32(np, "reg", &reg))
 			continue;
 		if (reg == cpu_logical_map(cpu))
@@ -229,10 +231,6 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 
 	syscon = ioremap(SYSCON_PHYS_ADDR, SZ_64K);
 	if (WARN_ON(!syscon))
-		return;
-
-	dickens = ioremap(DICKENS_PHYS_ADDR, SZ_4M);
-	if (WARN_ON(!dickens))
 		return;
 
 	check_fixup_sev(syscon);
@@ -268,7 +266,6 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 		if (cpu != 0) {
 			u32 phys_cpu = cpu_logical_map(cpu);
 			u32 tmp = readl(syscon + 0x1010);
-
 			writel(0xab, syscon + 0x1000);
 			tmp &= ~(1 << phys_cpu);
 			writel(tmp, syscon + 0x1010);
@@ -291,10 +288,12 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 				release_virt = phys_to_virt(release_phys);
 			else
 				release_virt = ioremap(release_phys, PAGE_SIZE);
-			*release_virt = virt_to_phys(axxia_secondary_startup);
-			/* Setup memory barrier */
+
+			writel_relaxed(virt_to_phys(axxia_secondary_startup),
+				       release_virt);
 			smp_wmb();
 			__cpuc_flush_dcache_area(release_virt, sizeof(u32));
+
 			if (!is_kmapped)
 				iounmap(release_virt);
 		}
