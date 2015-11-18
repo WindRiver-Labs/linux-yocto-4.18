@@ -25,19 +25,15 @@
 #include <linux/proc_fs.h>
 #include <linux/prefetch.h>
 #include <linux/delay.h>
-#include <linux/of.h>
-#include <linux/lsi-ncr.h>
 
-#include <asm/io.h>
+#include <linux/of.h>
+#include <linux/io.h>
+#include <linux/lsi-ncr.h>
 #include <asm/cacheflush.h>
 #include "axxia.h"
 
 static void __iomem *nca;
 static void __iomem *apb;
-#ifndef CONFIG_SMP
-void __iomem *dickens;
-#endif
-
 static int ddr_retention_enabled;
 
 enum {
@@ -79,72 +75,12 @@ ncp_cnal_regions_acp55xx[] = {
 	NCP_REGION_ID(0xff, 0xff)
 };
 
-
-/*
-  ------------------------------------------------------------------------------
-  flush_l3
-
-  This is NOT a general function to flush the L3 cache.  There are a number of
-  assumptions that are not usually true...
-
-  1) All other cores are " quiesced".
-  2) There is no need to worry about preemption or interrupts.
-*/
-
 static void
-flush_l3(void)
+quiesce_vp_engine(int engine_type)
 {
-
-	unsigned long hnf_offsets[] = {
-		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
-	};
-
-	int i;
-	unsigned long status;
-	int retries;
-
-	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i)
-		writel(0x0, dickens + (0x10000 * hnf_offsets[i]) + 0x10);
-
-	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
-		retries = 10000;
-
-		do {
-			status = readl(dickens +
-				       (0x10000 * hnf_offsets[i]) + 0x18);
-			udelay(1);
-		} while ((0 < --retries) && (0x0 != (status & 0xf)));
-
-		if (0 == retries)
-			BUG();
-	}
-
-	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i)
-		writel(0x3, dickens + (0x10000 * hnf_offsets[i]) + 0x10);
-
-	for (i = 0; i < (sizeof(hnf_offsets) / sizeof(unsigned long)); ++i) {
-		retries = 10000;
-
-		do {
-			status = readl(dickens +
-				       (0x10000 * hnf_offsets[i]) + 0x18);
-			udelay(1);
-		} while ((0 < --retries) && (0xc != (status & 0xf)));
-
-		if (0 == retries)
-			BUG();
-	}
-
-	asm volatile ("dsb" : : : "memory");
-
-}
-
-static void
-quiesce_vp_engine(int engineType)
-{
-	unsigned long *pEngineRegions;
-	unsigned long ortOff, owtOff;
-	unsigned long *pRegion;
+	unsigned long *engine_regions;
+	unsigned long ort_off, owt_off;
+	unsigned long *region;
 	unsigned ort, owt;
 	unsigned long buf = 0;
 	unsigned short node, target;
@@ -152,58 +88,60 @@ quiesce_vp_engine(int engineType)
 
 	pr_info("quiescing VP engines...\n");
 
-	switch (engineType) {
+	switch (engine_type) {
 	case AXXIA_ENGINE_CNAL:
-		pEngineRegions = ncp_cnal_regions_acp55xx;
-		ortOff = 0x1c0;
-		owtOff = 0x1c4;
+		engine_regions = ncp_cnal_regions_acp55xx;
+		ort_off = 0x1c0;
+		owt_off = 0x1c4;
 		break;
 
 	case AXXIA_ENGINE_CAAL:
-		pEngineRegions = ncp_caal_regions_acp55xx;
-		ortOff = 0xf8;
-		owtOff = 0xfc;
+		engine_regions = ncp_caal_regions_acp55xx;
+		ort_off = 0xf8;
+		owt_off = 0xfc;
 		break;
 
 	default:
 		return;
 	}
 
-	pRegion = pEngineRegions;
+	region = engine_regions;
 
-	while (*pRegion != NCP_REGION_ID(0xff, 0xff)) {
+	while (*region != NCP_REGION_ID(0xff, 0xff)) {
 		/* set read/write transaction limits to zero */
-		ncr_write(*pRegion, 0x8, 4, &buf);
-		ncr_write(*pRegion, 0xc, 4, &buf);
-		pRegion++;
+		ncr_write_nolock(*region, 0x8, 4, &buf);
+		ncr_write_nolock(*region, 0xc, 4, &buf);
+		region++;
 	}
 
-	pRegion = pEngineRegions;
+	region = engine_regions;
 	loop = 0;
 
-	while (*pRegion != NCP_REGION_ID(0xff, 0xff)) {
-		node = (*pRegion & 0xffff0000) >> 16;
-		target = *pRegion & 0x0000ffff;
+	while (*region != NCP_REGION_ID(0xff, 0xff)) {
+		node = (*region & 0xffff0000) >> 16;
+		target = *region & 0x0000ffff;
 		/* read the number of outstanding read/write transactions */
-		ncr_read(*pRegion, ortOff, 4, &ort);
-		ncr_read(*pRegion, owtOff, 4, &owt);
+		ncr_read_nolock(*region, ort_off, 4, &ort);
+		ncr_read_nolock(*region, owt_off, 4, &owt);
 
 		if ((ort == 0) && (owt == 0)) {
 			/* this engine has been quiesced, move on to the next */
 			pr_info("quiesced region 0x%02x.0x%02x\n",
 					node, target);
-			pRegion++;
+			region++;
 		} else {
 			if (loop++ > 10000) {
 				pr_info(
 						"Unable to quiesce region 0x%02x.0x%02x ort=0x%x, owt=0x%x\n",
 						node, target, ort, owt);
-				pRegion++;
+				region++;
 				loop = 0;
 				continue;
 			}
 		}
 	}
+
+	return;
 }
 
 static inline void cpu_disable_l2_prefetch(void)
@@ -243,29 +181,24 @@ reset_elm_trace(void)
 }
 
 
-extern void ncp_ddr_shutdown(void *, void *,  unsigned long);
-
-
+/*
+ * shutdown the system in preparation for a DDR retention reset.
+ * This is only needed if initiating the retention reset while the
+ * system is running in normal state (i.e. via the /proc filesystem.)
+ * If the retention reset is called from within a restart function
+ * this should not be necessary.
+ */
 void
-initiate_retention_reset(void)
+retention_reset_prepare(void)
 {
-	unsigned long ctl_244 = 0;
-	unsigned long value;
-	unsigned cpu_id;
-
-	volatile long tmp;
-	volatile long *ptmp;
-
-	if (0 == ddr_retention_enabled) {
-		pr_info("DDR Retention Reset is Not Enabled\n");
-		return;
-	}
-
-	if (NULL == nca || NULL == apb || NULL == dickens)
-		BUG();
+	/*
+	 * If the axxia device is in reset then DDR retention is not
+	 * possible. Just do an emergency_restart instead.
+	 */
+	if (ncr_reset_active)
+		emergency_restart();
 
 	preempt_disable();
-	cpu_id = smp_processor_id();
 
 	/* send stop message to other CPUs */
 	local_irq_disable();
@@ -275,7 +208,36 @@ initiate_retention_reset(void)
 	system_state = SYSTEM_RESTART;
 	smp_send_stop();
 	udelay(1000);
+}
 
+
+void
+initiate_retention_reset(void)
+{
+	unsigned long ctl_244 = 0;
+	unsigned long value;
+	unsigned cpu_id;
+    /*
+     * in order to preload the DDR shutdown function into cache
+     * we use these variables to do a word-by-word copy of the
+     * memory where the function resides. The 'tmp' variable
+     * must be declared as volatile to ensure the compiler
+     * doesn't optimize this out.
+     * Removal of this volatile to resolve the checkpatch warning
+     * will break the operation!
+     */
+	volatile long tmp;
+	long *ptmp;
+
+	if (0 == ddr_retention_enabled) {
+		pr_info("DDR Retention Reset is Not Enabled\n");
+		return;
+	}
+
+	if (NULL == nca || NULL == apb)
+		BUG();
+
+	preempt_disable();
 	flush_cache_all();
 	flush_l3();
 
@@ -289,10 +251,11 @@ initiate_retention_reset(void)
 
 	/* prepare to put DDR in self refresh power-down mode */
 	/* first read the CTL_244 register and OR in the LP_CMD value */
-	ncr_read(NCP_REGION_ID(34, 0), 0x3d0, 4, &ctl_244);
+	ncr_read_nolock(NCP_REGION_ID(34, 0), 0x3d0, 4, &ctl_244);
 	ctl_244 |= 0x000a0000;
 
 	/* belts & braces: put secondary CPUs into reset */
+	cpu_id = smp_processor_id();
 	value = ~(1 << cpu_id);
 	value &= 0xffff;
 	ncr_register_write(htonl(value), (unsigned *) (apb + 0x31030));
@@ -303,7 +266,7 @@ initiate_retention_reset(void)
 		tmp += *ptmp++;
 	} while (ptmp < (long *) (ncp_ddr_shutdown + 0x1000));
 
-	asm volatile ("isb" : : : "memory");
+	isb();
 
 	/* disable L2 prefetching */
 	cpu_disable_l2_prefetch();
@@ -313,6 +276,8 @@ initiate_retention_reset(void)
 
 	/* call cache resident ddr shutdown function */
 	ncp_ddr_shutdown(nca, apb, ctl_244);
+
+	return;
 }
 EXPORT_SYMBOL(initiate_retention_reset);
 
@@ -320,6 +285,7 @@ static ssize_t
 axxia_ddr_retention_trigger(struct file *file, const char __user *buf,
 			    size_t count, loff_t *ppos)
 {
+	retention_reset_prepare();
 	initiate_retention_reset();
 	return 0;
 }
@@ -344,11 +310,12 @@ axxia_ddr_retention_init(void)
 		} else {
 			apb = ioremap(0x2010000000, 0x80000);
 			nca = ioremap(0x002020100000ULL, 0x20000);
-			dickens = ioremap(0x2000000000, 0x1000000);
 			ddr_retention_enabled = 1;
 			pr_info("DDR Retention Reset Initialized\n");
 		}
 	} else {
 		pr_info("DDR Retention Reset is Not Available\n");
 	}
+
+	return;
 }
