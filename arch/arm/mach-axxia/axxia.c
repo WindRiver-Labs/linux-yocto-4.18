@@ -63,7 +63,7 @@ static const char *axxia_dt_match[] __initconst = {
 static void __iomem *base;
 void __iomem *dickens;
 
-#ifdef AXXIA_NCR_RESET_CHECK
+#ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
 int ncr_reset_active;
 EXPORT_SYMBOL(ncr_reset_active);
 #endif
@@ -208,7 +208,7 @@ void __init axxia_dt_init(void)
 		flush_l3();
 	}
 
-#ifdef AXXIA_NCR_RESET_CHECK
+#ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
 	ncr_reset_active = 0;
 #endif
 

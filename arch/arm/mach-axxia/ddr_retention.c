@@ -195,8 +195,11 @@ retention_reset_prepare(void)
 	 * If the axxia device is in reset then DDR retention is not
 	 * possible. Just do an emergency_restart instead.
 	 */
+
+#ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
 	if (ncr_reset_active)
 		emergency_restart();
+#endif	/* CONFIG_ARCH_AXXIA_NCR_RESET_CHECK */
 
 	preempt_disable();
 

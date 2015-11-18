@@ -70,7 +70,7 @@ EXPORT_SYMBOL(nca_access_lock);
 
 static unsigned long ncr_spin_flags;
 
-#ifdef AXXIA_NCR_RESET_CHECK
+#ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
 /*
  * define behavior if NCA register read/write is called while
  * the axxia device is being reset. Any attempt to access NCA
