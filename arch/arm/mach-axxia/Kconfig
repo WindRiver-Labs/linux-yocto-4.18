@@ -30,4 +30,11 @@ config ARCH_AXXIA_DT
 	  If your bootloader supports Flattened Device Tree based booting,
 	  say Y here.
 
+config ARCH_AXXIA_NCR_RESET_CHECK
+    bool "Axxia NCR driver reset checking"
+    help
+      Enabling this option will allow the Axxia NCA Config Ring driver to
+      coordinate with the RTE ncp driver to detect when NCA hardware is
+      being held in reset.
+
 endmenu
