@@ -740,11 +740,11 @@ static void axxia_gic_cpu_save(void)
 	if (!dist_base || !cpu_base)
 		return;
 
-	ptr = __this_cpu_ptr(gic_data.saved_ppi_enable[this_cluster]);
+	ptr = raw_cpu_ptr(gic_data.saved_ppi_enable[this_cluster]);
 	for (i = 0; i < DIV_ROUND_UP(32, 32); i++)
 		ptr[i] = readl_relaxed(dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data.saved_ppi_conf[this_cluster]);
+	ptr = raw_cpu_ptr(gic_data.saved_ppi_conf[this_cluster]);
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		ptr[i] = readl_relaxed(dist_base + GIC_DIST_CONFIG + i * 4);
 
@@ -766,11 +766,11 @@ static void axxia_gic_cpu_restore(void)
 	if (!dist_base || !cpu_base)
 		return;
 
-	ptr = __this_cpu_ptr(gic_data.saved_ppi_enable[this_cluster]);
+	ptr = raw_cpu_ptr(gic_data.saved_ppi_enable[this_cluster]);
 	for (i = 0; i < DIV_ROUND_UP(32, 32); i++)
 		writel_relaxed(ptr[i], dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data.saved_ppi_conf[this_cluster]);
+	ptr = raw_cpu_ptr(gic_data.saved_ppi_conf[this_cluster]);
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		writel_relaxed(ptr[i], dist_base + GIC_DIST_CONFIG + i * 4);
 
