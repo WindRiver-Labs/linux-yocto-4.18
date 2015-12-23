@@ -224,6 +224,7 @@ struct imx_thermal_data {
 };
 
 static struct imx_thermal_data *imx_thermal_data;
+static int skip_finish_check;
 
 static void imx_set_panic_temp(struct imx_thermal_data *data,
 			       int panic_temp)
@@ -293,10 +294,19 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
 	 * According to the temp sensor designers, it may require up to ~17us
 	 * to complete a measurement.
 	 */
-	if (wait)
-		usleep_range(20, 50);
-
-	regmap_read(map, soc_data->temp_data, &val);
+	if (wait) {
+		/*
+		 * On i.MX7 TO1.0, the finish bit can only keep 1us after
+		 * the measured data available. It is hard for software to
+		 * polling this bit. So wait for 20ms to make sure the
+		 * measured data is valid.
+		 */
+		if (data->socdata->version == TEMPMON_IMX7D && skip_finish_check)
+			msleep(20);
+		 else
+			usleep_range(20, 50);
+		regmap_read(map, soc_data->temp_data, &val);
+	}
 
 	if (data->mode != THERMAL_DEVICE_ENABLED) {
 		regmap_write(map, soc_data->sensor_ctrl + REG_CLR,
@@ -306,7 +316,7 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
 		clk_disable_unprepare(data->thermal_clk);
 	}
 
-	if ((val & soc_data->temp_valid_mask) == 0) {
+	if (!skip_finish_check && ((val & soc_data->temp_valid_mask) == 0)) {
 		mutex_unlock(&data->mutex);
 		dev_dbg(&tz->device, "temp measurement never finished\n");
 		return -EAGAIN;
@@ -729,7 +739,7 @@ static int imx_thermal_probe(struct platform_device *pdev)
 	struct imx_thermal_data *data;
 	struct regmap *map;
 	int measure_freq;
-	int ret;
+	int ret, revision;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -785,6 +795,14 @@ static int imx_thermal_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
+
+	/*
+	 * for i.MX7D TO1.0, finish bit is not available, check the
+	 * SOC revision to skip checking the finish bit status.
+	 */
+	regmap_read(map, IMX7_ANADIG_DIGPROG, &revision);
+	if ((revision & 0xff) == 0x10)
+		skip_finish_check = 1;
 
 	/* Make sure sensor is in known good state for measurements */
 	regmap_write(map, data->socdata->sensor_ctrl + REG_CLR,
@@ -910,7 +928,7 @@ static int imx_thermal_probe(struct platform_device *pdev)
 	}
 
 	/* register the busfreq notifier called in low bus freq */
-	if (data->socdata->version != TEMPMON_IMX7)
+	if (data->socdata->version != TEMPMON_IMX7D)
 		register_busfreq_notifier(&thermal_notifier);
 
 	return 0;
@@ -928,7 +946,7 @@ static int imx_thermal_remove(struct platform_device *pdev)
 		clk_disable_unprepare(data->thermal_clk);
 
 	/* unregister the busfreq notifier called in low bus freq */
-	if (data->socdata->version != TEMPMON_IMX7)
+	if (data->socdata->version != TEMPMON_IMX7D)
 		unregister_busfreq_notifier(&thermal_notifier);
 
 	thermal_zone_device_unregister(data->tz);
