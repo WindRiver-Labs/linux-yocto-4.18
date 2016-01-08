@@ -9,6 +9,7 @@
 #ifndef _LINUX_PMU_H
 #define _LINUX_PMU_H
 
+#include <linux/adb.h>
 #include <uapi/linux/pmu.h>
 
 
