@@ -1422,7 +1422,9 @@ static int imx_uart_startup(struct uart_port *port)
 	ucr1 = imx_uart_readl(sport, UCR1);
 	if (!sport->dma_is_inited)
 		ucr1 |= UCR1_RRDYEN;
-	ucr1 |= UCR1_RTSDEN | UCR1_UARTEN;
+	if (sport->have_rtscts)
+		ucr1 |= UCR1_RTSDEN;
+	ucr1 |= UCR1_UARTEN;
 	imx_uart_writel(sport, ucr1, UCR1);
 
 	ucr4 = imx_uart_readl(sport, UCR4) & ~UCR4_OREN;
