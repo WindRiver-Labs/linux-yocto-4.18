@@ -341,14 +341,17 @@ axxia_pciex_write_config(struct pci_bus *bus, unsigned int devfn,
 
 			addr = addr + (offset & 0xfffffffc);
 			val32 = readl(addr);
+
 			if (len == 2)
 				val32 = (val32 & ~(0xffff << bs))
 					| ((val & 0xffff) << bs);
 			else
 				val32 = (val32 & ~(0xff << bs))
 					| ((val & 0xff) << bs);
+
+			val = val32;
 		}
-		val = val32;
+
 		len = 4;
 	} else {
 		addr = addr + (offset << 2) + (offset & 0x3);
