@@ -228,7 +228,7 @@ void __init axxia_dt_init(void)
 	platform_device_register(&pmu_device);
 }
 
-static void axxia_restart(char str, const char *cmd)
+static void axxia_restart(enum reboot_mode mode, const char *cmd)
 {
 	writel(0x000000ab, base + 0x31000); /* Access Key */
 	writel(0x00000040, base + 0x31004); /* Intrnl Boot, 0xffff0000 Target */
