@@ -3913,7 +3913,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	default:
 		pr_debug("Invalid ioctl cmd=%d MTC_DEBUG_OP=%u\n",
-			 cmd, MTC_DEBUG_OP);
+			 cmd, (unsigned int)MTC_DEBUG_OP);
 		ret = -EINVAL;
 
 	}
