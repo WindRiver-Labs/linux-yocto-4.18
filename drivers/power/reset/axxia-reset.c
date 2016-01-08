@@ -50,7 +50,7 @@ initiate_retention_reset(void)
 	syscon = ioremap(SYSCON_PHYS_ADDR, SZ_64K);
 
 	if (WARN_ON(!syscon))
-		return -ENODEV;
+		return;
 
 	/* set retention reset bit in pscratch */
 	writel(0x00000001, syscon + 0xdc); /* Access Key */
