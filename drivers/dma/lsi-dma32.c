@@ -376,22 +376,6 @@ static irqreturn_t gpdma_isr(int irqno, void *_dmac)
 	return IRQ_HANDLED;
 }
 
-static void flush_channel(struct gpdma_channel *dmac)
-{
-	unsigned long flags;
-	LIST_HEAD(head);
-
-	spin_lock_irqsave(&dmac->vc.lock, flags);
-	reset_channel(dmac);
-	if (dmac->active) {
-		free_descriptor(&dmac->active->vdesc);
-		dmac->active = NULL;
-	}
-	vchan_get_all_descriptors(&dmac->vc, &head);
-	spin_unlock_irqrestore(&dmac->vc.lock, flags);
-	vchan_dma_desc_free_list(&dmac->vc, &head);
-}
-
 /*
  * Perform soft reset procedure on DMA Engine.  Needed occasionally to work
  * around nasty bug ACP3400 sRIO HW.
@@ -558,33 +542,6 @@ static enum dma_status gpdma_tx_status(struct dma_chan *chan,
 	return dma_cookie_status(chan, cookie, txstate);
 }
 
-
-/**
- * gpdma_device_control - Manipulate all pending operations on a channel,
- * returns zero or error code.
- *
- */
-static int gpdma_device_control(struct dma_chan *chan,
-				enum dma_ctrl_cmd cmd,
-				unsigned long arg)
-{
-	struct gpdma_channel *dmac = to_gpdma_chan(chan);
-
-	if (!dmac)
-		return -EINVAL;
-
-	switch (cmd) {
-	case DMA_TERMINATE_ALL:
-		flush_channel(dmac);
-		break;
-
-	default:
-		return -EOPNOTSUPP;
-	}
-
-	return 0;
-}
-
 static int setup_channel(struct gpdma_channel *dmac, struct device_node *child)
 {
 	struct gpdma_engine *engine = dmac->engine;
@@ -678,7 +635,6 @@ static int gpdma_of_probe(struct platform_device *op)
 	dma->device_tx_status = gpdma_tx_status;
 	dma->device_prep_dma_memcpy = gpdma_prep_memcpy;
 	dma->device_issue_pending = gpdma_issue_pending;
-//	dma->device_control = gpdma_device_control;
 	INIT_LIST_HEAD(&dma->channels);
 
 	/* Map device I/O memory
