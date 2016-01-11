@@ -8,7 +8,7 @@
 //
 // Based on code from Freescale:
 //
-// Copyright 2004-2015 Freescale Semiconductor, Inc. All Rights Reserved.
+// Copyright 2004-2016 Freescale Semiconductor, Inc. All Rights Reserved.
 
 #include <linux/init.h>
 #include <linux/iopoll.h>
@@ -1131,11 +1131,9 @@ static int sdma_config_channel(struct dma_chan *chan)
 	sdmac->shp_addr = 0;
 	sdmac->per_addr = 0;
 
-	if (sdmac->event_id0 >= 0) {
-		if (sdmac->event_id0 >= sdmac->sdma->drvdata->num_events)
-			return -EINVAL;
-		sdma_event_enable(sdmac, sdmac->event_id0);
-	}
+	if (sdmac->event_id0 >= sdmac->sdma->drvdata->num_events)
+		return -EINVAL;
+	sdma_event_enable(sdmac, sdmac->event_id0);
 
 	if (sdmac->event_id1) {
 		if (sdmac->event_id1 >= sdmac->sdma->drvdata->num_events)
@@ -1326,8 +1324,7 @@ static void sdma_free_chan_resources(struct dma_chan *chan)
 
 	sdma_disable_channel(chan);
 
-	if (sdmac->event_id0 >= 0)
-		sdma_event_disable(sdmac, sdmac->event_id0);
+	sdma_event_disable(sdmac, sdmac->event_id0);
 	if (sdmac->event_id1)
 		sdma_event_disable(sdmac, sdmac->event_id1);
 
