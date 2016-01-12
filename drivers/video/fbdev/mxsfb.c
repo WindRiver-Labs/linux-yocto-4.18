@@ -1105,7 +1105,7 @@ static int mxsfb_init_fbinfo_dt(struct fb_info *fb_info)
 	struct device_node *np = host->pdev->dev.of_node;
 	struct device_node *display_np;
 	struct device_node *timings_np;
-	struct display_timings *timings;
+	struct display_timings *timings = NULL;
 	const char *disp_dev;
 	u32 width;
 	int i;
@@ -1194,6 +1194,8 @@ static int mxsfb_init_fbinfo_dt(struct fb_info *fb_info)
 put_timings_node:
 	of_node_put(timings_np);
 put_display_node:
+	if (timings)
+		kfree(timings);
 	of_node_put(display_np);
 	return ret;
 }
