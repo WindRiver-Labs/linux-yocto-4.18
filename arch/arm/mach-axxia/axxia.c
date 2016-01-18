@@ -90,10 +90,8 @@ static void set_l3_pstate(u32 newstate)
 void
 flush_l3(void)
 {
-	/* Switch to SFONLY to flush */
-	set_l3_pstate(1);
-	/* ...and then back up again */
-	set_l3_pstate(3);
+	/* Shutdown to flush */
+	set_l3_pstate(0);
 }
 
 static struct map_desc axxia_static_mappings[] __initdata = {
