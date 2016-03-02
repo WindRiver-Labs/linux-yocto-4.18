@@ -12,10 +12,21 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/lsi,axm5516-clks.h>
 
-#include "skeleton.dtsi"
-
 / {
+	#address-cells = <2>;
+	#size-cells = <1>;
+
 	interrupt-parent = <&gic>;
+
+	chosen {
+	};
+
+	memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		device_type = "memory";
+		reg = <0 0 0 0>;
+	};
 
 	aliases {
 		serial0	  = &serial0;
