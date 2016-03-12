@@ -99,17 +99,41 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "s25fl016k";
-		reg = <0x0>;
+		reg = <0>;
 		spi-max-frequency = <25000000>;
 		pl022,com-mode = <1>;
 
 		partition@0 {
-			label = "bl2a";
+			label = "spl-0";
 			reg = <0x0 0x40000>;
 		};
 		partition@40000 {
-			label = "bl2b";
+			label = "spl-1";
 			reg = <0x40000 0x40000>;
+		};
+		partition@80000 {
+			label = "parameters-0";
+			reg = <0x80000 0x10000>;
+		};
+		partition@90000 {
+			label = "parameters-1";
+			reg = <0x90000 0x10000>;
+		};
+		partition@a0000 {
+			label = "env-0";
+			reg = <0xa0000 0x10000>;
+		};
+		partition@b0000 {
+			label = "env-1";
+			reg = <0xb0000 0x10000>;
+		};
+		partition@100000 {
+			label = "u-boot-0";
+			reg = <0x100000 0x200000>;
+		};
+		partition@300000 {
+			label = "u-boot-1";
+			reg = <0x300000 0x200000>;
 		};
 	};
 };

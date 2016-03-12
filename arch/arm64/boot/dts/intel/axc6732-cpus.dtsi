@@ -1,0 +1,259 @@
+/*
+ * arch/arm64/boot/dts/intel/axc6716-cpus.dtsi
+ *
+ * Copyright (C) 2015 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0>;
+			enable-method = "psci";
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <1>;
+			enable-method = "psci";
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <2>;
+			enable-method = "psci";
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <3>;
+			enable-method = "psci";
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x100>;
+			enable-method = "psci";
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x101>;
+			enable-method = "psci";
+		};
+
+		cpu@6 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x102>;
+			enable-method = "psci";
+		};
+
+		cpu@7 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x103>;
+			enable-method = "psci";
+
+		};
+
+		cpu@8 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x200>;
+			enable-method = "psci";
+		};
+
+		cpu@9 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x201>;
+			enable-method = "psci";
+		};
+
+		cpu@10 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x202>;
+			enable-method = "psci";
+		};
+
+		cpu@11 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x203>;
+			enable-method = "psci";
+		};
+
+		cpu@12 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x300>;
+			enable-method = "psci";
+		};
+
+		cpu@13 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x301>;
+			enable-method = "psci";
+		};
+
+		cpu@14 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x302>;
+			enable-method = "psci";
+		};
+
+		cpu@15 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x303>;
+			enable-method = "psci";
+
+		};
+
+		cpu@16 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x400>;
+			enable-method = "psci";
+
+		};
+
+		cpu@17 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x401>;
+			enable-method = "psci";
+
+		};
+
+		cpu@18 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x402>;
+			enable-method = "psci";
+
+		};
+
+		cpu@19 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x403>;
+			enable-method = "psci";
+
+		};
+
+		cpu@20 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x500>;
+			enable-method = "psci";
+
+		};
+
+		cpu@21 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x501>;
+			enable-method = "psci";
+
+		};
+
+		cpu@22 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x502>;
+			enable-method = "psci";
+
+		};
+
+		cpu@23 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x503>;
+			enable-method = "psci";
+
+		};
+
+		cpu@24 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x600>;
+			enable-method = "psci";
+
+		};
+
+		cpu@25 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x601>;
+			enable-method = "psci";
+
+		};
+
+		cpu@26 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x602>;
+			enable-method = "psci";
+
+		};
+
+		cpu@27 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x603>;
+			enable-method = "psci";
+
+		};
+
+		cpu@28 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x700>;
+			enable-method = "psci";
+
+		};
+
+		cpu@29 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x701>;
+			enable-method = "psci";
+
+		};
+
+		cpu@30 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x702>;
+			enable-method = "psci";
+
+		};
+
+		cpu@31 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			reg = <0x703>;
+			enable-method = "psci";
+
+		};
+	};
+};
