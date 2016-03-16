@@ -1636,6 +1636,7 @@ err_reset_phy:
 	imx_pcie_reset_phy(imx_pcie);
 
 	if (!IS_ENABLED(CONFIG_PCI_IMX6_COMPLIANCE_TEST)) {
+		imx_pcie_assert_core_reset(imx_pcie);
 		pci_imx_clk_disable(dev);
 		pm_runtime_put_sync(pci->dev);
 		imx_pcie_phy_pwr_dn(imx_pcie);
