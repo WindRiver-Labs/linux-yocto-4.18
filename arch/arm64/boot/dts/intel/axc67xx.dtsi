@@ -14,7 +14,7 @@
 
 / {
 	#address-cells = <2>;
-	#size-cells = <1>;
+	#size-cells = <2>;
 
 	interrupt-parent = <&gic>;
 
@@ -23,7 +23,7 @@
 
 	memory {
 		device_type = "memory";
-		reg = <0 0 0>;
+		reg = <0 0 0 0>;
 	};
 
 	aliases {
@@ -55,7 +55,7 @@
 	clocks {
 		compatible = "simple-bus";
 		#address-cells = <2>;
-		#size-cells = <1>;
+		#size-cells = <2>;
 		ranges;
 
 		clk_ref {
@@ -76,8 +76,8 @@
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
 		interrupt-controller;
-		reg = <0x80 0x10000000 0x10000>,
-		      <0x80 0x10400000 0x400000>;
+		reg = <0x80 0x10000000 0 0x10000>,
+		      <0x80 0x10400000 0 0x400000>;
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -98,18 +98,18 @@
 		compatible = "simple-bus";
 		device_type = "soc";
 		#address-cells = <2>;
-		#size-cells = <1>;
+		#size-cells = <2>;
 		interrupt-parent = <&gic>;
 		ranges;
 
 		syscon: syscon@8002000000 {
 			compatible = "lsi,axxia-syscon", "syscon";
-			reg = <0x80 0x02c00000 0x40000>;
+			reg = <0x80 0x02c00000 0 0x40000>;
 		};
 
 		nemac: ethernet@8080240000 {
 			compatible = "intel,nemac";
-			reg = <0x80 0x80240000 0x10000>;
+			reg = <0x80 0x80240000 0 0x10000>;
 			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>;
 			dma-coherent;
@@ -120,7 +120,7 @@
 			compatible = "lsi,axm-mdio";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80260000 0x1000>;
+			reg = <0x80 0x80260000 0 0x1000>;
 			status = "disabled";
 		};
 
@@ -128,13 +128,13 @@
 			compatible = "lsi,axm-mdio";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80270000 0x1000>;
+			reg = <0x80 0x80270000 0 0x1000>;
 			status = "disabled";
 		};
 
 		usb0: usb@9000000000 {
 			compatible = "snps,dwc3";
-			reg = <0x90 0x00000000 0x10000>;
+			reg = <0x90 0x00000000 0 0x10000>;
 			interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
 			dma-coherent;
 			status = "disabled";
@@ -142,7 +142,7 @@
 
 		usb1: usb@9800000000 {
 			compatible = "snps,dwc3";
-			reg = <0x98 0x00000000 0x10000>;
+			reg = <0x98 0x00000000 0 0x10000>;
 			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 			dma-coherent;
 			status = "disabled";
@@ -150,7 +150,7 @@
 
 		gpdma0: gpdma@8005020000 {
 			compatible = "lsi,dma32";
-			reg = <0x80 0x05020000 0x10000>;
+			reg = <0x80 0x05020000 0 0x10000>;
 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
 			channel0 {
@@ -164,7 +164,7 @@
 
 		gpdma1: gpdma@8005030000 {
 			compatible = "lsi,dma32";
-			reg = <0x80 0x05030000 0x10000>;
+			reg = <0x80 0x05030000 0 0x10000>;
 			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -181,7 +181,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80600000 0x1000>;
+			reg = <0x80 0x80600000 0 0x1000>;
 			interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -192,7 +192,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80610000 0x1000>;
+			reg = <0x80 0x80610000 0 0x1000>;
 			interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -203,7 +203,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80620000 0x1000>;
+			reg = <0x80 0x80620000 0 0x1000>;
 			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -214,7 +214,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80630000 0x1000>;
+			reg = <0x80 0x80630000 0 0x1000>;
 			interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -225,7 +225,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80640000 0x1000>;
+			reg = <0x80 0x80640000 0 0x1000>;
 			interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -236,7 +236,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80650000 0x1000>;
+			reg = <0x80 0x80650000 0 0x1000>;
 			interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -247,7 +247,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80660000 0x1000>;
+			reg = <0x80 0x80660000 0 0x1000>;
 			interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -258,7 +258,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80670000 0x1000>;
+			reg = <0x80 0x80670000 0 0x1000>;
 			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -269,7 +269,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80680000 0x1000>;
+			reg = <0x80 0x80680000 0 0x1000>;
 			interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -280,7 +280,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x80690000 0x1000>;
+			reg = <0x80 0x80690000 0 0x1000>;
 			interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -291,7 +291,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x806a0000 0x1000>;
+			reg = <0x80 0x806a0000 0 0x1000>;
 			interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -302,7 +302,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x806b0000 0x1000>;
+			reg = <0x80 0x806b0000 0 0x1000>;
 			interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -313,7 +313,7 @@
 			compatible = "lsi,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x80 0x806c0000 0x1000>;
+			reg = <0x80 0x806c0000 0 0x1000>;
 			interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks AXXIA_CLK_PER>;
 			clock-names = "i2c";
@@ -322,14 +322,14 @@
 
 		mtc: mtc@8080210000 {
 			compatible = "lsi,mtc";
-			reg = <0x80 0x80210000 0x10000>;
+			reg = <0x80 0x80210000 0 0x10000>;
 			interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
 		trng: trng@8031060000 {
 			compatible = "lsi,trng";
-			reg = <0x80 0x31060000 0x20000>;
+			reg = <0x80 0x31060000 0 0x20000>;
 			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
@@ -337,9 +337,9 @@
 		pci0: pcie@c000000000 {
 			compatible = "intel,axxia-pcie";
 			device_type = "pci";
-			reg = <0xa0 0x02000000 0x00100000 /* dbi */
-				0xa0 0x03000000 0x00008000 /* AXI gpreg */
-				0xa0 0x03008000 0x00008000>; /* CC gpreg */
+			reg = <0xa0 0x02000000 0 0x00100000   /* dbi */
+			       0xa0 0x03000000 0 0x00008000   /* AXI gpreg */
+			       0xa0 0x03008000 0 0x00008000>; /* CC gpreg */
 			reg-names = "dbi", "axi_gpreg", "cc_gpreg";
 			#interrupt-cells = <1>;
 			#address-cells = <3>;
@@ -391,12 +391,12 @@
 		amba {
 			compatible = "arm,amba-bus";
 			#address-cells = <2>;
-			#size-cells = <1>;
+			#size-cells = <2>;
 			ranges;
 
 			serial0: uart@8080000000 {
 				compatible = "arm,pl011", "arm,primecell";
-				reg = <0x80 0x80000000 0x10000>;
+				reg = <0x80 0x80000000 0 0x10000>;
 				interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -405,7 +405,7 @@
 
 			serial1: uart@8080010000 {
 				compatible = "arm,pl011", "arm,primecell";
-				reg = <0x80 0x80010000 0x10000>;
+				reg = <0x80 0x80010000 0 0x10000>;
 				interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -414,7 +414,7 @@
 
 			serial2: uart@8080020000 {
 				compatible = "arm,pl011", "arm,primecell";
-				reg = <0x80 0x80020000 0x10000>;
+				reg = <0x80 0x80020000 0 0x10000>;
 				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -423,7 +423,7 @@
 
 			timer0: timer@8080220000 {
 				compatible = "arm,sp804", "arm,primecell";
-				reg = <0x80 0x80220000 0x10000>;
+				reg = <0x80 0x80220000 0 0x10000>;
 				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>,
@@ -440,7 +440,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80700000 0x10000>;
+				reg = <0x80 0x80700000 0 0x10000>;
 				interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -451,7 +451,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80710000 0x10000>;
+				reg = <0x80 0x80710000 0 0x10000>;
 				interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -462,7 +462,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80720000 0x10000>;
+				reg = <0x80 0x80720000 0 0x10000>;
 				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -473,7 +473,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80730000 0x10000>;
+				reg = <0x80 0x80730000 0 0x10000>;
 				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -484,7 +484,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80740000 0x10000>;
+				reg = <0x80 0x80740000 0 0x10000>;
 				interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -495,7 +495,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80750000 0x10000>;
+				reg = <0x80 0x80750000 0 0x10000>;
 				interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -506,7 +506,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80760000 0x10000>;
+				reg = <0x80 0x80760000 0 0x10000>;
 				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -517,7 +517,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80770000 0x10000>;
+				reg = <0x80 0x80770000 0 0x10000>;
 				interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
@@ -528,7 +528,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80780000 0x10000>;
+				reg = <0x80 0x80780000 0 0x10000>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -538,7 +538,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x80790000 0x10000>;
+				reg = <0x80 0x80790000 0 0x10000>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -548,7 +548,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x807a0000 0x10000>;
+				reg = <0x80 0x807a0000 0 0x10000>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -558,7 +558,7 @@
 				#gpio-cells = <2>;
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
-				reg = <0x80 0x807b0000 0x10000>;
+				reg = <0x80 0x807b0000 0 0x10000>;
 				clocks = <&clks AXXIA_CLK_PER>;
 				clock-names = "apb_pclk";
 				status = "disabled";
@@ -569,7 +569,7 @@
 				arm,primecell-periphid = <0x000b6022>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reg = <0x80 0x80100000 0x1000>;
+				reg = <0x80 0x80100000 0 0x1000>;
 				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
@@ -582,7 +582,7 @@
 				arm,primecell-periphid = <0x000b6022>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reg = <0x80 0x80110000 0x1000>;
+				reg = <0x80 0x80110000 0 0x1000>;
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
@@ -595,7 +595,7 @@
 				arm,primecell-periphid = <0x000b6022>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reg = <0x80 0x80120000 0x1000>;
+				reg = <0x80 0x80120000 0 0x1000>;
 				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
