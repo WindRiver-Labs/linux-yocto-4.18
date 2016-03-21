@@ -20,25 +20,25 @@
 
 	memory {
 		device_type = "memory";
-		reg = <0 0x00000000 0x40000000>;
+		reg = <0 0x00000000 0 0x40000000>;
 	};
 
 	soc {
 		virtio_block@8021000000 {
 			compatible = "virtio,mmio";
-			reg = <0x80 0x34000000 0x1000>;
+			reg = <0x80 0x34000000 0 0x1000>;
 			interrupts = <GIC_SPI 639 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		vmfs@8034010000 {
 			compatible = "arm,messagebox";
-			reg = <0x80 0x34010000 0x1000>;
+			reg = <0x80 0x34010000 0 0x1000>;
 			interrupts = <GIC_SPI 638 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		ethernet@8020000000 {
 			compatible = "smsc,lan91c111";
-			reg = <0x80 0x33000000 0x1000000>;
+			reg = <0x80 0x33000000 0 0x1000000>;
 			interrupts = <GIC_SPI 640 IRQ_TYPE_LEVEL_HIGH>;
 			phy-mode = "mii";
 			reg-io-width = <4>;
