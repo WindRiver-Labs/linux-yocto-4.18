@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/intel/axm5604-sim.dts
  *
- * Copyright (C) 2013 LSI
+ * Copyright (C) 2013 Intel
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,22 @@
 
 &serial3 {
 	status = "okay";
+};
+
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x5>;
+	lsi,mdio-clk-period = <0xc>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x3>;
+	};
 };
 
 &gpio0 {
