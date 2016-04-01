@@ -1,7 +1,7 @@
 /*
- * arch/arm64/boot/dts/intel/axm5604-sim.dts
+ * arch/arm64/boot/dts/intel/axm5608-sim.dts
  *
- * Copyright (C) 2013 LSI
+ * Copyright (C) 2013 Intel
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,6 +72,22 @@
 	status = "okay";
 };
 
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x5>;
+	lsi,mdio-clk-period = <0xc>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x3>;
+	};
+};
+
 &gpio0 {
 	status = "okay";
 };
@@ -82,14 +98,7 @@
 
 &spi0 {
 	status = "okay";
-	icm@0 {
-		#address-cells = <0x1>;
-		#size-cells = <0x1>;
-		compatible = "spidev";
-		reg = <0x1>;
-		spi-max-frequency = <0xf4240>;
-		pl022,com-mode = <0x1>;
-	};
+
 	flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -142,5 +151,9 @@
 };
 
 &pci2 {
+	status = "okay";
+};
+
+&usb0 {
 	status = "okay";
 };
