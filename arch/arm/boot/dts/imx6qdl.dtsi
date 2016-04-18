@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 //
-// Copyright 2011-2015 Freescale Semiconductor, Inc.
+// Copyright 2011-2016 Freescale Semiconductor, Inc.
 // Copyright 2011 Linaro Ltd.
 
 #include <dt-bindings/clock/imx6qdl-clock.h>
@@ -910,8 +910,8 @@
 					compatible = "syscon-poweroff";
 					regmap = <&snvs>;
 					offset = <0x38>;
-					value = <0x60>;
-					mask = <0x60>;
+					value = <0x61>;
+					mask = <0x61>;
 					status = "disabled";
 				};
 

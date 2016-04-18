@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 //
-// Copyright 2013 Freescale Semiconductor, Inc.
+// Copyright 2013-2016 Freescale Semiconductor, Inc.
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6sl-pinfunc.h"
@@ -709,8 +709,8 @@
 					compatible = "syscon-poweroff";
 					regmap = <&snvs>;
 					offset = <0x38>;
-					value = <0x60>;
-					mask = <0x60>;
+					value = <0x61>;
+					mask = <0x61>;
 					status = "disabled";
 				};
 			};
