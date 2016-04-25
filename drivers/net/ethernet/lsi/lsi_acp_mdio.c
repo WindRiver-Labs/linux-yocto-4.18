@@ -251,6 +251,8 @@ acp_mdio_initialize(int offset, int period)
 {
 	write_reg(MDIO_CLK_OFFSET, offset);
 	write_reg(MDIO_CLK_PERIOD, period);
+
+	return;
 }
 
 /* acp_wrappers_init */
