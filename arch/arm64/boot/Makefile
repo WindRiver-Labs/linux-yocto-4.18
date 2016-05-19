@@ -16,7 +16,7 @@
 
 OBJCOPYFLAGS_Image :=-O binary -R .note -R .note.gnu.build-id -R .comment -S
 
-targets := Image Image.gz
+targets := Image Image.gz uImage
 
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
@@ -35,6 +35,24 @@ $(obj)/Image.lzma: $(obj)/Image FORCE
 
 $(obj)/Image.lzo: $(obj)/Image FORCE
 	$(call if_changed,lzo)
+
+ifeq ($(CONFIG_ARCH_AXXIA), y)
+  UIMAGE_LOADADDR = 0x00080000
+  UIMAGE_ENTRYADDR = 0x00080000
+endif
+
+check_for_multiple_loadaddr = \
+if [ $(words $(UIMAGE_LOADADDR)) -ne 1 ]; then \
+	echo 'multiple (or no) load addresses: $(UIMAGE_LOADADDR)'; \
+	echo 'This is incompatible with uImages'; \
+	echo 'Specify LOADADDR on the commandline to build an uImage'; \
+	false; \
+fi
+
+$(obj)/uImage: $(obj)/Image FORCE
+	@$(check_for_multiple_loadaddr)
+	$(call if_changed,uimage)
+	@$(kecho) '  uImage $@ is ready'
 
 install:
 	$(CONFIG_SHELL) $(srctree)/$(src)/install.sh $(KERNELRELEASE) \
