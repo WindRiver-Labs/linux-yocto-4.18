@@ -1,0 +1,122 @@
+/*
+ * arch/arm64/boot/dts/intel/axm5616-victoria.dts
+ *
+ * Copyright (C) 2016 Intel
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+#include "axm56xx.dtsi"
+#include "axm5616-cpus.dtsi"
+
+/ {
+	model = "AXM56xx Victoria";
+	compatible = "lsi,axm5616";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0 0x40000000>;
+	};
+
+	mmc_3v3: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	soc {
+	};
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&serial1 {
+	status = "okay";
+};
+
+&serial2 {
+	status = "okay";
+};
+
+&serial3 {
+	status = "okay";
+};
+
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x1c>;
+	lsi,mdio-clk-period = <0xf0>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x7>;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "s25fl016k";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+		pl022,com-mode = <1>;
+
+		partition@0 {
+			label = "spl-0";
+			reg = <0x0 0x40000>;
+		};
+		partition@40000 {
+			label = "spl-1";
+			reg = <0x40000 0x40000>;
+		};
+		partition@80000 {
+			label = "parameters-0";
+			reg = <0x80000 0x10000>;
+		};
+		partition@90000 {
+			label = "parameters-1";
+			reg = <0x90000 0x10000>;
+		};
+		partition@a0000 {
+			label = "env-0";
+			reg = <0xa0000 0x10000>;
+		};
+		partition@b0000 {
+			label = "env-1";
+			reg = <0xb0000 0x10000>;
+		};
+		partition@100000 {
+			label = "u-boot-0";
+			reg = <0x100000 0x200000>;
+		};
+		partition@300000 {
+			label = "u-boot-1";
+			reg = <0x300000 0x200000>;
+		};
+	};
+};
