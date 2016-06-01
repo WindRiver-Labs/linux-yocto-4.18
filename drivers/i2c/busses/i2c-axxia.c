@@ -128,6 +128,8 @@ struct axxia_i2c_dev {
 	int irq;
 	/* current i2c bus clock rate */
 	u32 bus_clk_rate;
+	/* transaction lock */
+	struct mutex i2c_lock;
 };
 
 static void
@@ -407,6 +409,8 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 	if (msg->len == 0 || msg->len > 255)
 		return -EINVAL;
 
+	mutex_lock(&idev->i2c_lock);
+
 	idev->msg      = msg;
 	idev->msg_xfrd = 0;
 	idev->msg_err =  0;
@@ -477,6 +481,7 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 	if (ret == 0) {
 		dev_warn(idev->dev, "xfer timeout (%#x)\n", msg->addr);
 		axxia_i2c_init(idev);
+		mutex_unlock(&idev->i2c_lock);
 		return -ETIMEDOUT;
 	}
 
@@ -485,9 +490,11 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 
 	if (unlikely(idev->msg_err != 0)) {
 		axxia_i2c_init(idev);
+		mutex_unlock(&idev->i2c_lock);
 		return -EIO;
 	}
 
+	mutex_unlock(&idev->i2c_lock);
 	return 0;
 }
 
@@ -640,6 +647,8 @@ static int axxia_i2c_probe(struct platform_device *pdev)
 	idev->adapter.bus_recovery_info = &axxia_i2c_recovery_info;
 	idev->adapter.dev.parent = &pdev->dev;
 	idev->adapter.dev.of_node = pdev->dev.of_node;
+
+	mutex_init(&idev->i2c_lock);
 
 	ret = i2c_add_adapter(&idev->adapter);
 	if (ret) {
