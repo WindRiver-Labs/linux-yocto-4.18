@@ -991,8 +991,12 @@ static int appnic_stop(struct net_device *dev)
 
 	pr_info("%s: Stopping the interface.\n", LSI_DRV_NAME);
 
-	/* Disable all device interrupts. */
+	/* Disable interrupts. Note that disable_irq() will wait for
+	 * any interrupt handlers that are currently executing to
+	 * complete.
+	 */
 	write_mac(0, APPNIC_DMA_INTERRUPT_ENABLE);
+	disable_irq(dev->irq);
 	free_irq(dev->irq, dev);
 
 	/* Indicate to the OS that no more packets should be sent.  */
