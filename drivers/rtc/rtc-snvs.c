@@ -57,7 +57,12 @@ static u32 rtc_read_lp_counter(struct snvs_rtc_data *data)
 		read2 <<= 32;
 		regmap_read(data->regmap, data->offset + SNVS_LPSRTCLR, &val);
 		read2 |= val;
-	} while (read1 != read2);
+	/*
+	 * when CPU/BUS are running at low speed, there is chance that
+	 * we never get same value during two consecutive read, so here
+	 * we only compare the second value.
+	 */
+	} while ((read1 >> CNTR_TO_SECS_SH) != (read2 >> CNTR_TO_SECS_SH));
 
 	/* Convert 47-bit counter to 32-bit raw second count */
 	return (u32) (read1 >> CNTR_TO_SECS_SH);
