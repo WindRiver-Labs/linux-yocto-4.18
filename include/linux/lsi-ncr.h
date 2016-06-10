@@ -33,13 +33,14 @@
 #define NCP_TARGET_ID(region) ((region) & 0xffff)
 #endif
 
-unsigned long ncr_register_read(unsigned *);
-void ncr_register_write(const unsigned, unsigned *);
-int ncr_read(unsigned long, unsigned long, int, void *);
-int ncr_write(unsigned long, unsigned long, int, void *);
-int ncr_read_nolock(unsigned long, unsigned long, int, void *);
-int ncr_write_nolock(unsigned long, unsigned long, int, void *);
-
+unsigned int ncr_register_read(unsigned int *);
+void ncr_register_write(const unsigned int, unsigned int *);
+int ncr_read(unsigned int, unsigned int, int, void *);
+int ncr_read32(unsigned int, unsigned int, unsigned int *);
+int ncr_write(unsigned int, unsigned int, int, void *);
+int ncr_write32(unsigned int, unsigned int, unsigned int);
+int ncr_read_nolock(unsigned int, unsigned int, int, void *);
+int ncr_write_nolock(unsigned int, unsigned int, int, void *);
 
  /*
   * when defined, the RTE driver module will set/clear
