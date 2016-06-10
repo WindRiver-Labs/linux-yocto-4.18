@@ -486,7 +486,7 @@ config LSI_MTC
 	  Say N if you are unsure
 
 config LSI_NCR
-	tristate "LSI NCR Access"
+	bool "LSI NCR Access"
 	depends on ARCH_AXXIA || ACP
 	help
 	  Provides access to the LSI Axxia NCR bus.
