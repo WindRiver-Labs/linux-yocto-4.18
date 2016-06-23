@@ -498,6 +498,12 @@ config LSI_SMMON
 	help
 	  Monitor the system memory controllers for errors.
 
+config AXXIA_PEI
+       bool "Axxia PEI Controller Setup"
+       depends on ARCH_AXXIA
+       help
+	 Set up the PEI controllers in Linux instead of the boot loader.
+
 config VEXPRESS_SYSCFG
 	bool "Versatile Express System Configuration driver"
 	depends on VEXPRESS_CONFIG
