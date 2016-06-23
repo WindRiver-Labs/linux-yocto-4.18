@@ -53,6 +53,7 @@ obj-$(CONFIG_GENWQE)		+= genwqe/
 obj-$(CONFIG_LSI_NCR)           += lsi-ncr.o
 obj-$(CONFIG_LSI_MTC)		+= lsi-mtc.o
 obj-$(CONFIG_LSI_SMMON)         += lsi-smmon.o
+obj-$(CONFIG_AXXIA_PEI)         += axxia-pei.o
 obj-$(CONFIG_ECHO)		+= echo/
 obj-$(CONFIG_VEXPRESS_SYSCFG)	+= vexpress-syscfg.o
 obj-$(CONFIG_CXL_BASE)		+= cxl/

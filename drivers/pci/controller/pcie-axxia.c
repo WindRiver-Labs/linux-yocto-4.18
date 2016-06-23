@@ -21,8 +21,10 @@
 #include <linux/platform_device.h>
 #include <linux/resource.h>
 #include <linux/types.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_pci.h>
+#include <linux/axxia-pei.h>
 
 #include "pcie-axxia.h"
 #include "../pci.h"
@@ -118,6 +120,7 @@ axxia_is_x9(void)
 
 struct axxia_pcie {
 	struct pcie_port	pp;
+	unsigned int control;
 };
 
 static unsigned long global_io_offset;
@@ -912,6 +915,8 @@ static int __init axxia_pcie_probe(struct platform_device *pdev)
 	struct pcie_port *pp;
 	struct resource *res;
 	int ret;
+	struct device_node *pei_control;
+	const unsigned int *control;
 
 	axxia_pcie = devm_kzalloc(&pdev->dev, sizeof(*axxia_pcie),
 				GFP_KERNEL);
@@ -939,6 +944,26 @@ static int __init axxia_pcie_probe(struct platform_device *pdev)
 
 	pp->root_bus_nr = 0;
 
+	pei_control = of_find_node_by_name(NULL, "pei_control");
+
+	if (pei_control) {
+		control = of_get_property(pei_control, "control", NULL);
+
+		if (NULL == control) {
+			pr_err("pcie-axxia: 'control' NOT set!!!\n");
+
+			return -EINVAL;
+		}
+
+		axxia_pcie->control = be32_to_cpu(*control);
+
+		if (0 != pei_setup(axxia_pcie->control)) {
+			pr_err("pcie-axxia: PEI setup failed!\n");
+
+			return -EINVAL;
+		}
+	}
+
 	ret = axxia_pcie_host_init(pp);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to initialize host\n");
@@ -946,7 +971,6 @@ static int __init axxia_pcie_probe(struct platform_device *pdev)
 	}
 
 	return 0;
-
 }
 
 static int __exit axxia_pcie_remove(struct platform_device *pdev)
@@ -973,7 +997,6 @@ static struct platform_driver axxia_pcie_driver = {
 
 static int __init pcie_init(void)
 {
-
 	return platform_driver_probe(&axxia_pcie_driver, axxia_pcie_probe);
 }
 subsys_initcall(pcie_init);
