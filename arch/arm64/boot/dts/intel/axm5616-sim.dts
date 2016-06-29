@@ -43,16 +43,6 @@
 			reg = <0x80 0x21010000 0 0x1000>;
 			interrupts = <GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH>;
 		};
-
-		ethernet@8020000000 {
-			compatible = "smsc,lan91c111";
-			reg = <0x80 0x20000000 0 0x1000000>;
-			interrupts = <GIC_SPI 280 IRQ_TYPE_LEVEL_HIGH>;
-			phy-mode = "mii";
-			reg-io-width = <4>;
-			smsc,irq-active-high;
-			smsc,irq-push-pull;
-		};
 	};
 };
 
