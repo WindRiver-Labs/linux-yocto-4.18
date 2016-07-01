@@ -507,17 +507,12 @@ nemac_link_up(struct nemac_priv *priv)
 	writel(gmii_ctrl, priv->reg + NEM_GMAC_ANEG_CTRL_R);
 	writel(rgmii_clk, priv->reg + NEM_DMA_MISC_CTL);
 
-	if (phy_dev->pause) {
-		/* Enable GMAC and DMA to act on and send PAUSE frames */
-		nemac_set(priv, NEM_GMAC_ENABLE_R,
-			  GMAC_RX_PAUSE_EN | GMAC_TX_PAUSE_EN);
-		nemac_set(priv, NEM_DMA_CTL, DMACTL_ALLOW_TX_PAUSE);
-	} else {
-		/* Disable use of PAUSE frames */
-		nemac_clr(priv, NEM_GMAC_ENABLE_R,
-			  GMAC_RX_PAUSE_EN | GMAC_TX_PAUSE_EN);
-		nemac_clr(priv, NEM_DMA_CTL, DMACTL_ALLOW_TX_PAUSE);
-	}
+	/* Pause frames are a problem on the Axxia development board,
+	 * so don't enable them.
+	 */
+
+	nemac_clr(priv, NEM_GMAC_ENABLE_R, GMAC_RX_PAUSE_EN | GMAC_TX_PAUSE_EN);
+	nemac_clr(priv, NEM_DMA_CTL, DMACTL_ALLOW_TX_PAUSE);
 
 	/* Enable RX */
 	nemac_set(priv, NEM_GMAC_ENABLE_R, GMAC_RX_EN);
