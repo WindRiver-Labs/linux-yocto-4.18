@@ -110,12 +110,10 @@ static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
 int
 axxia_is_x9(void)
 {
-	unsigned int pfuse;
-	static void __iomem *base;
+	if (of_find_compatible_node(NULL, NULL, "lsi,axm5616"))
+		return 1;
 
-	base = ioremap(AXXIA_SYSCON_BASE, 0x1024);
-	pfuse = axxia_mmio_read_32((uintptr_t)(base + 0x34));
-	return (0xb == (pfuse & 0x1f));
+	return 0;
 }
 
 struct axxia_pcie {
@@ -206,13 +204,17 @@ static int axxia_pcie_wr_own_conf(struct pcie_port *pp, int where,
 
 static void axxia_pcie_prog_viewport_cfg0(struct pcie_port *pp, u32 busdev)
 {
+	u32 upper_base;
+
 	/* Program viewport 0 : OUTBOUND : CFG0 */
 	axxia_pcie_writel_rc(pp,
 		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX0,
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base, PCIE_ATU_LOWER_BASE);
-if (!axxia_is_x9())
-	axxia_pcie_writel_rc(pp, (pp->cfg0_base >> 32), PCIE_ATU_UPPER_BASE);
+	/* set upper base bits [1:0] for X9, bits[7:0] for XLF */
+	upper_base = (pp->cfg0_base >> 32);
+	upper_base &= (axxia_is_x9()) ? 0x3 : 0xff;
+	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base + pp->cfg0_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
@@ -224,14 +226,18 @@ if (!axxia_is_x9())
 
 static void axxia_pcie_prog_viewport_cfg1(struct pcie_port *pp, u32 busdev)
 {
+	u32 upper_base;
+
 	/* Program viewport 1 : OUTBOUND : CFG1 */
 	axxia_pcie_writel_rc(pp,
 		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX1,
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_CFG1, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->cfg1_base, PCIE_ATU_LOWER_BASE);
-if (!axxia_is_x9())
-	axxia_pcie_writel_rc(pp, (pp->cfg1_base >> 32), PCIE_ATU_UPPER_BASE);
+	upper_base = (pp->cfg1_base >> 32);
+	upper_base &= (axxia_is_x9()) ? 0x3 : 0xff;
+	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
+
 	axxia_pcie_writel_rc(pp, pp->cfg1_base + pp->cfg1_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
@@ -241,14 +247,17 @@ if (!axxia_is_x9())
 
 static void axxia_pcie_prog_viewport_mem_outbound(struct pcie_port *pp)
 {
+	u32 upper_base;
+
 	/* Program viewport 0 : OUTBOUND : MEM */
 	axxia_pcie_writel_rc(pp,
 		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX2,
 		PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_MEM, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base, PCIE_ATU_LOWER_BASE);
-if (!axxia_is_x9())
-	axxia_pcie_writel_rc(pp, (pp->mem_mod_base >> 32), PCIE_ATU_UPPER_BASE);
+	upper_base = (pp->mem_mod_base >> 32);
+	upper_base &= (axxia_is_x9()) ? 0x3 : 0xff;
+	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base + pp->mem_size - 1,
 		PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, pp->mem_bus_addr, PCIE_ATU_LOWER_TARGET);
@@ -491,7 +500,7 @@ int axxia_pcie_link_up(struct pcie_port *pp)
 
 	axxia_cc_gpreg_readl(pp, PEI_SII_PWR_MGMT_REG, &smlh_state);
 	smlh_state = (smlh_state & PEI_SMLH_LINK_STATE) >> 4;
-	if (smlh_state != 0x11) {
+	if ((smlh_state != 0x11) && (smlh_state != 0x23)) {
 		pr_info("smlh_state = 0x%x\n", smlh_state);
 		pr_err("PCIe LINK IS NOT UP\n");
 		return 0;
@@ -556,11 +565,14 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	val |= PCI_COMMAND_IO | PCI_COMMAND_MEMORY |
 		PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
 	axxia_pcie_writel_rc(pp, val, PCI_COMMAND);
+	axxia_pcie_writel_rc(pp, 0x1037201, 0x8a8);
 
 	/* LTSSM enable */
 	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
+	msleep(100);
 	val |= 0x1;
 	axxia_cc_gpreg_writel(pp, 0x1, PEI_GENERAL_CORE_CTL_REG);
+	msleep(100);
 }
 
 static int axxia_pcie_establish_link(struct pcie_port *pp)
