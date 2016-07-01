@@ -128,7 +128,7 @@
 			ranges;
 			dwc3 {
 				compatible = "snps,dwc3";
-				reg = <0x90 0x00000000 0 0x10000>;
+				reg = <0x90 0x00000000 0 0x100000>;
 				interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
