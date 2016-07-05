@@ -82,15 +82,8 @@ static int axxia_dwc3_remove(struct platform_device *pdev)
 void
 arch_setup_pdev_archdata(struct platform_device *pdev)
 {
-
-	printk("setup_pdev_archdata %s\n", pdev->name);
-
-	if (strncmp(pdev->name, "xhci-hcd", strlen("xhci-hcd")) == 0) {
-		printk("setting dma_coherent\n");
+	if (strncmp(pdev->name, "xhci-hcd", strlen("xhci-hcd")) == 0)
 		pdev->dev.archdata.dma_coherent = 1;
-
-	}
-
 }
 
 static const struct of_device_id adwc3_of_match[] = {
