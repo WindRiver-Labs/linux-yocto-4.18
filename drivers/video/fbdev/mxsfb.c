@@ -1040,6 +1040,7 @@ static int mxsfb_restore_mode(struct fb_info *fb_info)
 		break;
 	case 3:
 		bits_per_pixel = 32;
+		break;
 	case 1:
 	default:
 		return -EINVAL;
