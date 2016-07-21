@@ -568,7 +568,7 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	val |= PCI_COMMAND_IO | PCI_COMMAND_MEMORY |
 		PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
 	axxia_pcie_writel_rc(pp, val, PCI_COMMAND);
-	axxia_pcie_writel_rc(pp, 0x1037201, 0x8a8);
+	axxia_pcie_writel_rc(pp, 0x1017201, 0x8a8);
 
 	/* LTSSM enable */
 	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
