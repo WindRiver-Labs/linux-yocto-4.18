@@ -620,7 +620,8 @@ dtb-$(CONFIG_SOC_IMX6ULL) += \
 	imx6ull-colibri-eval-v3.dtb \
 	imx6ull-colibri-wifi-eval-v3.dtb \
 	imx6ull-14x14-evk-btwifi.dtb \
-	imx6ull-14x14-evk-gpmi-weim.dtb
+	imx6ull-14x14-evk-gpmi-weim.dtb \
+	imx6ull-14x14-evk-usb-certi.dtb
 dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-cl-som-imx7.dtb \
 	imx7d-colibri-emmc-eval-v3.dtb \
