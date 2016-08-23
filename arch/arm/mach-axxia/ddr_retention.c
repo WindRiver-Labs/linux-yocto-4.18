@@ -213,6 +213,34 @@ retention_reset_prepare(void)
 	udelay(1000);
 }
 
+#define __flush_tlb_ID(void) \
+	 asm("mcr p15, 0, %0, c8, c7, 0" \
+	     : : "r" (0) : "cc")
+
+static inline void flush_tlb_ID(void)
+{
+	__flush_tlb_ID();
+	dsb();
+	isb();
+}
+
+static void exercise_stack_ptr(volatile char *recursions)
+{
+	char stack_var[1024];
+	volatile char *p;
+	int i;
+
+	p = stack_var;
+
+	for (i = 0; i < 1024; i++)
+		*p++ += *recursions;
+
+	if (*recursions > 0) {
+		*recursions -= 1;
+		exercise_stack_ptr(recursions);
+	}
+
+}
 
 void
 initiate_retention_reset(void)
@@ -231,6 +259,7 @@ initiate_retention_reset(void)
      */
 	volatile long tmp;
 	long *ptmp;
+	char recursions = 4;
 
 	if (0 == ddr_retention_enabled) {
 		pr_info("DDR Retention Reset is Not Enabled\n");
@@ -241,8 +270,6 @@ initiate_retention_reset(void)
 		BUG();
 
 	preempt_disable();
-	flush_cache_all();
-	flush_l3();
 
 	/* TODO - quiesce VP engines */
 	quiesce_vp_engine(AXXIA_ENGINE_CAAL);
@@ -261,8 +288,13 @@ initiate_retention_reset(void)
 	cpu_id = smp_processor_id();
 	value = ~(1 << cpu_id);
 	value &= 0xffff;
+	flush_cache_all();
+	flush_l3();
+	asm volatile ("isb" : : : "memory");
+	flush_tlb_ID();
 	ncr_register_write(htonl(value), (unsigned *) (apb + 0x31030));
 
+	exercise_stack_ptr((volatile char *)&recursions);
 	/* load entire ddr_shutdown function into L2 cache */
 	ptmp = (long *) ncp_ddr_shutdown;
 	do {
