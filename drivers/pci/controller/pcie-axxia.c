@@ -984,17 +984,28 @@ int
 axxia_pcie_reset(void)
 {
 	unsigned int val;
+	struct pci_bus *pci_bus = NULL;
+	int sub_buses;
 
 	if (0 == control_set || NULL == _pp)
 		return -1;
 
+	/* Re-initialize the PEIs */
 	pei_setup(control_value);
 
+	/* Enable the LTSSM */
 	axxia_cc_gpreg_readl(_pp, PEI_GENERAL_CORE_CTL_REG, &val);
 	msleep(100);
 	val |= 0x1;
 	axxia_cc_gpreg_writel(_pp, 0x1, PEI_GENERAL_CORE_CTL_REG);
 	msleep(100);
+
+	/* Re-scan the Bus */
+	while (NULL != (pci_bus = pci_find_next_bus(pci_bus))) {
+		pr_info("Rescanning PCI Bus %d\n", pci_bus->number);
+		sub_buses = pci_rescan_bus(pci_bus);
+		pr_info("%d subordinate busses...\n", sub_buses);
+	}
 
 	return 0;
 }
