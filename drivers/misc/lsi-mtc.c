@@ -29,6 +29,8 @@
 #include <linux/atomic.h>
 #include <linux/io.h>
 #include <linux/string.h>
+#include <linux/delay.h>
+
 #include "linux/lsi_mtc_ioctl.h"
 
 
@@ -4114,6 +4116,7 @@ static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
 	struct ncp_axis_mtc_MTC_CONFIG0_REG_ADDR_r_t cfg0 = { 0 };
 	struct ncp_axis_mtc_MTC_CONFIG1_REG_ADDR_r_t cfg1 = { 0 };
 	struct ncp_axis_mtc_MTC_EXECUTE1_REG_ADDR_r_t exec1 = { 0 };
+	u32	init_reg = { 0 };
 
 	if ((!pMTCCfg) || (!dev))
 		return -EINVAL;
@@ -4129,6 +4132,15 @@ static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
 	exec1.sw_reset = 1;
 	dev->regs->execute = *((u32 *) &exec1);
 	dev->regs->mem_init = 0x202;
+	/* wait for the init to complete */
+	udelay(2);
+	init_reg = readl(&(dev->regs->mem_init));
+	if ((init_reg & 0x101) != 0x101) {
+		pr_debug("warning: mem_init failed value=0x%x (expected:0x101)\n",
+			       init_reg);
+	}
+	/* clear ECC interrupt status */
+	dev->regs->ecc_int_status = 0xF;
 
 	/* 3. config MTC */
 	cfg0 =
