@@ -97,7 +97,7 @@
 		};
 
 		reset: reset@2010031000 {
-			compatible = "lsi,axm55xx-reset";
+			compatible = "intel,axm56xx-reset";
 			syscon = <&syscon>;
 		};
 
