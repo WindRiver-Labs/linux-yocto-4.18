@@ -26,6 +26,7 @@
 #include <linux/reboot.h>
 #include <linux/regmap.h>
 
+#define SC_PSCRATCH            0x00dc
 #define SC_CRIT_WRITE_KEY      0x2000
 #define SC_RESET_CONTROL       0x2008
 #define   RSTCTL_RST_CHIP	(1<<1)
@@ -35,25 +36,19 @@ static struct regmap *syscon;
 
 static int ddr_retention_enabled;
 
-#define SYSCON_PHYS_ADDR 0x8002c00000ULL
-
 void
 initiate_retention_reset(void)
 {
-	void __iomem *syscon;
-
 	if (0 == ddr_retention_enabled) {
 		pr_info("DDR Retention Reset is Not Enabled\n");
 		return;
 	}
 
-	syscon = ioremap(SYSCON_PHYS_ADDR, SZ_64K);
-
 	if (WARN_ON(!syscon))
 		return;
 
 	/* set retention reset bit in pscratch */
-	writel(0x00000001, syscon + 0xdc); /* Access Key */
+	regmap_write(syscon, SC_PSCRATCH, 1);
 
 	/* trap into secure monitor to do the reset */
 	machine_restart(NULL);
@@ -143,7 +138,7 @@ static struct platform_driver axxia_reset_driver = {
 	.probe = axxia_reset_probe,
 	.driver = {
 		.name = "axxia-reset",
-		.of_match_table = of_match_ptr(of_axxia_reset_match),
+		.of_match_table = of_axxia_reset_match,
 	},
 };
 
