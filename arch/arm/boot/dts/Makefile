@@ -536,6 +536,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6qp-sabresd-btwifi.dtb \
 	imx6qp-sabresd-hdcp.dtb \
 	imx6qp-sabresd-ldo.dtb \
+	imx6qp-sabresd-ldo-pcie-cert.dtb \
 	imx6qp-tx6qp-8037.dtb \
 	imx6qp-tx6qp-8037-mb7.dtb \
 	imx6qp-tx6qp-8137.dtb \
