@@ -187,3 +187,7 @@
 &i2c3 {
 	status = "okay";
 };
+
+&mtc {
+	status = "okay";
+};
