@@ -30,7 +30,6 @@
 #include <linux/io.h>
 #include <linux/string.h>
 #include <linux/delay.h>
-
 #include "linux/lsi_mtc_ioctl.h"
 
 
@@ -3093,6 +3092,8 @@ mtc_dev_read(struct file *filp, char __user *data, size_t len, loff_t *ppose)
 	u32 tdo_size_word, tdo_size_bit;	/* data to be read in words */
 	struct ncp_axis_mtc_MTC_STATUS1_REG_ADDR_r_t status1Reg = { 0 };
 	struct ncp_axis_mtc_MTC_EXECUTE1_REG_ADDR_r_t exec1Reg = { 0 };
+	u32 i = 0;
+	char *tmp_data = NULL;
 
 	pr_debug("mtc_dev_read(%u @ %llu)\n", (unsigned int) len, *ppose);
 	ptdo = dev->tdomem;
@@ -3116,10 +3117,33 @@ mtc_dev_read(struct file *filp, char __user *data, size_t len, loff_t *ppose)
 	pr_debug("mtc_dev_read(), tdo_bit=%d tdo_word=%d\n",
 		 tdo_size_bit, tdo_size_word);
 #endif
+
+	tmp_data = kmalloc(tdo_size_word*4, GFP_KERNEL);
+
+	if (!tmp_data)
+		return -EFAULT;
+
+	memset(tmp_data, 0, tdo_size_word * 4);
+	for (i = 0; i < tdo_size_word*4; i++) {
+#ifdef DEBUG
+		pr_debug("data[%d]=0x%x\n", i, ptdo[i]);
+#endif
+		tmp_data[i] = (ptdo[i/4] & (0xFF << ((i%4) * 8))) >>
+			((i%4) * 8);
+	}
 	/* copy tdo data to user space, always read from location 0
 	   because we reset tdomem after each read */
-	if (copy_to_user(data, ptdo, tdo_size_word * 4))
+	if (copy_to_user((void *)data, tmp_data, tdo_size_word * 4)) {
+		kfree(tmp_data);
 		return -EFAULT;
+	}
+#ifdef DEBUG
+	for (i = 0; i < tdo_size_word*4; i++) {
+		pr_debug("copied data[%d]=0x%x tmp_data=0x%x\n",
+				 i, data[i], tmp_data[i]);
+	}
+#endif
+	kfree(tmp_data);
 
 	/* data sent to user, reset tdo capture buffer */
 	memset(&exec1Reg, 0, sizeof(exec1Reg));
@@ -3152,7 +3176,7 @@ _mtc_axi_dev_write(struct file *filp,
 	if (!mtc_buf)
 		return -EFAULT;
 
-	/* copy to a lcoal buffer */
+	/* copy to a local buffer */
 	memset(mtc_buf, 0, len);
 	if (copy_from_user((void *)mtc_buf, (void *)data, len)) {
 		pr_debug("MTC Error write\n");
@@ -3170,8 +3194,8 @@ _mtc_axi_dev_write(struct file *filp,
 
 	for (i = 0; i < size; i++) {
 #ifdef DEBUG
-		pr_debug("i=%d mtc_buf[i]=%d pprg=0x%x\n",
-			 i, mtc_buf[i], (u32) pprg);
+		pr_debug("i=%d mtc_buf[i]=%d pprg=0x%llx\n",
+			 i, mtc_buf[i], (u64) pprg);
 #endif
 		*pprg = mtc_buf[i];
 		pprg++;
@@ -3220,6 +3244,10 @@ mtc_dev_write(struct file *filp,
 	size = len / 4;
 	size1 = size;
 
+#ifdef DEBUG
+	for (i = 0; i < len; i++)
+		pr_debug("input data[%d]=0x%x\n", i, data[i]);
+#endif
 	/* copy to a lcoal buffer */
 	memset(mtc_buf, 0, 1024);
 	if (copy_from_user((void *)mtc_buf, (void *)data, len)) {
@@ -3227,6 +3255,10 @@ mtc_dev_write(struct file *filp,
 		return -EFAULT;
 	}
 
+#ifdef DEBUG
+	for (i = 0; i < len; i++)
+		pr_debug("after copying: mtc_buf[%d]=0x%x\n", i, mtc_buf[i]);
+#endif
 	/* read status 1register, find the starting write offset */
 	status1Reg =
 	    *((struct ncp_axis_mtc_MTC_STATUS1_REG_ADDR_r_t *)
@@ -3257,8 +3289,8 @@ mtc_dev_write(struct file *filp,
 
 	for (i = 0; i < size1; i++) {
 #ifdef DEBUG
-		pr_debug("i=%d mtc_buf[i]=%d pprg=0x%x\n",
-			 i, mtc_buf[i], (u32) pprg);
+		pr_debug("i=%d mtc_buf[i]=%d pprg=0x%llx\n",
+			 i, mtc_buf[i], (u64) pprg);
 #endif
 		*pprg = mtc_buf[i];
 		pprg++;
@@ -3273,8 +3305,8 @@ mtc_dev_write(struct file *filp,
 #endif
 		for (i = 0; i < (size - size1); i++) {
 #ifdef DEBUG
-			pr_debug("i=%d mtc_buf[size1+i]=%d pprg=0x%x\n", i,
-				 mtc_buf[size1 + i], (u32) pprg);
+			pr_debug("i=%d mtc_buf[size1+i]=%d pprg=0x%llx\n", i,
+				 mtc_buf[size1 + i], (u64) pprg);
 #endif
 			*pprg = mtc_buf[size1 + i];
 			pprg++;
@@ -3301,7 +3333,6 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	unsigned long numByteCopied;
 
 	pr_debug("mtc_dev_ioctl(%#x, %#lx)\n", cmd, arg);
-
 	switch (cmd) {
 
 	case MTC_DEBUG_OP:
@@ -3930,7 +3961,8 @@ static const struct file_operations mtc_char_ops = {
 	.llseek = generic_file_llseek,
 	.read = mtc_dev_read,
 	.write = mtc_dev_write,
-	.unlocked_ioctl = mtc_dev_ioctl
+	.unlocked_ioctl = mtc_dev_ioctl,
+	.compat_ioctl = mtc_dev_ioctl
 };
 
 static irqreturn_t mtc_isr(int irq_no, void *arg)
@@ -4178,8 +4210,8 @@ static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
 		cfg1.record_tdo_in_shift_ir_state = 0;
 		cfg1.record_tdo_in_shift_dr_state = 1;
 	} else if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC_SHIFTDR) {
-		cfg1.record_tdo_in_shift_ir_state = 0;
-		cfg1.record_tdo_in_shift_dr_state = 1;
+		cfg1.record_tdo_in_shift_ir_state = 1;
+		cfg1.record_tdo_in_shift_dr_state = 0;
 	} else {
 		/* recMode == ACELL_MTCI_TDO_REC_ALL */
 		cfg1.record_tdo_in_shift_ir_state = 1;
