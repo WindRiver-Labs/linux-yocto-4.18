@@ -523,6 +523,26 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	u32 membase;
 	u32 memlimit;
 
+	/* Set the number of lanes based on the device tree. */
+	axxia_pcie_readl_rc(pp, PCIE_PORT_LINK_CONTROL, &val);
+	val &= ~PORT_LINK_MODE_MASK;
+
+	switch (pp->lanes) {
+	case 1:
+		val |= PORT_LINK_MODE_1_LANES;
+		break;
+	case 2:
+		val |= PORT_LINK_MODE_2_LANES;
+		break;
+	case 4:
+		val |= PORT_LINK_MODE_4_LANES;
+		break;
+	default:
+		break;
+	}
+
+	axxia_pcie_writel_rc(pp, val, PCIE_PORT_LINK_CONTROL);
+
 	/* setup bus numbers */
 	axxia_pcie_readl_rc(pp, PCI_PRIMARY_BUS, &val);
 	val &= 0xff000000;
@@ -983,7 +1003,6 @@ static struct platform_driver axxia_pcie_driver = {
 int
 axxia_pcie_reset(void)
 {
-	unsigned int val;
 	struct pci_bus *pci_bus = NULL;
 	int sub_buses;
 
@@ -993,12 +1012,8 @@ axxia_pcie_reset(void)
 	/* Re-initialize the PEIs */
 	pei_setup(control_value);
 
-	/* Enable the LTSSM */
-	axxia_cc_gpreg_readl(_pp, PEI_GENERAL_CORE_CTL_REG, &val);
-	msleep(100);
-	val |= 0x1;
-	axxia_cc_gpreg_writel(_pp, 0x1, PEI_GENERAL_CORE_CTL_REG);
-	msleep(100);
+	/* Re-configure the root complex */
+	axxia_pcie_setup_rc(_pp);
 
 	/* Re-scan the Bus */
 	while (NULL != (pci_bus = pci_find_next_bus(pci_bus))) {
