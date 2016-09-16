@@ -1,0 +1,248 @@
+/*
+ * arch/arm64/boot/dts/intel/axc6732-waco.dts
+ *
+ * Copyright (C) 2016 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/dts-v1/;
+
+#include "axc67xx.dtsi"
+#include "axc6732-cpus.dtsi"
+
+/ {
+	model = "Lionfish";
+	compatible = "lsi,axc6732";
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x00000000 0 0x40000000>;
+	};
+
+	soc {
+	};
+};
+
+&serial0 {
+	status = "okay";
+};
+
+&usb0 {
+	status = "okay";
+};
+
+&usb1 {
+	status = "okay";
+};
+
+&nemac {
+	status = "okay";
+	phy-handle = <&phy0>;
+};
+
+&mdio0 {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x1c>;
+	lsi,mdio-clk-period = <0xf0>;
+	max-speed = <10>;
+
+	phy0: ethernet-phy@3 {
+		reg = <0x7>;
+	};
+};
+
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "s25fl016k";
+		reg = <0>;
+		spi-max-frequency = <5000000>;
+		pl022,com-mode = <1>;
+
+		partition@0 {
+			label = "spl-0";
+			reg = <0x0 0x40000>;
+		};
+		partition@40000 {
+			label = "spl-1";
+			reg = <0x40000 0x40000>;
+		};
+		partition@80000 {
+			label = "parameters-0";
+			reg = <0x80000 0x10000>;
+		};
+		partition@90000 {
+			label = "parameters-1";
+			reg = <0x90000 0x10000>;
+		};
+		partition@a0000 {
+			label = "env-0";
+			reg = <0xa0000 0x10000>;
+		};
+		partition@b0000 {
+			label = "env-1";
+			reg = <0xb0000 0x10000>;
+		};
+		partition@100000 {
+			label = "u-boot-0";
+			reg = <0x100000 0x200000>;
+		};
+		partition@300000 {
+			label = "u-boot-1";
+			reg = <0x300000 0x200000>;
+		};
+	};
+
+	flash@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "s25fl016k";
+		reg = <1>;
+		spi-max-frequency = <5000000>;
+		pl022,com-mode = <1>;
+
+		partition@0 {
+			label = "spl-0";
+			reg = <0x0 0x40000>;
+		};
+		partition@40000 {
+			label = "spl-1";
+			reg = <0x40000 0x40000>;
+		};
+		partition@80000 {
+			label = "parameters-0";
+			reg = <0x80000 0x10000>;
+		};
+		partition@90000 {
+			label = "parameters-1";
+			reg = <0x90000 0x10000>;
+		};
+		partition@a0000 {
+			label = "env-0";
+			reg = <0xa0000 0x10000>;
+		};
+		partition@b0000 {
+			label = "env-1";
+			reg = <0xb0000 0x10000>;
+		};
+		partition@100000 {
+			label = "u-boot-0";
+			reg = <0x100000 0x200000>;
+		};
+		partition@300000 {
+			label = "u-boot-1";
+			reg = <0x300000 0x200000>;
+		};
+	};
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+};
+
+&i2c6 {
+	status = "okay";
+};
+
+&i2c7 {
+	status = "okay";
+};
+
+&i2c8 {
+	status = "okay";
+};
+
+&i2c9 {
+	status = "okay";
+};
+
+&i2c10 {
+	status = "okay";
+};
+
+&i2c11 {
+	status = "okay";
+};
+
+&i2c12 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&gpio6 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio8 {
+	status = "okay";
+};
+
+&gpio9 {
+	status = "okay";
+};
+
+&gpio10 {
+	status = "okay";
+};
+
+&gpio11 {
+	status = "okay";
+};
+
+&mtc {
+	status = "okay";
+};
