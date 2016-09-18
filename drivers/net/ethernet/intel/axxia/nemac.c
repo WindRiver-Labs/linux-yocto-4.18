@@ -624,6 +624,13 @@ static netdev_tx_t nemac_xmit(struct sk_buff *skb, struct net_device *ndev)
 	queue_set_skb(&priv->txq, desc, skb);
 
 	addr = dma_map_single(priv->dev, skb->data, skb->len, DMA_TO_DEVICE);
+	if (dma_mapping_error(priv->dev, addr)) {
+		pr_err("TX SKB map failed\n");
+		spin_unlock_irqrestore(&priv->txlock, flags);
+		dev_kfree_skb_any(skb);
+		return NETDEV_TX_OK;
+	}
+
 	desc_set_ctrl(desc, D_INTR | D_SOP | D_EOP | D_SWAP | D_TX_CRC);
 	desc_set_xferlen(desc, skb->len);
 	desc_set_pdulen(desc, skb->len);
