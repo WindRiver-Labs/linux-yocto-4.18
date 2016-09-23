@@ -1053,10 +1053,11 @@ static const struct file_operations axxia_pcie_reset_proc_ops = {
 
 static int pcie2_init(void)
 {
-	if (0 != proc_create("driver/axxia_pcie_reset", S_IWUSR, NULL,
-			     &axxia_pcie_reset_proc_ops)) {
+	struct proc_dir_entry *pf = proc_create("driver/axxia_pcie_reset",
+						S_IWUSR, NULL,
+						&axxia_pcie_reset_proc_ops);
+	if (pf == NULL) {
 		pr_err("Could not create /proc/driver/axxia_pcie_reset!\n");
-
 		return -1;
 	}
 
