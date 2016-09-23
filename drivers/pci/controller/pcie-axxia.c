@@ -642,7 +642,9 @@ static void clear_irq_range(struct pcie_port *pp, unsigned int irq_base,
 	for (i = 0; i < nvec; i++) {
 		irq_set_msi_desc_off(irq_base, i, NULL);
 		/* Disable corresponding interrupt on MSI controller */
-		if (pp->ops->msi_clear_irq)
+		if (!pp->ops)
+			dev_err(pp->dev, "ops not set for pcie_port\n");
+		if (pp->ops && pp->ops->msi_clear_irq)
 			pp->ops->msi_clear_irq(pp, pos + i);
 		else
 			axxia_dw_pcie_msi_clear_irq(pp, pos + i);
