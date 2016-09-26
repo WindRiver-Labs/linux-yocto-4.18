@@ -1,15 +1,15 @@
 /*
-* PCIe host controller driver for Intel's AXXIA X9/LF devices
-*
-* Copyright (C) 2015 Intel Electronics Co., Ltd.
-*		http://www.intel.com
-*
-* Author: Sangeetha Rao <sangeetha.rao@intel.com>
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 as
-* published by the Free Software Foundation.
-*/
+ * PCIe host controller driver for Intel's AXXIA X9/LF devices
+ *
+ * Copyright (C) 2015 Intel Electronics Co., Ltd.
+ *		http://www.intel.com
+ *
+ * Author: Sangeetha Rao <sangeetha.rao@intel.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -107,7 +107,7 @@
 
 static int control_set;
 static unsigned int control_value;
-static struct pcie_port *_ppL;
+static struct pcie_port *_pp;
 
 static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
 {
@@ -124,8 +124,9 @@ axxia_is_x9(void)
 }
 
 struct axxia_pcie {
-	struct pcie_port	pp;
-	unsigned int control;
+	struct pcie_port pp;
+	unsigned int     control;
+	unsigned int     initialized;
 };
 
 static unsigned long global_io_offset;
@@ -151,13 +152,13 @@ static inline void axxia_cc_gpreg_readl(struct pcie_port *pp, u32 reg, u32 *val)
 }
 
 static inline void axxia_axi_gpreg_writel(struct pcie_port *pp, u32 val,
-	u32 reg)
+					  u32 reg)
 {
 	writel(val, pp->axi_gpreg_base + reg);
 }
 
 static inline void axxia_axi_gpreg_readl(struct pcie_port *pp, u32 reg,
-	u32 *val)
+					 u32 *val)
 {
 	*val = readl(pp->axi_gpreg_base + reg);
 }
@@ -191,22 +192,22 @@ int axxia_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
 }
 
 static int axxia_pcie_rd_own_conf(struct pcie_port *pp, int where,
-	int size, u32 *val)
+				  int size, u32 *val)
 {
 	int ret;
 
 	ret = axxia_pcie_cfg_read(pp->dbi_base + (where & ~0x3),
-		where, size, val);
+				  where, size, val);
 	return ret;
 }
 
 static int axxia_pcie_wr_own_conf(struct pcie_port *pp, int where,
-	int size, u32 val)
+				  int size, u32 val)
 {
 	int ret;
 
 	ret = axxia_pcie_cfg_write(pp->dbi_base + (where & ~0x3), where,
-		size, val);
+				   size, val);
 	return ret;
 }
 
@@ -216,15 +217,15 @@ static void axxia_pcie_prog_viewport_cfg0(struct pcie_port *pp, u32 busdev)
 
 	/* Program viewport 0 : OUTBOUND : CFG0 */
 	axxia_pcie_writel_rc(pp,
-		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX0,
-		PCIE_ATU_VIEWPORT);
+			     PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX0,
+			     PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base, PCIE_ATU_LOWER_BASE);
 	/* set upper base bits [1:0] for X9, bits[7:0] for XLF */
 	upper_base = (pp->cfg0_base >> 32);
 	upper_base &= (axxia_is_x9()) ? 0x3 : 0xff;
 	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->cfg0_base + pp->cfg0_size - 1,
-		PCIE_ATU_LIMIT);
+			     PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
 	axxia_pcie_writel_rc(pp, 0, PCIE_ATU_UPPER_TARGET);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_CFG0, PCIE_ATU_CR1);
@@ -238,8 +239,8 @@ static void axxia_pcie_prog_viewport_cfg1(struct pcie_port *pp, u32 busdev)
 
 	/* Program viewport 1 : OUTBOUND : CFG1 */
 	axxia_pcie_writel_rc(pp,
-		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX1,
-		PCIE_ATU_VIEWPORT);
+			     PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX1,
+			     PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_CFG1, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->cfg1_base, PCIE_ATU_LOWER_BASE);
 	upper_base = (pp->cfg1_base >> 32);
@@ -247,7 +248,7 @@ static void axxia_pcie_prog_viewport_cfg1(struct pcie_port *pp, u32 busdev)
 	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
 
 	axxia_pcie_writel_rc(pp, pp->cfg1_base + pp->cfg1_size - 1,
-		PCIE_ATU_LIMIT);
+			     PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, busdev, PCIE_ATU_LOWER_TARGET);
 	axxia_pcie_writel_rc(pp, 0, PCIE_ATU_UPPER_TARGET);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_ENABLE, PCIE_ATU_CR2);
@@ -259,18 +260,18 @@ static void axxia_pcie_prog_viewport_mem_outbound(struct pcie_port *pp)
 
 	/* Program viewport 0 : OUTBOUND : MEM */
 	axxia_pcie_writel_rc(pp,
-		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX2,
-		PCIE_ATU_VIEWPORT);
+			     PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX2,
+			     PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_MEM, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base, PCIE_ATU_LOWER_BASE);
 	upper_base = (pp->mem_mod_base >> 32);
 	upper_base &= (axxia_is_x9()) ? 0x3 : 0xff;
 	axxia_pcie_writel_rc(pp, upper_base, PCIE_ATU_UPPER_BASE);
 	axxia_pcie_writel_rc(pp, pp->mem_mod_base + pp->mem_size - 1,
-		PCIE_ATU_LIMIT);
+			     PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, pp->mem_bus_addr, PCIE_ATU_LOWER_TARGET);
 	axxia_pcie_writel_rc(pp, upper_32_bits(pp->mem_bus_addr),
-		PCIE_ATU_UPPER_TARGET);
+			     PCIE_ATU_UPPER_TARGET);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_ENABLE, PCIE_ATU_CR2);
 }
 
@@ -279,21 +280,21 @@ static void axxia_pcie_prog_viewport_io_outbound(struct pcie_port *pp)
 {
 	/* Program viewport 1 : OUTBOUND : IO */
 	axxia_pcie_writel_rc(pp,
-		PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX3,
-		PCIE_ATU_VIEWPORT);
+			     PCIE_ATU_REGION_OUTBOUND | PCIE_ATU_REGION_INDEX3,
+			     PCIE_ATU_VIEWPORT);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_TYPE_IO, PCIE_ATU_CR1);
 	axxia_pcie_writel_rc(pp, pp->io_mod_base, PCIE_ATU_LOWER_BASE);
 	axxia_pcie_writel_rc(pp, pp->io_mod_base + pp->io_size - 1,
-		PCIE_ATU_LIMIT);
+			     PCIE_ATU_LIMIT);
 	axxia_pcie_writel_rc(pp, pp->io_bus_addr, PCIE_ATU_LOWER_TARGET);
 	axxia_pcie_writel_rc(pp, upper_32_bits(pp->io_bus_addr),
-		PCIE_ATU_UPPER_TARGET);
+			     PCIE_ATU_UPPER_TARGET);
 	axxia_pcie_writel_rc(pp, PCIE_ATU_ENABLE, PCIE_ATU_CR2);
 }
 
 
 static int axxia_pcie_rd_other_conf(struct pcie_port *pp, struct pci_bus *bus,
-	u32 devfn, int where, int size, u32 *val)
+				    u32 devfn, int where, int size, u32 *val)
 {
 	int ret = PCIBIOS_SUCCESSFUL;
 	u32 address, busdev;
@@ -305,43 +306,43 @@ static int axxia_pcie_rd_other_conf(struct pcie_port *pp, struct pci_bus *bus,
 	if (bus->parent->number == pp->root_bus_nr) {
 		axxia_pcie_prog_viewport_cfg0(pp, busdev);
 		ret = axxia_pcie_cfg_read(pp->va_cfg0_base + address, where,
-			size, val);
+					  size, val);
 		axxia_pcie_prog_viewport_mem_outbound(pp);
 	} else {
 		axxia_pcie_prog_viewport_cfg1(pp, busdev);
 		ret = axxia_pcie_cfg_read(pp->va_cfg1_base + address, where,
-			size, val);
+					  size, val);
 		axxia_pcie_prog_viewport_io_outbound(pp);
 	}
 	return ret;
 }
 
 static int axxia_pcie_wr_other_conf(struct pcie_port *pp, struct pci_bus *bus,
-	u32 devfn, int where, int size, u32 val)
+				    u32 devfn, int where, int size, u32 val)
 {
 	int ret = PCIBIOS_SUCCESSFUL;
 	u32 address, busdev;
 
 	busdev = PCIE_ATU_BUS(bus->number) | PCIE_ATU_DEV(PCI_SLOT(devfn)) |
-	PCIE_ATU_FUNC(PCI_FUNC(devfn));
+		PCIE_ATU_FUNC(PCI_FUNC(devfn));
 	address = where & ~0x3;
 
 	if (bus->parent->number == pp->root_bus_nr) {
 		axxia_pcie_prog_viewport_cfg0(pp, busdev);
 		ret = axxia_pcie_cfg_write(pp->va_cfg0_base + address,
-			where, size, val);
+					   where, size, val);
 		axxia_pcie_prog_viewport_mem_outbound(pp);
 	} else {
 		axxia_pcie_prog_viewport_cfg1(pp, busdev);
 		ret = axxia_pcie_cfg_write(pp->va_cfg1_base + address,
-			where, size, val);
+					   where, size, val);
 		axxia_pcie_prog_viewport_io_outbound(pp);
 	}
 	return ret;
 }
 
 static int axxia_pcie_valid_config(struct pcie_port *pp,
-	struct pci_bus *bus, int dev)
+				   struct pci_bus *bus, int dev)
 {
 	/* If there is no link, then there is no device */
 	if (bus->number != pp->root_bus_nr) {
@@ -365,11 +366,11 @@ static int axxia_pcie_valid_config(struct pcie_port *pp,
 
 
 /*
-* Read PCI config space
-*/
+ * Read PCI config space
+ */
 static int
 axxia_pciex_read_config(struct pci_bus *bus, unsigned int devfn,
-	int offset, int len, u32 *val) {
+			int offset, int len, u32 *val) {
 	struct pcie_port *pp = bus->sysdata;
 	int ret;
 
@@ -380,7 +381,7 @@ axxia_pciex_read_config(struct pci_bus *bus, unsigned int devfn,
 
 	if (bus->number != pp->root_bus_nr)
 		ret = axxia_pcie_rd_other_conf(pp, bus, devfn,
-			offset, len, val);
+					       offset, len, val);
 	else
 		ret = axxia_pcie_rd_own_conf(pp, offset, len, val);
 
@@ -388,11 +389,11 @@ axxia_pciex_read_config(struct pci_bus *bus, unsigned int devfn,
 }
 
 /*
-* Write PCI config space.
-*/
+ * Write PCI config space.
+ */
 static int
 axxia_pciex_write_config(struct pci_bus *bus, unsigned int devfn,
-	int offset, int len, u32 val)
+			 int offset, int len, u32 val)
 {
 	struct pcie_port *pp = bus->sysdata;
 	int ret;
@@ -402,7 +403,7 @@ axxia_pciex_write_config(struct pci_bus *bus, unsigned int devfn,
 
 	if (bus->number != pp->root_bus_nr)
 		ret = axxia_pcie_wr_other_conf(pp, bus, devfn,
-			offset, len, val);
+					       offset, len, val);
 	else
 		ret = axxia_pcie_wr_own_conf(pp, offset, len, val);
 
@@ -422,14 +423,14 @@ static struct irq_chip axxia_dw_msi_irq_chip = {
 };
 
 static int axxia_dw_pcie_msi_map(struct irq_domain *domain, unsigned int irq,
-	irq_hw_number_t hwirq)
+				 irq_hw_number_t hwirq)
 {
 	irq_set_chip_and_handler(irq, &axxia_dw_msi_irq_chip,
-		handle_simple_irq);
+				 handle_simple_irq);
 	irq_set_chip_data(irq, domain->host_data);
 	set_irq_flags(irq, IRQF_VALID);
 
-return 0;
+	return 0;
 }
 
 static const struct irq_domain_ops axxia_msi_domain_ops = {
@@ -443,7 +444,7 @@ void axxia_dw_pcie_msi_init(struct pcie_port *pp)
 
 	/* program the msi_data */
 	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_LO, 4,
-		virt_to_phys((void *)pp->msi_data));
+			       virt_to_phys((void *)pp->msi_data));
 	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4, 0);
 }
 
@@ -456,16 +457,16 @@ irqreturn_t axxia_dw_handle_msi_irq(struct pcie_port *pp)
 
 	for (i = 0; i < MAX_MSI_CTRLS; i++) {
 		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS + i * 12, 4,
-			(u32 *)&val);
+				       (u32 *)&val);
 		if (val) {
 			ret = IRQ_HANDLED;
 			pos = 0;
 			while ((pos = find_next_bit(&val, 32, pos)) != 32) {
 				irq = irq_find_mapping(pp->irq_domain,
-					i * 32 + pos);
+						       i * 32 + pos);
 				axxia_pcie_wr_own_conf(pp,
-				PCIE_MSI_INTR0_STATUS + i * 12,
-				4, 1 << pos);
+						       PCIE_MSI_INTR0_STATUS + i * 12,
+						       4, 1 << pos);
 				generic_handle_irq(irq);
 				pos++;
 			}
@@ -587,14 +588,14 @@ static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 		pr_info("RADM_INTA_ASSERTED\n");
 	/* Clear the legacy interrupts */
 	axxia_cc_gpreg_writel(pp, val,
-				CC_GPREG_EDG_IRQ_STAT);
+			      CC_GPREG_EDG_IRQ_STAT);
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_STAT_HI, &val);
 		if (val & MSI_ASSERTED) {
 			ret = axxia_dw_handle_msi_irq(pp);
 			axxia_cc_gpreg_writel(pp, MSI_ASSERTED,
-				CC_GPREG_EDG_IRQ_STAT_HI);
+					      CC_GPREG_EDG_IRQ_STAT_HI);
 			return ret;
 		}
 	}
@@ -614,7 +615,7 @@ static void axxia_dw_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
 
 
 static void clear_irq_range(struct pcie_port *pp, unsigned int irq_base,
-	unsigned int nvec, unsigned int pos)
+			    unsigned int nvec, unsigned int pos)
 {
 	unsigned int i;
 
@@ -647,7 +648,7 @@ static int assign_irq(int no_irqs, struct msi_desc *desc, int *pos)
 	struct pcie_port *pp = desc->dev->bus->sysdata;
 
 	pos0 = bitmap_find_free_region(pp->msi_irq_in_use, MAX_MSI_IRQS,
-	order_base_2(no_irqs));
+				       order_base_2(no_irqs));
 	if (pos0 < 0)
 		goto no_valid_irq;
 
@@ -679,8 +680,8 @@ no_valid_irq:
 }
 
 static int axxia_dw_msi_setup_irq(struct msi_controller *chip,
-	struct pci_dev *pdev,
-	struct msi_desc *desc)
+				  struct pci_dev *pdev,
+				  struct msi_desc *desc)
 {
 	int irq, pos;
 	struct msi_msg msg;
@@ -700,7 +701,7 @@ static int axxia_dw_msi_setup_irq(struct msi_controller *chip,
 }
 
 static void axxia_dw_msi_teardown_irq(struct msi_controller *chip,
-	unsigned int irq)
+				      unsigned int irq)
 {
 	struct irq_data *data = irq_get_irq_data(irq);
 	struct msi_desc *msi = irq_data_get_msi(data);
@@ -746,19 +747,19 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 			of_pci_range_to_resource(&range, np, &pp->io);
 			pp->io.name = "I/O";
 			pp->io.start = max_t(resource_size_t,
-				PCIBIOS_MIN_IO,
-				range.pci_addr + global_io_offset);
+					     PCIBIOS_MIN_IO,
+					     range.pci_addr + global_io_offset);
 			pp->io.end = min_t(resource_size_t,
-				IO_SPACE_LIMIT,
-				range.pci_addr + range.size
-				+ global_io_offset - 1);
+					   IO_SPACE_LIMIT,
+					   range.pci_addr + range.size
+					   + global_io_offset - 1);
 			pp->io_size = resource_size(&pp->io);
 			pp->io_bus_addr = range.pci_addr;
 			pp->io_base = range.cpu_addr;
 
 			/* Find the untranslated IO space address */
 			pp->io_mod_base = of_read_number(parser.range -
-				parser.np + na, ns);
+							 parser.np + na, ns);
 		}
 		if (restype == IORESOURCE_MEM) {
 			of_pci_range_to_resource(&range, np, &pp->mem);
@@ -768,7 +769,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 
 			/* Find the untranslated MEM space address */
 			pp->mem_mod_base = of_read_number(parser.range -
-				parser.np + na, ns);
+							  parser.np + na, ns);
 			pp->mem_mod_base = pp->mem.start;
 		}
 		if (restype == 0) {
@@ -787,7 +788,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		pp->busn.end = 0xff;
 		pp->busn.flags = IORESOURCE_BUS;
 		dev_dbg(pp->dev,
-		"failed to parse bus-range property: %d, using default %pR\n",
+			"failed to parse bus-range property: %d, using default %pR\n",
 			ret, &pp->busn);
 	}
 
@@ -798,7 +799,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 
 	if (!pp->va_cfg0_base) {
 		pp->va_cfg0_base = devm_ioremap(pp->dev, pp->cfg0_base,
-			pp->cfg0_size);
+						pp->cfg0_size);
 		if (!pp->va_cfg0_base) {
 			dev_err(pp->dev, "error with ioremap in function\n");
 			return -ENOMEM;
@@ -807,7 +808,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 
 	if (!pp->va_cfg1_base) {
 		pp->va_cfg1_base = devm_ioremap(pp->dev, pp->cfg1_base,
-			pp->cfg1_size);
+						pp->cfg1_size);
 		if (!pp->va_cfg1_base) {
 			dev_err(pp->dev, "error with ioremap\n");
 			return -ENOMEM;
@@ -830,7 +831,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		return -ENODEV;
 	}
 	ret = devm_request_irq(pp->dev, pp->irq[0], axxia_pcie_irq_handler,
-		IRQF_SHARED, "axxia-pcie", pp);
+			       IRQF_SHARED, "axxia-pcie", pp);
 	if (ret) {
 		dev_err(pp->dev, "failed to request irq\n");
 		return ret;
@@ -838,8 +839,8 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		pp->irq_domain = irq_domain_add_linear(pp->dev->of_node,
-			MAX_MSI_IRQS, &axxia_msi_domain_ops,
-			&axxia_dw_pcie_msi_chip);
+						       MAX_MSI_IRQS, &axxia_msi_domain_ops,
+						       &axxia_dw_pcie_msi_chip);
 		if (!pp->irq_domain) {
 			dev_err(pp->dev, "irq domain init failed\n");
 			return -ENXIO;
@@ -855,7 +856,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 	axxia_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
 
 	bus = pci_create_root_bus(&pdev->dev, pp->root_bus_nr,
-		&axxia_pciex_pci_ops, pp, &res);
+				  &axxia_pciex_pci_ops, pp, &res);
 	if (!bus)
 		return 1;
 #ifdef CONFIG_PCI_MSI
@@ -881,9 +882,10 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 	int ret;
 	struct device_node *pei_control;
 	const unsigned int *control;
+	const unsigned int *initialized;
 
 	axxia_pcie = devm_kzalloc(&pdev->dev, sizeof(*axxia_pcie),
-				GFP_KERNEL);
+				  GFP_KERNEL);
 	if (!axxia_pcie)
 		return -ENOMEM;
 
@@ -920,14 +922,27 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 		}
 
 		axxia_pcie->control = be32_to_cpu(*control);
-		control_set = 1;
 		control_value = axxia_pcie->control;
+		control_set = 1;
 
-		if (0 != pei_setup(axxia_pcie->control)) {
-			pr_err("pcie-axxia: PEI setup failed!\n");
+		/*
+		  Previously, if the boot loader set 'control', it did
+		  not initialized the PEI.  Start with that
+		  assumption.
+		*/
 
-			return -EINVAL;
-		}
+		axxia_pcie->initialized = 1;
+		initialized = of_get_property(pei_control, "initialized", NULL);
+
+		if (NULL != initialized)
+			axxia_pcie->initialized = be32_to_cpu(*initialized);
+
+		if (0 == axxia_pcie->initialized)
+			if (0 != pei_setup(axxia_pcie->control)) {
+				pr_err("pcie-axxia: PEI setup failed!\n");
+
+				return -EINVAL;
+			}
 	}
 
 	ret = axxia_pcie_host_init(pp);
@@ -960,16 +975,18 @@ static struct platform_driver axxia_pcie_driver = {
 	},
 };
 
-/* Axxia PCIe driver does not allow module unload */
+/*
+  ------------------------------------------------------------------------------
+  axxia_pcie_reset
+*/
 
-static ssize_t
-axxia_pcie_reset_trigger(struct file *file, const char __user *buf,
-			 size_t count, loff_t *ppos)
+int
+axxia_pcie_reset(void)
 {
 	unsigned int val;
 
-	if (0 == control_set)
-		return count;
+	if (0 == control_set || NULL == _pp)
+		return -1;
 
 	pei_setup(control_value);
 
@@ -979,8 +996,21 @@ axxia_pcie_reset_trigger(struct file *file, const char __user *buf,
 	axxia_cc_gpreg_writel(_pp, 0x1, PEI_GENERAL_CORE_CTL_REG);
 	msleep(100);
 
+	return 0;
+}
+
+EXPORT_SYMBOL(axxia_pcie_reset);
+
+static ssize_t
+axxia_pcie_reset_trigger(struct file *file, const char __user *buf,
+			 size_t count, loff_t *ppos)
+{
+	axxia_pcie_reset();
+
 	return count;
 }
+
+/* Axxia PCIe driver does not allow module unload */
 
 static int pcie_init(void)
 {
@@ -996,7 +1026,7 @@ static const struct file_operations axxia_pcie_reset_proc_ops = {
 static int pcie2_init(void)
 {
 	if (0 != proc_create("driver/axxia_pcie_reset", S_IWUSR, NULL,
-			    &axxia_pcie_reset_proc_ops)) {
+			     &axxia_pcie_reset_proc_ops)) {
 		pr_err("Could not create /proc/driver/axxia_pcie_reset!\n");
 
 		return -1;
@@ -1004,8 +1034,9 @@ static int pcie2_init(void)
 
 	return 0;
 }
+
 device_initcall(pcie2_init);
 
-MODULE_AUTHOR("Sangeetha Rao <sangeetha.rao@intel.com>");
+MODULE_AUTHOR("John Jacques <john.jacques@intel.com>");
 MODULE_DESCRIPTION("Axxia PCIe host controller driver");
 MODULE_LICENSE("GPL v2");
