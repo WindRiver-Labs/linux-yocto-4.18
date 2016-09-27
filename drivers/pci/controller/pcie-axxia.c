@@ -847,12 +847,12 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		dev_warn(pp->dev, "axxia_pcie_establish_link failed\n");
 
 	/* Legacy interrupts */
-	pp->irq[0] = platform_get_irq(pdev, 0);
-	if (!pp->irq[0]) {
+	pp->irqs = platform_get_irq(pdev, 0);
+	if (!pp->irqs) {
 		dev_err(pp->dev, "failed to get irq\n");
 		return -ENODEV;
 	}
-	ret = devm_request_irq(pp->dev, pp->irq[0], axxia_pcie_irq_handler,
+	ret = devm_request_irq(pp->dev, pp->irqs, axxia_pcie_irq_handler,
 			       IRQF_SHARED, "axxia-pcie", pp);
 	if (ret) {
 		dev_err(pp->dev, "failed to request irq\n");
