@@ -50,7 +50,8 @@ struct pcie_port {
 	struct resource		busn;
 	u32			lanes;
 	struct pcie_host_ops	*ops;
-	int			irq[34];
+	int			irqs; /* removed 34 not sure why it's there
+					 [34]; */
 	unsigned long		msi_data;
 	struct irq_domain	*irq_domain;
 	struct msi_controller chip;
