@@ -89,6 +89,20 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 }
 
 /**
+ * pcibios_check_service_irqs - check irqs in the device tree
+ * @dev: PCI Express port to handle
+ * @irqs: Array of irqs to populate
+ * @mask: Bitmask of port capabilities returned by get_port_device_capability()
+ *
+ * Return value: 0 means no service irqs in the device tree
+ *
+ */
+int __weak pcibios_check_service_irqs(struct pci_dev *dev, int *irqs, int mask)
+{
+	return 0;
+}
+
+/**
  * pcie_port_enable_irq_vec - try to set up MSI-X or MSI as interrupt mode
  * for given port
  * @dev: PCI Express port to handle
@@ -161,9 +175,24 @@ static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 static int pcie_init_service_irqs(struct pci_dev *dev, int *irqs, int mask)
 {
 	int ret, i;
+	int irq = -1;
 
 	for (i = 0; i < PCIE_PORT_DEVICE_MAXSERVICES; i++)
 		irqs[i] = -1;
+
+	/* Check if some platforms owns independent irq pins for AER/PME etc.
+	 * Some platforms may own independent AER/PME interrupts and set
+	 * them in the device tree file.
+	 */
+	ret = pcibios_check_service_irqs(dev, irqs, mask);
+	if (ret) {
+		if (dev->irq)
+			irq = dev->irq;
+		for (i = 0; i < PCIE_PORT_DEVICE_MAXSERVICES; i++)
+			if (irqs[i] == -1 && i != PCIE_PORT_SERVICE_VC_SHIFT)
+				irqs[i] = irq;
+		return 0;
+	}
 
 	/*
 	 * If we support PME but can't use MSI/MSI-X for it, we have to
