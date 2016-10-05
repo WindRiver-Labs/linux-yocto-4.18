@@ -853,7 +853,7 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		return -ENODEV;
 	}
 	ret = devm_request_irq(pp->dev, pp->irqs, axxia_pcie_irq_handler,
-			       IRQF_SHARED, "axxia-pcie", pp);
+			       IRQF_SHARED | IRQF_NO_THREAD, "axxia-pcie", pp);
 	if (ret) {
 		dev_err(pp->dev, "failed to request irq\n");
 		return ret;
