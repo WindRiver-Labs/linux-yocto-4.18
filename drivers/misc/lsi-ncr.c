@@ -369,17 +369,12 @@ ncr_0x115(unsigned int region, unsigned int offset, int write,
 	indcmd.bits.htrans = 2;
 	indcmd.bits.haddr = offset;
 
-	if (0 != is_5500) {
-		BUG();
-	} else {
-		if (0 == NCP_TARGET_ID(region))
-			indcmd.bits.hsize = 2;
-		else
-			indcmd.bits.hsize = 1;
+	if (0 == NCP_TARGET_ID(region))
+		indcmd.bits.hsize = 2;
+	else
+		indcmd.bits.hsize = 1;
 
-		base = 0x10000ULL * (0x14 + NCP_TARGET_ID(region));
-	}
-
+	base = 0x10000ULL * (0x14 + NCP_TARGET_ID(region));
 	mdelay(50);
 
 	if (0 != write)
@@ -402,6 +397,77 @@ ncr_0x115(unsigned int region, unsigned int offset, int write,
 
 	if (0 == write)
 		*value = readl(apb2ser0 + base + 8);
+
+	return 0;
+}
+
+/*
+  ------------------------------------------------------------------------------
+  ncr_0x115_5500
+*/
+
+static int
+ncr_0x115_5500(unsigned int region, unsigned int offset, int write,
+	       unsigned int *value)
+{
+	unsigned int control;
+	void __iomem *base;
+	unsigned wfc_timeout = 400000;
+
+	if (0xffff < offset)
+		return -1;
+
+	switch (NCP_TARGET_ID(region)) {
+	case 0:
+		base = (apb2ser0 + 0x1e0);
+		break;
+	case 1:
+		base = (apb2ser0 + 0x1f0);
+		break;
+	case 2:
+		base = (apb2ser0 + 0x200);
+		break;
+	case 3:
+		base = (apb2ser0 + 0x210);
+		break;
+	case 4:
+		base = (apb2ser0 + 0x220);
+		break;
+	case 5:
+		base = (apb2ser0 + 0x230);
+		break;
+	default:
+		return -1;
+	}
+
+	if ((NCP_TARGET_ID(region) == 0x1) ||
+	    (NCP_TARGET_ID(region) == 0x4))
+		control = 0x84c00000;
+	else
+		control = 0x85400000;
+
+	if (0 != write)
+		control |= 0x40000000;
+
+	writel((control + offset), (base + 4));
+
+	do {
+		--wfc_timeout;
+		*((unsigned long *)value) = readl(base + 4);
+	} while (0 != (*((unsigned long *)value) & 0x80000000) &&
+		 0 < wfc_timeout);
+
+	if (0 == wfc_timeout)
+		return -1;
+
+	if (0 == write) {
+		if ((NCP_TARGET_ID(region) == 0x1) ||
+		    (NCP_TARGET_ID(region) == 0x4)) {
+			*((unsigned short *)value) = readl(base + 8);
+		} else {
+			*((unsigned long *)value) = readl(base + 8);
+		}
+	}
 
 	return 0;
 }
@@ -484,8 +550,13 @@ __ncr_read(struct ncr_io_fns *io_fn,
 	      region, NCP_NODE_ID(region), NCP_TARGET_ID(region));
 
 	if (0x115 == NCP_NODE_ID(region)) {
-		if (0 != ncr_0x115(region, address, 0, buffer))
-			return -1;
+		if (0 != is_5500) {
+			if (0 != ncr_0x115_5500(region, address, 0, buffer))
+				return -1;
+		} else {
+			if (0 != ncr_0x115(region, address, 0, buffer))
+				return -1;
+		}
 	} else if (0x153 == NCP_NODE_ID(region) ||
 		   0x155 == NCP_NODE_ID(region) ||
 		   0x156 == NCP_NODE_ID(region) ||
@@ -641,8 +712,13 @@ __ncr_write(struct ncr_io_fns *io_fn,
 		return -1;
 
 	if (0x115 == NCP_NODE_ID(region)) {
-		if (0 != ncr_0x115(region, address, 1, buffer))
-			return -1;
+		if (0 != is_5500) {
+			if (0 != ncr_0x115_5500(region, address, 1, buffer))
+				return -1;
+		} else {
+			if (0 != ncr_0x115(region, address, 1, buffer))
+				return -1;
+		}
 	} else if (0x153 == NCP_NODE_ID(region) ||
 		   0x155 == NCP_NODE_ID(region) ||
 		   0x156 == NCP_NODE_ID(region) ||
