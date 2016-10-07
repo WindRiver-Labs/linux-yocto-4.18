@@ -1255,6 +1255,10 @@ static int alloc_ob_dme_shared(struct rio_priv *priv,
 		dw0 = 0;
 		if (!priv->intern_msg_desc) {
 			dw1 = 0;
+			if (axxia_rio_is_x9()) {
+				dw0 = (u32)(desc->msg_phys >> 38) & 0x3;
+				dw0 = (u32)(dw0 << 12);
+			}
 			dw2 = (u32)(desc->msg_phys >>  8) & 0x3fffffff;
 			*((u32 *)DESC_TABLE_W0_MEM(me, i)) = dw0;
 			*((u32 *)DESC_TABLE_W1_MEM(me, i)) = dw1;
@@ -1287,8 +1291,17 @@ static int alloc_ob_dme_shared(struct rio_priv *priv,
 		desc_chn_start =
 			(uintptr_t)virt_to_phys(me->descriptors);
 
+		if (axxia_rio_is_x9()) {
+			dw0  = *((u32 *)DESC_TABLE_W0_MEM(me, i));
+			dw0 |= DME_DESC_DW0_NXT_DESC_VALID;
+			dw3 = (u32)(desc_chn_start >> 38) & 0x3;
+			dw0 |= (dw3 << 14);
+		}
 		dw2  = *((u32 *)DESC_TABLE_W2_MEM(me, i));
-		dw2 |= (desc_chn_start >> 4) & 0xc0000000;
+		if (axxia_rio_is_x9())
+			dw2 |= (desc_chn_start >> 6) & 0xc0000000;
+		else
+			dw2 |= (desc_chn_start >> 4) & 0xc0000000;
 		dw3  = desc_chn_start >> 4;
 		*((u32 *)DESC_TABLE_W0_MEM(me, i)) = dw0;
 		*((u32 *)DESC_TABLE_W2_MEM(me, i)) = dw2;
@@ -1803,7 +1816,13 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 				/* Reference AXX5500 Peripheral Subsystem
 				 * Multicore Reference Manual, January 2013,
 				 * Chapter 5, p. 584 */
-				dw1 |= 0;
+				if (axxia_rio_is_x9()) {
+					dw2 = (u32)(desc->msg_phys >> 8) &
+								0xc0000000;
+					dw2 = (dw2 >> 9);
+					dw1 |= dw2;
+				} else
+					dw1 |= 0;
 				dw2  = (u32)(desc->msg_phys >> 8) & 0x3fffffff;
 				*((u32 *)DESC_TABLE_W0_MEM(me,
 						 i)) = dw0;
@@ -1839,11 +1858,21 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		if (!priv->intern_msg_desc) {
 			desc_chn_start =
 				(uintptr_t)virt_to_phys(me->descriptors);
-
+			if (axxia_rio_is_x9()) {
+				dw1  = *((u32 *)DESC_TABLE_W1_MEM(me, i));
+				dw2  = (u32)(desc_chn_start >> 8) & 0xc0000000;
+				dw2  = (u32)(dw2 >> 11);
+				dw1 |= dw2;
+			}
 			dw2  = *((u32 *)DESC_TABLE_W2_MEM(me, i));
-			dw2 |= (desc_chn_start >> 4) & 0xc0000000;
+			if (axxia_rio_is_x9())
+				dw2 |= (desc_chn_start >> 6) & 0xc0000000;
+			else
+				dw2 |= (desc_chn_start >> 4) & 0xc0000000;
 			dw3  = desc_chn_start >> 4;
 			*((u32 *)DESC_TABLE_W0_MEM(me, i)) = dw0;
+			if (axxia_rio_is_x9())
+				*((u32 *)DESC_TABLE_W1_MEM(me, i)) = dw1;
 			*((u32 *)DESC_TABLE_W2_MEM(me, i)) = dw2;
 			*((u32 *)DESC_TABLE_W3_MEM(me, i)) = dw3;
 		} else {
@@ -1874,6 +1903,8 @@ static int open_inb_mbox(struct rio_mport *mport, void *dev_id,
 			   DME_WAKEUP                     |
 			   DME_ENABLE;
 		dme_ctrl |= (u32)((desc_chn_start >> 6) & 0xc0000000);
+		if (axxia_rio_is_x9())
+			dme_ctrl |= (u32)((desc_chn_start >> 12) & 0x0c000000);
 		desc_addr  = (u32)desc_chn_start >> 4;
 
 		me->dme_ctrl = dme_ctrl;
@@ -2289,7 +2320,7 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 	struct rio_tx_mbox *mb = priv->ob_mbox[mbox_dest];
 	struct rio_msg_dme *me;
 	struct rio_msg_desc *desc;
-	u32 dw2_r, dw2;
+	u32 dw2_r, dw2, dw0_r = 0, dw0_tmp;
 	u32 idx;
 	u32 seg;
 	u32 lock = 0;
@@ -2312,8 +2343,8 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 
 
 	/* Copy and clear rest of buffer */
-	if ((u32)buffer > PAGE_OFFSET) {
-		if ((u32)buffer & 0xFF) {
+	if ((uintptr_t)buffer > PAGE_OFFSET) {
+		if ((uintptr_t)buffer & 0xFF) {
 			if (unlikely(desc->msg_virt == NULL)) {
 				rc = -ENXIO;
 				goto done;
@@ -2350,12 +2381,25 @@ int axxia_add_outb_message(struct rio_mport *mport, struct rio_dev *rdev,
 		DME_DESC_DW1_MBOX(mbox_dest) |
 		DME_DESC_DW1_LETTER(letter);
 	idx = me->write_idx;
+	if (axxia_rio_is_x9())
+		dw0_r  = *((u32 *)DESC_TABLE_W0_MEM(me, idx));
 	dw2_r  = *((u32 *)DESC_TABLE_W2_MEM(me, idx));
-	if (cp)
+	if (cp) {
+		if (axxia_rio_is_x9()) {
+			dw0_tmp = (u32)(desc->msg_phys >> 38) & 0x3;
+			dw0 |= (dw0_tmp << 12);
+		}
 		dw2 = (u32)(desc->msg_phys >> 8) & 0x3fffffff;
-	else
+	} else {
+		if (axxia_rio_is_x9()) {
+			dw0_tmp = (u32)(virt_to_phys(buffer) >> 38) & 0x3;
+			dw0 |= (dw0_tmp << 12);
+		}
 		dw2 = (u32)(virt_to_phys(buffer) >> 8) & 0x3fffffff;
+	}
 	dw2 = (dw2_r & 0xc0000000) | dw2;
+	if (axxia_rio_is_x9())
+		dw0 |= (dw0_r & 0x0000c000);
 	me->write_idx = (me->write_idx+1) & (me->entries - 1);
 	*((u32 *)DESC_TABLE_W2_MEM(me, idx)) = dw2;
 	*((u32 *)DESC_TABLE_W1_MEM(me, idx)) = dw1;
@@ -2489,7 +2533,7 @@ int axxia_add_inb_buffer(struct rio_mport *mport, int mbox, void *buf)
 	int rc = 0;
 	struct rio_msg_dme *me;
 	struct rio_msg_desc *desc;
-	u32 dw0, dw2, dw2_r;
+	u32 dw0, dw2, dw2_r, dw1 = 0, dw1_r;
 
 	mb = (priv->ib_mbox[mbox]);
 	if (!mb)
@@ -2510,17 +2554,35 @@ int axxia_add_inb_buffer(struct rio_mport *mport, int mbox, void *buf)
 		goto busy;
 	}
 	mb->virt_buffer[0][me->write_idx] = buf;
-	if (!((u32)buf & 0xFF)) {
+	if (!((uintptr_t)buf & 0xFF)) {
+		if (axxia_rio_is_x9()) {
+			dw1_r = *((u32 *)DESC_TABLE_W1_MEM(me, me->write_idx));
+			dw2 = (u32)(virt_to_phys(buf) >> 8) & 0xc0000000;
+			dw2 = (dw2 >> 9);
+			dw1 = dw1_r & 0xff9fffff;
+			dw1 |= dw2;
+		}
 		dw2_r = *((u32 *)DESC_TABLE_W2_MEM(me, me->write_idx));
 		dw2 = (u32)(virt_to_phys(buf) >> 8) & 0x3fffffff;
 		dw2 = (dw2_r & 0xc0000000) | dw2;
 		*((u32 *)DESC_TABLE_W2_MEM(me, me->write_idx)) = dw2;
+		if (axxia_rio_is_x9())
+			*((u32 *)DESC_TABLE_W1_MEM(me, me->write_idx)) = dw1;
 	} else {
 		desc = &me->desc[me->write_idx];
+		if (axxia_rio_is_x9()) {
+			dw1_r = *((u32 *)DESC_TABLE_W1_MEM(me, me->write_idx));
+			dw2 = (u32)(desc->msg_phys >> 8) & 0xc0000000;
+			dw2 = (dw2 >> 9);
+			dw1 = dw1_r & 0xff9fffff;
+			dw1 |= dw2;
+		}
 		dw2_r = *((u32 *)DESC_TABLE_W2_MEM(me, me->write_idx));
 		dw2 = (u32)(desc->msg_phys >> 8) & 0x3fffffff;
 		dw2 = (dw2_r & 0xc0000000) | dw2;
 		*((u32 *)DESC_TABLE_W2_MEM(me, me->write_idx)) = dw2;
+		if (axxia_rio_is_x9())
+			*((u32 *)DESC_TABLE_W1_MEM(me, me->write_idx)) = dw1;
 	}
 
 	AXXIA_RIO_SYSMEM_BARRIER();
@@ -2600,7 +2662,7 @@ void *axxia_get_inb_message(struct rio_mport *mport, int mbox, int letter,
 				goto err;
 			}
 
-			if ((u32)buf & 0xFF) {
+			if ((uintptr_t)buf & 0xFF) {
 				AXXIA_RIO_SYSMEM_BARRIER();
 				memcpy(buf, desc->msg_virt, buf_sz);
 			}

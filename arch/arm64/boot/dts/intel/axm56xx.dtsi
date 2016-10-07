@@ -335,6 +335,38 @@
 			status = "disabled";
 		};
 
+		rio0: rapidio@0xb000000000 {
+			index = <0>;
+			compatible = "intel, axxia-rapidio";
+			device_type = "rapidio";
+			reg = <0xa0 0x00020000 0 0x00001000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges = <0x0 0x0 0x00b0 0x00000000 0x0 0x40000000>;
+			linkdown-reset = <0x0200 0x100 0x00a0 0x10000000
+							0x0 0x000010000>;
+			interrupts = <GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>;
+			outb-dmes = <2 0x00000003 1 0x00000000>;
+			enable_ds = <1>;
+			status = "disabled";
+		};
+
+		rio1: rapidio@0xb800000000 {
+			index = <1>;
+			compatible = "intel, axxia-rapidio";
+			device_type = "rapidio";
+			reg = <0xa0 0x00030000 0 0x00001000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges = <0x0 0x0 0x00b8 0x00000000 0x0 0x40000000>;
+			linkdown-reset = <0x0200 0x100 0x00a0 0x10000000
+							0x0 0x000010000>;
+			interrupts = <GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>;
+			outb-dmes = <2 0x00000003 1 0x00000000>;
+			enable_ds = <1>;
+			status = "disabled";
+		};
+
 		amba {
 			compatible = "arm,amba-bus";
 			#address-cells = <2>;
