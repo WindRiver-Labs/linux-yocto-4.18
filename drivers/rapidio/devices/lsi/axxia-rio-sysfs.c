@@ -254,8 +254,8 @@ static ssize_t axxia_rio_tmo_show(struct device *dev,
 	str += sprintf(str, "RAB_APIO_STAT (%p)\t%8.8x\n",
 		       (void *)RAB_APIO_STAT, stat);
 	axxia_local_config_read(priv, RIO_ESCSR(priv->port_ndx), &stat);
-	str += sprintf(str, "PNESCSR (%p)\t%8.8x\n",
-		       (void *)RIO_ESCSR(priv->port_ndx), stat);
+	str += sprintf(str, "PNESCSR (%d)\t%8.8x\n",
+		       RIO_ESCSR(priv->port_ndx), stat);
 
 	return str - buf;
 }

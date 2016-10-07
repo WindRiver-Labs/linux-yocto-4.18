@@ -33,53 +33,6 @@
 #include <mach/rio.h>
 
 /**
- * axxia_rapidio_board_init -
- *   Perform board-/controller-specific initialization to support
- *   use of RapidIO busses
- *
- * @dev:     [IN] RIO platform device
- * @ndx:     [IN] Which instance of SRIOC driver needs support
- * @port_ndx: [OUT] Which port to use for the specified controller
- *
- * Returns 0 on success or an error code.
- */
-
-int
-axxia_rapidio_board_init(struct platform_device *dev, int dev_num, int *port_ndx)
-{
-	/* Reset the RIO port id to zero for this device */
-	void __iomem *gpreg_base = ioremap(0x2010094000, 0x1000);
-	unsigned long reg = 0;
-
-	if (gpreg_base == NULL)
-		return -EFAULT;
-
-	reg = inl((unsigned long int)(gpreg_base + 0x60));
-
-	reg &= ~(0xf << (dev_num * 4));
-
-	outl_p(reg, (unsigned long int)(gpreg_base + 0x60));
-
-	(*port_ndx) = 0;
-
-	/* Verify that this device is actually enabled */
-	if (NULL !=
-	    of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) {
-		ncr_read(NCP_REGION_ID(0x115, 0), 0x23c, 4, &reg);
-
-		if ((reg & (1 << (21+(dev_num*4)))) == 0) {
-			dev_dbg(&dev->dev, "%s: SRIO%d link not ready\n",
-				dev->dev.of_node->full_name, dev_num);
-			return -ENXIO;
-		}
-	}
-
-	iounmap(gpreg_base);
-
-	return 0;
-}
-
-/**
  * axxia_rio_fault -
  *   Intercept SRIO bus faults due to unimplemented register locations.
  *   Return 0 to keep 'reads' alive.

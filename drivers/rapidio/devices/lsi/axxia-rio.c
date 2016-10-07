@@ -33,8 +33,8 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
+#include <linux/lsi-ncr.h>
 
-#include <mach/rio.h>
 #include "axxia-rio.h"
 #include "axxia-rio-irq.h"
 
@@ -60,6 +60,93 @@ static DEFINE_SPINLOCK(rio_io_lock);
 #define RIO_NWRITE              0x20
 #define RIO_NWRITE_R            0x40
 #define RIO_SWRITE              0x80
+
+int
+axxia_rio_is_x9(void)
+{
+	if (of_find_compatible_node(NULL, NULL, "lsi,axm5616"))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * axxia_rapidio_board_init -
+ *   Perform board-/controller-specific initialization to support
+ *   use of RapidIO busses
+ *
+ * @dev:     [IN] RIO platform device
+ * @ndx:     [IN] Which instance of SRIOC driver needs support
+ * @port_ndx: [OUT] Which port to use for the specified controller
+ *
+ * Returns 0 on success or an error code.
+ */
+int
+axxia_rapidio_board_init(struct platform_device *dev, int dev_num,
+						int *port_ndx)
+{
+	void __iomem *gpreg_base;
+	unsigned long reg0, reg1;
+	unsigned long reg = 0;
+
+	if (!axxia_rio_is_x9()) {
+		/* Reset the RIO port id to zero for this device */
+		gpreg_base = ioremap(0x2010094000, 0x1000);
+		if (gpreg_base == NULL)
+			return -EFAULT;
+
+		reg = inl((unsigned long int)(gpreg_base + 0x60));
+
+		reg &= ~(0xf << (dev_num * 4));
+
+		outl_p(reg, (unsigned long int)(gpreg_base + 0x60));
+
+		(*port_ndx) = 0;
+
+		/* Verify that this device is actually enabled */
+		if (NULL !=
+		of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) {
+#ifdef CONFIG_LSI_NCR
+			ncr_read(NCP_REGION_ID(0x115, 0), 0x23c, 4, &reg);
+
+			if ((reg & (1 << (21+(dev_num*4)))) == 0) {
+				dev_dbg(&dev->dev, "%s: SRIO%d link not ready\n",
+					dev->dev.of_node->full_name, dev_num);
+				return -ENXIO;
+			}
+#endif
+		}
+
+		iounmap(gpreg_base);
+	} else {
+
+		ncr_read(NCP_REGION_ID(0x115, 0), 0x184, 4, &reg0);
+		ncr_read(NCP_REGION_ID(0x115, 0), 0x18c, 4, &reg1);
+		ncr_read(NCP_REGION_ID(0x115, 0), 0x0, 4, &reg);
+
+		dev_info(&dev->dev, "%s: 0x184 = %lx 0x18c = %lx 0x0 = %lx\n",
+			dev->dev.of_node->full_name, reg0, reg1, reg);
+		if (dev_num == 0) {
+			if ((reg & (1 << 3)) == 0) {
+				dev_emerg(&dev->dev, "%s: SRIO%d link not ready\n",
+					dev->dev.of_node->full_name, dev_num);
+				return -ENXIO;
+			}
+			return 0;
+		}
+		if (dev_num == 1) {
+			if ((reg & (1 << 10)) == 0) {
+				dev_emerg(&dev->dev, "%s: SRIO%d link not ready\n",
+					dev->dev.of_node->full_name, dev_num);
+				return -ENXIO;
+			}
+			return 0;
+		}
+		return -ENXIO;
+	}
+	return 0;
+}
+
 /**
  * NOTE:
  *
@@ -628,7 +715,8 @@ static int axxia_rio_req_outb_region(struct rio_mport *mport,
 	}
 
 	/* Set base address for window on PIO side */
-	wabar = AXI_BASE_HIGH(riores->start);
+	if (!axxia_rio_is_x9())
+		wabar = AXI_BASE_HIGH(riores->start);
 	wabar |= AXI_BASE(riores->start);
 	__rio_local_write_config_32(mport, RAB_APIO_AMAP_ABAR(win), wabar);
 
@@ -1771,6 +1859,7 @@ static int axxia_of_rio_rpn_probe(struct platform_device *dev)
 
 static const struct of_device_id axxia_of_rio_rpn_ids[] = {
 	{ .compatible = "axxia, rapidio-delta", },
+	{ .compatible = "intel, axxia-rapidio", },
 	{ .compatible = "acp, rapidio-delta", },
 	{},
 };

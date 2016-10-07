@@ -18,24 +18,6 @@
  */
 #ifndef __ASM__ARCH_AXXIA_RAPIDIO_H
 #define __ASM__ARCH_AXXIA_RAPIDIO_H
-#include <linux/io.h>
-
-#define IN_SRIO8(a, v, ec)      do {            \
-	v = ioread8(a); ec = 0;  \
-	} while (0)
-#define IN_SRIO16(a, v, ec)     do {            \
-	v = ioread16be(a); ec = 0;  \
-	} while (0)
-#define IN_SRIO32(a, v, ec)     do {            \
-	v = ioread32be(a); ec = 0;  \
-	} while (0)
-
-#define OUT_SRIO8(a, v)         iowrite8(v, a)
-#define OUT_SRIO16(a, v)        iowrite16be(v, a)
-#define OUT_SRIO32(a, v)        iowrite32be(v, a)
-
-int axxia_rapidio_board_init(struct platform_device *dev, int devnum,
-							int *portndx);
 
 int axxia_rapidio_init(void);
 
