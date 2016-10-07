@@ -491,6 +491,14 @@ config LSI_NCR
 	help
 	  Provides access to the LSI Axxia NCR bus.
 
+config ARCH_AXXIA_NCR_RESET_CHECK
+	bool "Axxia NCR driver reset checking"
+	depends on LSI_NCR
+	help
+	  Enabling this option will allow the Axxia NCA Config Ring driver
+	  to coordinate with the RTE ncp driver to detect when NCA hardware
+	  is being held in reset.
+
 config LSI_SMMON
 	tristate "LSI System Memory Monitor"
 	depends on ARCH_AXXIA || ACP

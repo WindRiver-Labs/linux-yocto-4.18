@@ -38,6 +38,7 @@
 #include <linux/sizes.h>
 #include <linux/pmu.h>
 #include <linux/kexec.h>
+#include <linux/lsi-ncr.h>
 #ifdef CONFIG_ARM_ARCH_TIMER
 #include <asm/arch_timer.h>
 #endif
@@ -62,11 +63,6 @@ static const char *axxia_dt_match[] __initconst = {
 
 static void __iomem *base;
 void __iomem *dickens;
-
-#ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
-int ncr_reset_active;
-EXPORT_SYMBOL(ncr_reset_active);
-#endif
 
 static void set_l3_pstate(u32 newstate)
 {
