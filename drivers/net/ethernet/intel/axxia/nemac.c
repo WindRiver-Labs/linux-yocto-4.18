@@ -109,6 +109,14 @@ static void desc_set_ctrl(struct dma_desc *desc, u32 ctrl)
 
 static void desc_set_xferlen(struct dma_desc *desc, u32 len)
 {
+	/* 'len' is increased to the nearest multiple of 64 bytes. The
+	  current understaning of the hardware is that this will not
+	  result in the hardware reading memory beyond 'pdulen'.
+	*/
+
+	if (0 != (len % 64))
+		len += 64 - (len % 64);
+
 	desc->ctrl = ((desc->ctrl & ~D_XFER_MASK) |
 		      ((u64)len << D_XFER_SHIFT));
 }
@@ -568,7 +576,12 @@ static int nemac_open(struct net_device *ndev)
 	pr_debug("[%s] (phy %s)\n",
 		 priv->phy_dev->drv->name, dev_name(&priv->phy_dev->dev));
 
-	nemac_set(priv, NEM_DMA_CTL, DMACTL_EN | DMACTL_FORCE_RX_ORDER);
+	nemac_clr(priv, NEM_DMA_CTL,
+		  DMACTL_TX_TAIL_PTR_EN | DMACTL_RX_TAIL_PTR_EN);
+	nemac_set(priv, NEM_DMA_CTL,
+		  DMACTL_EN |
+		  DMACTL_RX_FORCE_ORDERING | DMACTL_TX_FORCE_ORDERING |
+		  DMACTL_TX_DISABLE_PREALIGN | DMACTL_RX_DISABLE_PREALIGN);
 	napi_enable(&priv->napi);
 	phy_start(priv->phy_dev);
 
@@ -610,6 +623,7 @@ static netdev_tx_t nemac_xmit(struct sk_buff *skb, struct net_device *ndev)
 	desc_set_pdulen(desc, skb->len);
 	desc_set_bufptr(desc, addr);
 	pr_desc("TX", desc);
+	mb();		   /* Make sure the descriptor is in memory */
 	writel(queue_inc_head(&priv->txq), priv->reg + NEM_DMA_TXHEAD_PTR);
 	spin_unlock_irqrestore(&priv->txlock, flags);
 	ndev->trans_start = jiffies;
@@ -727,6 +741,7 @@ nemac_tx_cleanup(struct nemac_priv *priv)
 		dma_unmap_single(priv->dev, desc_get_bufptr(desc),
 				 desc_get_xferlen(desc), DMA_TO_DEVICE);
 		dev_kfree_skb_any(skb);
+		mb();
 		queue_inc_tail(&priv->txq);
 		pr_queue("TX-DONE", &priv->txq);
 		++complete;
@@ -750,6 +765,7 @@ nemac_rx_packet(struct nemac_priv *priv)
 	desc = queue_get_tail(&priv->rxq);
 	if (!desc)
 		return -1;
+	mb();
 	queue_inc_tail(&priv->rxq);
 
 	dma_unmap_single(priv->dev, desc_get_bufptr(desc),
@@ -779,6 +795,7 @@ nemac_rx_packet(struct nemac_priv *priv)
 		if (!skb)
 			break;
 		queue_set_skb(&priv->rxq, desc, skb);
+		mb();
 		writel(queue_inc_head(&priv->rxq),
 		       priv->reg + NEM_DMA_RXHEAD_PTR);
 	}
@@ -965,6 +982,7 @@ nemac_setup_descriptors(struct nemac_priv *priv)
 
 		skb = nemac_alloc_rx_buf(priv, desc);
 		queue_set_skb(&priv->rxq, desc, skb);
+		mb();
 		writel(queue_inc_head(&priv->rxq),
 		       priv->reg + NEM_DMA_RXHEAD_PTR);
 		++i;
