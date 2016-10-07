@@ -76,6 +76,9 @@ static unsigned long ncr_spin_flags;
  * is some valid case where this may occur we can re-implement
  * this as a wait loop.
  */
+int ncr_reset_active;
+EXPORT_SYMBOL(ncr_reset_active);
+
 #define AXXIA_NCR_RESET_ACTIVE_CHECK()			\
 	do { if (ncr_reset_active) BUG(); } while (0)
 #else
