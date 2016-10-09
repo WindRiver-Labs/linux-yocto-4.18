@@ -12,6 +12,8 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/types.h>
 
 #include "clk.h"
 
@@ -56,6 +58,12 @@ static const char *epdc_sels[] = { "epdc_podf", "ipp_di0", "ipp_di1", "ldb_di0",
 static struct clk *clks[IMX6SLL_CLK_END];
 static struct clk_onecell_data clk_data;
 
+static int const clks_init_on[] __initconst = {
+	IMX6SLL_CLK_AIPSTZ1, IMX6SLL_CLK_AIPSTZ2,
+	IMX6SLL_CLK_OCRAM, IMX6SLL_CLK_ARM, IMX6SLL_CLK_ROM,
+	IMX6SLL_CLK_MMDC_P0_FAST, IMX6SLL_CLK_MMDC_P0_IPG,
+};
+
 static const struct clk_div_table post_div_table[] = {
 	{ .val = 2, .div = 1, },
 	{ .val = 1, .div = 2, },
@@ -80,6 +88,7 @@ static void __init imx6sll_clocks_init(struct device_node *ccm_node)
 {
 	struct device_node *np;
 	void __iomem *base;
+	int i;
 
 	clks[IMX6SLL_CLK_DUMMY] = imx_clk_fixed("dummy", 0);
 
@@ -326,6 +335,23 @@ static void __init imx6sll_clocks_init(struct device_node *ccm_node)
 	clk_data.clks = clks;
 	clk_data.clk_num = ARRAY_SIZE(clks);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+
+	/* set perclk to from OSC */
+	clk_set_parent(clks[IMX6SLL_CLK_PERCLK_SEL], clks[IMX6SLL_CLK_OSC]);
+
+	/* Set the UART parent if needed */
+	if (uart_from_osc)
+		imx_clk_set_parent(clks[IMX6SLL_CLK_UART_SEL], clks[IMX6SLL_CLK_OSC]);
+	else
+		imx_clk_set_parent(clks[IMX6SLL_CLK_UART_SEL], clks[IMX6SLL_CLK_PLL3_80M]);
+
+	for (i = 0; i < ARRAY_SIZE(clks_init_on); i++)
+		clk_prepare_enable(clks[clks_init_on[i]]);
+
+	if (IS_ENABLED(CONFIG_USB_MXS_PHY)) {
+		clk_prepare_enable(clks[IMX6SLL_CLK_USBPHY1_GATE]);
+		clk_prepare_enable(clks[IMX6SLL_CLK_USBPHY2_GATE]);
+	}
 
 	/* Lower the AHB clock rate before changing the clock source. */
 	clk_set_rate(clks[IMX6SLL_CLK_AHB], 99000000);
