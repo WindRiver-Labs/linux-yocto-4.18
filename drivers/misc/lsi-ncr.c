@@ -27,6 +27,8 @@
 static int ncr_available;
 static int nca_big_endian = 1;
 static int is_5500;
+static int is_5600;
+static int is_6700;
 static void __iomem *nca;
 static void __iomem *apb2ser0;
 
@@ -374,7 +376,11 @@ ncr_0x115(unsigned int region, unsigned int offset, int write,
 	else
 		indcmd.bits.hsize = 1;
 
-	base = 0x10000ULL * (0x14 + NCP_TARGET_ID(region));
+	if (0 != is_5600)
+		base = 0x10000ULL * (0x14 + NCP_TARGET_ID(region));
+	else
+		base = 0x10000ULL * (0x1e + NCP_TARGET_ID(region));
+
 	mdelay(50);
 
 	if (0 != write)
@@ -901,6 +907,7 @@ ncr_init(void)
 		pr_debug("Using AXM5600 Addresses\n");
 		nca = ioremap(0x8031080000ULL, 0x20000);
 		apb2ser0 = ioremap(0x8002000000ULL, 0x4000000);
+		is_5600 = 1;
 		pr_debug("0x%lx 0x%lx\n",
 			 (unsigned long)nca,
 			 (unsigned long)apb2ser0);
@@ -908,6 +915,7 @@ ncr_init(void)
 		pr_debug("Using AXC6700 Addresses\n");
 		nca = ioremap(0x8020000000ULL, 0x20000);
 		apb2ser0 = ioremap(0x8080000000ULL, 0x400000);
+		is_6700 = 1;
 		nca_big_endian = 0; /* The 6700 NCA is LE */
 	} else {
 		pr_debug("No Valid Compatible String Found for NCR!\n");
