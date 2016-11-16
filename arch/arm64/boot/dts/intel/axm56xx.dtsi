@@ -41,6 +41,7 @@
 	};
 
 	clocks {
+		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -175,7 +176,7 @@
 			reg = <0x80 0x80080000 0 0x1000>;
 			interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk_per 0>;
-			clock-names = "i2c";
+			clock-names = "apb_pclk";
 			status = "disabled";
 		};
 
@@ -208,7 +209,7 @@
 			reg = <0x80 0x800b0000 0 0x1000>;
 			interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk_per 0>;
-			clock-names = "i2c";
+			clock-names = "apb_pclk";
 			status = "disabled";
 		};
 
@@ -422,6 +423,7 @@
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clk_per 0>;
+				clock-names = "apb_pclk";
 				status = "disabled";
 			};
 		};
