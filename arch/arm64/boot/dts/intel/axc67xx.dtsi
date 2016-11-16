@@ -10,7 +10,6 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/clock/lsi,axm5516-clks.h>
 
 / {
 	#address-cells = <2>;
@@ -53,21 +52,14 @@
 	};
 
 	clocks {
-		compatible = "simple-bus";
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		clk_ref {
+		clk_per: clk_per {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clock-frequency = <125000000>;
-		};
-
-		clks: dummy-clock {
-			compatible = "fixed-clock";
-			#clock-cells = <1>;
-			clock-frequency = <100000000>;
+			clock-frequency = <0>; /* Set by the Boot Loader */
+			clock-output-names = "clk_per";
 		};
 	};
 
@@ -202,7 +194,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80600000 0 0x1000>;
 			interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -213,7 +205,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80610000 0 0x1000>;
 			interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -224,7 +216,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80620000 0 0x1000>;
 			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -235,7 +227,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80630000 0 0x1000>;
 			interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -246,7 +238,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80640000 0 0x1000>;
 			interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -257,7 +249,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80650000 0 0x1000>;
 			interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -268,7 +260,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80660000 0 0x1000>;
 			interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -279,7 +271,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80670000 0 0x1000>;
 			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -290,7 +282,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80680000 0 0x1000>;
 			interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -301,7 +293,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x80690000 0 0x1000>;
 			interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -312,7 +304,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x806a0000 0 0x1000>;
 			interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -323,7 +315,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x806b0000 0 0x1000>;
 			interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -334,7 +326,7 @@
 			#size-cells = <0>;
 			reg = <0x80 0x806c0000 0 0x1000>;
 			interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clks AXXIA_CLK_PER>;
+			clocks = <&clk_per 0>;
 			clock-names = "i2c";
 			status = "disabled";
 		};
@@ -417,7 +409,7 @@
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80000000 0 0x10000>;
 				interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -426,7 +418,7 @@
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80010000 0 0x10000>;
 				interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -435,7 +427,7 @@
 				compatible = "arm,pl011", "arm,primecell";
 				reg = <0x80 0x80020000 0 0x10000>;
 				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -451,7 +443,7 @@
 					     <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>,
 					     <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 			};
 
@@ -461,7 +453,7 @@
 				gpio-controller;
 				reg = <0x80 0x80700000 0 0x10000>;
 				interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -472,7 +464,7 @@
 				gpio-controller;
 				reg = <0x80 0x80710000 0 0x10000>;
 				interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -483,7 +475,7 @@
 				gpio-controller;
 				reg = <0x80 0x80720000 0 0x10000>;
 				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -494,7 +486,7 @@
 				gpio-controller;
 				reg = <0x80 0x80730000 0 0x10000>;
 				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -505,7 +497,7 @@
 				gpio-controller;
 				reg = <0x80 0x80740000 0 0x10000>;
 				interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -516,7 +508,7 @@
 				gpio-controller;
 				reg = <0x80 0x80750000 0 0x10000>;
 				interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -527,7 +519,7 @@
 				gpio-controller;
 				reg = <0x80 0x80760000 0 0x10000>;
 				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -538,7 +530,7 @@
 				gpio-controller;
 				reg = <0x80 0x80770000 0 0x10000>;
 				interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -548,7 +540,7 @@
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
 				reg = <0x80 0x80780000 0 0x10000>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -558,7 +550,7 @@
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
 				reg = <0x80 0x80790000 0 0x10000>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -568,7 +560,7 @@
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
 				reg = <0x80 0x807a0000 0 0x10000>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -578,7 +570,7 @@
 				compatible = "arm,pl061", "arm,primecell";
 				gpio-controller;
 				reg = <0x80 0x807b0000 0 0x10000>;
-				clocks = <&clks AXXIA_CLK_PER>;
+				clocks = <&clk_per 0>;
 				clock-names = "apb_pclk";
 				status = "disabled";
 			};
@@ -591,8 +583,7 @@
 				reg = <0x80 0x80100000 0 0x1000>;
 				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
-				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
-				clock-names = "spi", "apb_pclk";
+				clocks = <&clk_per 0>;
 				status = "disabled";
 			};
 
@@ -604,8 +595,7 @@
 				reg = <0x80 0x80110000 0 0x1000>;
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
-				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
-				clock-names = "spi", "apb_pclk";
+				clocks = <&clk_per 0>;
 				status = "disabled";
 			};
 
@@ -617,8 +607,7 @@
 				reg = <0x80 0x80120000 0 0x1000>;
 				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
-				clocks = <&clks AXXIA_CLK_PER>, <&clks AXXIA_CLK_PER>;
-				clock-names = "spi", "apb_pclk";
+				clocks = <&clk_per 0>;
 				status = "disabled";
 			};
 		};
