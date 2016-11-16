@@ -2284,7 +2284,8 @@ pl011_console_get_options(struct uart_amba_port *uap, int *baud,
 		ibrd = pl011_read(uap, REG_IBRD);
 		fbrd = pl011_read(uap, REG_FBRD);
 
-		*baud = uap->port.uartclk * 4 / (64 * ibrd + fbrd);
+		*baud =	DIV_ROUND_CLOSEST(uap->port.uartclk * 4,
+					  64 * ibrd + fbrd);
 
 		if (uap->vendor->oversampling) {
 			if (pl011_read(uap, REG_CR)
