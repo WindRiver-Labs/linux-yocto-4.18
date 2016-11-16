@@ -506,11 +506,11 @@ config LSI_SMMON
 	help
 	  Monitor the system memory controllers for errors.
 
-config AXXIA_DSPC
-       bool "Axxia DSP Control"
+config AXXIA_OEM
+       bool "Axxia OEM Calls"
        depends on ARCH_AXXIA
        help
-	 Control the state of the DSPs.
+	 OEM calls to the secure monitor for Axxia.
 
 config AXXIA_PEI
        bool "Axxia PEI Controller Setup"

@@ -15,7 +15,20 @@
 #ifndef __DRIVERS_MISC_AXXIA_DSPC_H
 #define __DRIVERS_MISC_AXXIA_DSPC_H
 
+/*
+  DSP Cluster Control -- Only on 6700
+*/
+
 unsigned long axxia_dspc_get_state(void);
 void axxia_dspc_set_state(unsigned long);
+
+/*
+  ACTLR_EL3/ACTLR_EL2 Access -- For Performance Testing
+*/
+
+unsigned long axxia_actlr_el3_get(void);
+void axxia_actlr_el3_set(unsigned long);
+unsigned long axxia_actlr_el2_get(void);
+void axxia_actlr_el2_set(unsigned long);
 
 #endif /* __DRIVERS_MISC_AXXIA_DSPC_H */
