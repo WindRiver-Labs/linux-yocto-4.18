@@ -25,6 +25,7 @@
 #include <linux/proc_fs.h>
 #include <linux/reboot.h>
 #include <linux/regmap.h>
+#include <asm/system_misc.h>
 
 #define SC_PSCRATCH            0x00dc
 #define SC_CRIT_WRITE_KEY      0x2000
@@ -35,6 +36,11 @@
 static struct regmap *syscon;
 
 static int ddr_retention_enabled;
+
+#ifdef CONFIG_POWER_RESET_AXXIA_DDR_RETENTION
+static void (*saved_arm_pm_restart)
+	    (enum reboot_mode reboot_mode, const char *cmd);
+#endif
 
 void
 initiate_retention_reset(void)
@@ -51,9 +57,20 @@ initiate_retention_reset(void)
 	regmap_write(syscon, SC_PSCRATCH, 1);
 
 	/* trap into secure monitor to do the reset */
+#ifdef CONFIG_POWER_RESET_AXXIA_DDR_RETENTION
+	saved_arm_pm_restart(0, NULL);
+#else
 	machine_restart(NULL);
+#endif
 }
 EXPORT_SYMBOL(initiate_retention_reset);
+
+#ifdef CONFIG_POWER_RESET_AXXIA_DDR_RETENTION
+static void axxia_pm_restart(enum reboot_mode reboot_mode, const char *cmd)
+{
+	initiate_retention_reset();
+}
+#endif
 
 static ssize_t
 axxia_ddr_retention_trigger(struct file *file, const char __user *buf,
@@ -124,6 +141,11 @@ static int axxia_reset_probe(struct platform_device *pdev)
 	err = register_restart_handler(&axxia_restart_nb);
 	if (err)
 		dev_err(dev, "cannot register restart handler (err=%d)\n", err);
+
+#ifdef CONFIG_POWER_RESET_AXXIA_DDR_RETENTION
+	saved_arm_pm_restart = arm_pm_restart;
+	arm_pm_restart = axxia_pm_restart;
+#endif
 
 	return err;
 }

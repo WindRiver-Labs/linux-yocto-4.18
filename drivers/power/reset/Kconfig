@@ -38,14 +38,6 @@ config POWER_RESET_AT91_SAMA5D2_SHDWC
 	  This driver supports the alternate shutdown controller for some Atmel
 	  SAMA5 SoCs. It is present for example on SAMA5D2 SoC.
 
-config POWER_RESET_AXXIA
-	bool "LSI Axxia reset driver"
-	depends on ARCH_AXXIA
-	help
-	  This driver supports restart for Axxia SoC.
-
-	  Say Y if you have an Axxia family SoC.
-
 config POWER_RESET_BRCMKONA
 	bool "Broadcom Kona reset driver"
 	depends on ARM || COMPILE_TEST
@@ -55,6 +47,16 @@ config POWER_RESET_BRCMKONA
 
 	  Say Y here if you have a Broadcom Kona-based board and you wish
 	  to have restart support.
+
+if POWER_RESET_AXXIA
+config POWER_RESET_AXXIA_DDR_RETENTION
+	bool "Keep memory content"
+	depends on POWER_RESET_AXXIA
+	help
+	  Keep memory content during reset. Useful to reserve memory
+	  for dumps, logs etc on fatal errors that can be analysed
+	  after a reboot.
+endif
 
 config POWER_RESET_BRCMSTB
 	bool "Broadcom STB reset driver"

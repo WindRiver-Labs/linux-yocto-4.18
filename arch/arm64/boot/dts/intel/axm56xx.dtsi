@@ -89,7 +89,7 @@
 			reg = <0x80 0x02c00000 0 0x40000>;
 		};
 
-		reset: reset@2010031000 {
+		reset: reset@8002C02008 {
 			compatible = "intel,axm56xx-reset";
 			syscon = <&syscon>;
 		};
