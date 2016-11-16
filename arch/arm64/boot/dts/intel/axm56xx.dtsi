@@ -177,7 +177,7 @@
 			reg = <0x80 0x80080000 0 0x1000>;
 			interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk_per 0>;
-			clock-names = "apb_pclk";
+			clock-names = "i2c";
 			status = "disabled";
 		};
 
@@ -210,7 +210,7 @@
 			reg = <0x80 0x800b0000 0 0x1000>;
 			interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk_per 0>;
-			clock-names = "apb_pclk";
+			clock-names = "i2c";
 			status = "disabled";
 		};
 
