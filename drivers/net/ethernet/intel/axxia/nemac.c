@@ -376,14 +376,20 @@ nemac_tx_stat_counter(struct nemac_priv *priv, int counter)
 static int
 nemac_stats_snapshot(struct nemac_priv *priv)
 {
-	const unsigned long tmo = msecs_to_jiffies(20);
+	const unsigned long tmo = jiffies + msecs_to_jiffies(20);
+	int ret;
 
 	/* Request a snapshot of the counters and wait for the interrupt
 	 * handler to signal completion.
 	 */
 	reinit_completion(&priv->stats_rdy);
 	writel(MAC(0), priv->reg + NEM_STATS_SNAPSHOT_R);
-	return wait_for_completion_interruptible_timeout(&priv->stats_rdy, tmo);
+
+	/* need to poll for completion */
+	do {
+		ret = try_wait_for_completion(&priv->stats_rdy);
+	} while (!ret && time_before(jiffies, tmo));
+	return ret;
 }
 
 static const char * const tx_stat_names[] = {
