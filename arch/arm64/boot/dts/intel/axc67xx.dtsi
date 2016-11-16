@@ -584,6 +584,7 @@
 				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clk_per 0>;
+				clock-names = "apb_pclk";
 				status = "disabled";
 			};
 
@@ -596,6 +597,7 @@
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clk_per 0>;
+				clock-names = "apb_pclk";
 				status = "disabled";
 			};
 
@@ -608,6 +610,7 @@
 				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 				num-cs = <5>;
 				clocks = <&clk_per 0>;
+				clock-names = "apb_pclk";
 				status = "disabled";
 			};
 		};
