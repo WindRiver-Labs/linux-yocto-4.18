@@ -431,11 +431,10 @@ static ssize_t trng_test_mode_store(struct device_driver *drv,
 				       const char *buf, size_t count)
 {
 	try_module_get(THIS_MODULE);
-	if (kstrtoint(buf, 1, &trng_test_mode) < 0) {
+	if (kstrtoint(buf, 0, &trng_test_mode) < 0) {
 		module_put(THIS_MODULE);
 		return -EFAULT;
 	}
-
 	module_put(THIS_MODULE);
 	return count;
 }
