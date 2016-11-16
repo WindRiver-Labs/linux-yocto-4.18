@@ -1859,7 +1859,7 @@ static int axxia_of_rio_rpn_probe(struct platform_device *dev)
 
 static const struct of_device_id axxia_of_rio_rpn_ids[] = {
 	{ .compatible = "axxia, rapidio-delta", },
-	{ .compatible = "intel, axxia-rapidio", },
+	{ .compatible = "intel,axxia-rapidio", },
 	{ .compatible = "acp, rapidio-delta", },
 	{},
 };
