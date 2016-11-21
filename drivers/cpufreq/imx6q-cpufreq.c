@@ -29,9 +29,9 @@
 #define FREQ_198_MHZ		198000
 #define FREQ_24_MHZ		24000
 
-static struct regulator *arm_reg;
+struct regulator *arm_reg;
 static struct regulator *pu_reg;
-static struct regulator *soc_reg;
+struct regulator *soc_reg;
 static struct regulator *dc_reg;
 
 enum IMX6_CPUFREQ_CLKS {
