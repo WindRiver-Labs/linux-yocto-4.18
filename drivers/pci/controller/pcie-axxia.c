@@ -52,6 +52,8 @@
 #define PORT_LOGIC_LINK_WIDTH_2_LANES   (0x2 << 8)
 #define PORT_LOGIC_LINK_WIDTH_4_LANES   (0x4 << 8)
 
+#define PCIE_GEN3_EQ_CONTROL_OFF        0x8a8
+
 #define PCIE_MSI_ADDR_LO                0x820
 #define PCIE_MSI_ADDR_HI                0x824
 #define PCIE_MSI_INTR0_ENABLE           0x828
@@ -542,6 +544,9 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	}
 
 	axxia_pcie_writel_rc(pp, val, PCIE_PORT_LINK_CONTROL);
+
+	/* Add Mikes tweak for GEN3_EQ_CONTROL */
+	axxia_pcie_writel_rc(pp, 0x1017201, PCIE_GEN3_EQ_CONTROL_OFF);
 
 	/* setup bus numbers */
 	axxia_pcie_readl_rc(pp, PCI_PRIMARY_BUS, &val);
