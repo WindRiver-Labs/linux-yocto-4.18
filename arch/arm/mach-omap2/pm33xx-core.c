@@ -48,7 +48,7 @@ static int __init am43xx_map_scu(void)
 	return 0;
 }
 
-static int amx3_common_init(void)
+static int amx3_common_init(int (*idle)(u32 wfi_flags))
 {
 	gfx_pwrdm = pwrdm_lookup("gfx_pwrdm");
 	per_pwrdm = pwrdm_lookup("per_pwrdm");
@@ -66,10 +66,12 @@ static int amx3_common_init(void)
 	else
 		pr_err("PM: Failed to get cefuse_pwrdm\n");
 
+	idle_fn = idle;
+
 	return 0;
 }
 
-static int am33xx_suspend_init(void)
+static int am33xx_suspend_init(int (*idle)(u32 wfi_flags))
 {
 	int ret;
 
@@ -80,12 +82,12 @@ static int am33xx_suspend_init(void)
 		return -ENODEV;
 	}
 
-	ret = amx3_common_init();
+	ret = amx3_common_init(idle);
 
 	return ret;
 }
 
-static int am43xx_suspend_init(void)
+static int am43xx_suspend_init(int (*idle)(u32 wfi_flags))
 {
 	int ret = 0;
 
@@ -95,9 +97,15 @@ static int am43xx_suspend_init(void)
 		return ret;
 	}
 
-	ret = amx3_common_init();
+	ret = amx3_common_init(idle);
 
 	return ret;
+}
+
+static int amx3_suspend_deinit(void)
+{
+	idle_fn = NULL;
+	return 0;
 }
 
 static void amx3_pre_suspend_common(void)
@@ -199,6 +207,7 @@ void __iomem *am43xx_get_rtc_base_addr(void)
 
 static struct am33xx_pm_platform_data am33xx_ops = {
 	.init = am33xx_suspend_init,
+	.deinit = amx3_suspend_deinit,
 	.soc_suspend = am33xx_suspend,
 	.cpu_suspend = am33xx_cpu_suspend,
 	.get_sram_addrs = amx3_get_sram_addrs,
@@ -207,6 +216,7 @@ static struct am33xx_pm_platform_data am33xx_ops = {
 
 static struct am33xx_pm_platform_data am43xx_ops = {
 	.init = am43xx_suspend_init,
+	.deinit = amx3_suspend_deinit,
 	.soc_suspend = am43xx_suspend,
 	.cpu_suspend = am43xx_cpu_suspend,
 	.get_sram_addrs = amx3_get_sram_addrs,
