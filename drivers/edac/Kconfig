@@ -363,6 +363,22 @@ config EDAC_OCTEON_PCI
 	  Support for error detection and correction on the
 	  Cavium Octeon family of SOCs.
 
+config EDAC_AXXIA_SYSMEM_5600
+	depends on ARCH_AXXIA
+	bool "AXXIA EDAC SysMem Controller for 5600"
+	help
+	  Support for System Memory Denali controller error
+	  detection on the AXXIA AXM56xx devices. This enables
+	  the System Memory error detection. System Memory error
+	  detection is interrupt driven.
+
+config EDAC_AXXIA_SYSMEM_5500
+	bool "AXXIA EDAC SysMem Controller for 5500"
+	depends on ARCH_AXXIA
+	help
+	  Support for System Memory Denali controller error
+	  detection on the AXXIA AXM55xx devices. This enables
+
 config EDAC_THUNDERX
 	tristate "Cavium ThunderX EDAC"
 	depends on ARM64

@@ -38,6 +38,8 @@
 		i2c3	  = &i2c3;
 		gpdma0	  = &gpdma0;
 		gpdma1	  = &gpdma1;
+		sm0       = &sm0;
+		sm1       = &sm1;
 	};
 
 	clocks {
@@ -92,6 +94,22 @@
 		syscon: syscon@8002000000 {
 			compatible = "intel,axxia-syscon", "syscon";
 			reg = <0x80 0x02c00000 0 0x40000>;
+		};
+
+		sm0: sm0@00220000 {
+			compatible = "intel,smmon";
+			reg = <0 0x00220000 0 0x1000>;
+			syscon = <&syscon>;
+			interrupts = <0 238 4>;
+			status = "disabled";
+		};
+
+		sm1: sm1@000f0000 {
+			compatible = "intel,smmon";
+			reg = <0 0x000f0000 0 0x1000>;
+			syscon = <&syscon>;
+			interrupts = <0 239 4>;
+			status = "disabled";
 		};
 
 		reset: reset@8002C02008 {

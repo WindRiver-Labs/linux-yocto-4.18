@@ -1,0 +1,14 @@
+Axxia Error Detection & Correction [EDAC]
+The EDAC accesses a range of registers in the memory controllers.
+
+Required properties:
+- compatible : should contain "intel,smmon"
+- interrupts : Should contain the SYSMEM controller IRQ
+
+Example:
+	sm0: sm0@00220000 {
+	     compatible = "intel,smmon";
+             reg = <0 0x00220000 0 0x1000>;
+             syscon = <&syscon>;
+             interrupts = <0 238 4>;
+	};
