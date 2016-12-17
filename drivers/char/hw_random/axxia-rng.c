@@ -448,7 +448,7 @@ static DRIVER_ATTR_RW(trng_test_mode);
  */
 static int trng_probe(struct platform_device *pdev)
 {
-	static struct trng_dev *dev;
+	struct trng_dev *dev;
 	void __iomem *regs;
 	int rc;
 	u32 *pregs;
@@ -460,7 +460,7 @@ static int trng_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto err;
 	}
-	dev_set_drvdata(&pdev->dev, &dev);
+	dev_set_drvdata(&pdev->dev, dev);
 	kref_init(&dev->ref);
 	dev->pdev = pdev;
 
@@ -479,7 +479,7 @@ static int trng_probe(struct platform_device *pdev)
 #endif
 	/* Attach to IRQ */
 	dev->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
-	rc = request_irq(dev->irq, trng_isr, 0, "trng", &dev);
+	rc = request_irq(dev->irq, trng_isr, 0, "trng", dev);
 	if (rc)
 		goto err;
 
@@ -542,7 +542,7 @@ static void trng_destroy(struct kref *ref)
 	if (test_and_clear_bit(FLAG_REGISTERED, &dev->flags))
 		hwrng_unregister(&dev->rng_dev);
 	if (dev->irq)
-		free_irq(dev->irq, &dev);
+		free_irq(dev->irq, dev);
 	iounmap(dev->regs);
 	kfree(dev);
 }
