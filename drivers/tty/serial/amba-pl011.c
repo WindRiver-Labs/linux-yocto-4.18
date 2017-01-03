@@ -49,6 +49,8 @@
 
 #include "amba-pl011.h"
 
+#include <asm/cputype.h>
+
 #define UART_NR			14
 
 #define SERIAL_AMBA_MAJOR	204
@@ -277,6 +279,9 @@ struct uart_amba_port {
 	struct pl011_dmarx_data dmarx;
 	struct pl011_dmatx_data	dmatx;
 	bool			dma_probed;
+#endif
+#ifdef CONFIG_ARCH_THUNDER
+	struct timer_list 	thunderx_81xx_poll_timer;
 #endif
 };
 
@@ -1713,10 +1718,33 @@ static void pl011_write_lcr_h(struct uart_amba_port *uap, unsigned int lcr_h)
 	}
 }
 
+/*
+ * thunderx-cn81xx, erratum UAA-28042
+ */
+
+#ifdef CONFIG_ARCH_THUNDER
+static void thunderx_81xx_poll(struct timer_list *);
+
+static void thunderx_81xx_poll(struct timer_list *t)
+{
+	struct uart_amba_port *uap = container_of(t, struct uart_amba_port, thunderx_81xx_poll_timer);
+
+	pl011_int(uap->port.irq, uap);
+	mod_timer(t, jiffies + 1);
+}
+#endif
+
 static int pl011_allocate_irq(struct uart_amba_port *uap)
 {
 	pl011_write(uap->im, uap, REG_IMSC);
 
+#ifdef CONFIG_ARCH_THUNDER
+	if (MIDR_IS_CPU_MODEL_RANGE(read_cpuid_id(),
+				MIDR_THUNDERX_81XX,
+				0x00, 0x00)) {
+		mod_timer(&uap->thunderx_81xx_poll_timer, jiffies + 1);
+	}
+#endif
 	return request_irq(uap->port.irq, pl011_int, 0, "uart-pl011", uap);
 }
 
@@ -1761,6 +1789,9 @@ static int pl011_startup(struct uart_port *port)
 	unsigned int cr;
 	int retval;
 
+#ifdef CONFIG_ARCH_THUNDER
+	timer_setup(&uap->thunderx_81xx_poll_timer, thunderx_81xx_poll, 0);
+#endif
 	retval = pl011_hwinit(port);
 	if (retval)
 		goto clk_dis;
@@ -1878,6 +1909,9 @@ static void pl011_shutdown(struct uart_port *port)
 
 	free_irq(uap->port.irq, uap);
 
+#ifdef CONFIG_ARCH_THUNDER
+	del_timer(&uap->thunderx_81xx_poll_timer);
+#endif
 	pl011_disable_uart(uap);
 
 	/*
@@ -2751,6 +2785,7 @@ static int sbsa_uart_probe(struct platform_device *pdev)
 
 	return pl011_register_port(uap);
 }
+
 
 static int sbsa_uart_remove(struct platform_device *pdev)
 {
