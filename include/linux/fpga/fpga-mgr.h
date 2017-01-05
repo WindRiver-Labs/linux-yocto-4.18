@@ -11,6 +11,9 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 
+#define ENCRYPTED_KEY_LEN	64 /* Bytes */
+#define ENCRYPTED_IV_LEN	24 /* Bytes */
+
 struct fpga_manager;
 struct sg_table;
 
@@ -135,6 +138,9 @@ struct fpga_manager_ops {
  */
 struct fpga_manager {
 	const char *name;
+	long int flags;
+	char key[ENCRYPTED_KEY_LEN];
+	char iv[ENCRYPTED_IV_LEN];
 	struct device dev;
 	struct mutex ref_mutex;
 	enum fpga_mgr_states state;
