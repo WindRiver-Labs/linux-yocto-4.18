@@ -1,0 +1,21 @@
+Axxia Error Detection & Correction [EDAC]
+The EDAC accesses a range of registers in the memory controllers.
+
+Required properties:
+- compatible : should contain "intel,cmmon"
+- interrupts : Should contain the CMEM controller IRQ
+
+Example:
+       cm0: cm0@00080009 {
+            compatible = "intel,cmmon";
+             reg = <0 0x0080009 0 0x1000>;
+             syscon = <&syscon>;
+             interrupts = <0 233 4>;
+       };
+
+       cm1: cm1@00090009 {
+            compatible = "intel,cmmon";
+             reg = <0 0x0090009 0 0x1000>;
+             syscon = <&syscon>;
+             interrupts = <0 234 4>;
+       };

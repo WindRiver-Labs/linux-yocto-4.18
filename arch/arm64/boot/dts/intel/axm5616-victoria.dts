@@ -213,3 +213,11 @@
 &sm0 {
 	status = "okay";
 };
+
+&cm0 {
+	status = "okay";
+};
+
+&cm1 {
+	status = "okay";
+};
