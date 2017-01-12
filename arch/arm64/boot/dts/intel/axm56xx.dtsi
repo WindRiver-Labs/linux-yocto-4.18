@@ -40,6 +40,8 @@
 		gpdma1	  = &gpdma1;
 		sm0       = &sm0;
 		sm1       = &sm1;
+		cm0	  = &cm0;
+		cm1	  = &cm1;
 	};
 
 	clocks {
@@ -132,6 +134,22 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x80200000 0 0x1000>;
+			status = "disabled";
+		};
+
+		cm0: cm0@00080009 {
+			compatible = "intel,cmmon";
+			reg = <0 0x00080009 0 0x1000>;
+			syscon = <&syscon>;
+			interrupts = <0 233 4>;
+			status = "disabled";
+		};
+
+		cm1: cm1@00090009 {
+			compatible = "intel,cmmon";
+			reg = <0 0x00090009 0 0x1000>;
+			syscon = <&syscon>;
+			interrupts = <0 234 4>;
 			status = "disabled";
 		};
 
