@@ -580,7 +580,7 @@ static int nemac_open(struct net_device *ndev)
 	}
 
 	pr_debug("[%s] (phy %s)\n",
-		 priv->phy_dev->drv->name, dev_name(&priv->phy_dev->dev));
+		 priv->phy_dev->drv->name, dev_name(priv->dev));
 
 	nemac_clr(priv, NEM_DMA_CTL,
 		  DMACTL_TX_TAIL_PTR_EN | DMACTL_RX_TAIL_PTR_EN);
@@ -632,7 +632,8 @@ static netdev_tx_t nemac_xmit(struct sk_buff *skb, struct net_device *ndev)
 	mb();		   /* Make sure the descriptor is in memory */
 	writel(queue_inc_head(&priv->txq), priv->reg + NEM_DMA_TXHEAD_PTR);
 	spin_unlock_irqrestore(&priv->txlock, flags);
-	ndev->trans_start = jiffies;
+	//ndev->trans_start = jiffies;
+	dev_trans_start(ndev);
 	pr_queue("XMIT", &priv->txq);
 
 	return NETDEV_TX_OK;
