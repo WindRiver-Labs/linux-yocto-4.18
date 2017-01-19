@@ -70,37 +70,21 @@ struct i2c_regs {
 			MST_STATUS_AL  | \
 			MST_STATUS_IP  | \
 			MST_STATUS_TSS)
+
+#define MST_INT_ENABLE		0x48
+#define I2C_BUS_MONITOR		0x20
+#define   BM_SDAC		BIT(3)
+#define   BM_SCLC		BIT(2)
+#define   BM_SDAS		BIT(1)
+#define   BM_SCLS		BIT(0)
+
 	__le32 mst_tx_bytes_xfrd;
 	__le32 mst_rx_bytes_xfrd;
-	__le32 slv_addr_dec_ctl;
-	__le32 slv_addr_1;
-	__le32 slv_addr_2;
-	__le32 slv_rx_ctl;
-	__le32 slv_data;
-	__le32 slv_rx_fifo;
-	__le32 slv_int_enable;
-	__le32 slv_int_status;
-	__le32 slv_read_dummy;
-	__le32 reserved;
 	__le32 scl_high_period;
 	__le32 scl_low_period;
 	__le32 spike_fltr_len;
 	__le32 sda_setup_time;
 	__le32 sda_hold_time;
-	__le32 smb_alert;
-	__le32 udid_w7;
-	__le32 udid_w6;
-	__le32 udid_w5;
-	__le32 udid_w4;
-	__le32 udid_w3;
-	__le32 udid_w2;
-	__le32 udid_w1;
-	__le32 udid_w0;
-	__le32 arppec_cfg_stat;
-	__le32 slv_arp_int_enable;
-	__le32 slv_arp_int_status;
-	__le32 mst_arp_int_enable;
-	__le32 mst_arp_int_status;
 };
 
 
@@ -108,6 +92,7 @@ struct i2c_regs {
  * I2C device context
  */
 struct axxia_i2c_dev {
+	void __iomem *base;
 	/** device reference */
 	struct device *dev;
 	/** core i2c abstraction */
