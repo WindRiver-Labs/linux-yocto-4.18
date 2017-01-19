@@ -484,7 +484,7 @@ read_buff:
 			 * Pass the port-write message to RIO
 			 * core for processing
 			 */
-			rio_inb_pwrite_handler(
+			rio_inb_pwrite_handler(priv->mport,
 					 (union rio_pw_msg *)pw->msg_buffer);
 			pw->msg_wc = 0;
 		}
