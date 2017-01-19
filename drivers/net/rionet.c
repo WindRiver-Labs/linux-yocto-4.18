@@ -236,7 +236,6 @@ static void rionet_dbell_event(struct rio_mport *mport, void *dev_id, u16 sid, u
 		pr_info(
 				"%s: doorbell sid %4.4x tid %4.4x info %4.4x",
 				DRV_NAME, sid, tid, info);
-		       DRV_NAME, sid, tid, info);
 	if (info == RIONET_DOORBELL_JOIN) {
 		if (!nets[netid].active[sid]) {
 			spin_lock(&nets[netid].lock);
@@ -537,7 +536,7 @@ static int rionet_setup_netdev(struct rio_mport *mport, struct net_device *ndev)
 	}
 
 	pr_info(
-			"%s: %s %s Version %s, MAC %pM, %s\n",
+			"%s: %s Version %s, MAC %pM, %s\n",
 	       DRV_NAME,
 	       DRV_DESC,
 	       DRV_VERSION,
