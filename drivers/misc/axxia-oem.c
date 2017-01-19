@@ -57,7 +57,7 @@ invoke_oem_fn(struct oem_parameters *p)
 		     "mov %x3, x3" : "=r" (p->reg0), "=r" (p->reg1),
 		     "=r" (p->reg2), "=r" (p->reg3));
 
-	return 0;
+	return;
 }
 
 /*
@@ -91,8 +91,9 @@ axxia_dspc_write(struct file *file, const char __user *buffer,
 {
 	char *input;
 	unsigned long mask;
+	int ret;
 
-	input = kmalloc(count, __GFP_WAIT);
+	input = kmalloc(count, __GFP_RECLAIMABLE);
 	memset(input, 0, count);
 
 	if (NULL == input)
@@ -101,9 +102,13 @@ axxia_dspc_write(struct file *file, const char __user *buffer,
 	if (copy_from_user(input, buffer, count))
 		return -EFAULT;
 
-	mask = kstrtoul(input, NULL, 0);
-	axxia_dspc_set_state((unsigned int)mask);
+	ret = kstrtoul(input, 0, &mask);
+	if (ret) {
+		pr_err("Failed axxia_dspc_write mask conversion\n");
+		return -EFAULT;
+	}
 
+	axxia_dspc_set_state((unsigned int)mask);
 	return count;
 }
 
@@ -144,8 +149,10 @@ axxia_actlr_el3_write(struct file *file, const char __user *buffer,
 		      size_t count, loff_t *ppos)
 {
 	char *input;
+	unsigned long data = 0;
+	int ret = 0;
 
-	input = kmalloc(count, __GFP_WAIT);
+	input = kmalloc(count, __GFP_RECLAIMABLE);
 	memset(input, 0, count);
 
 	if (NULL == input)
@@ -154,7 +161,12 @@ axxia_actlr_el3_write(struct file *file, const char __user *buffer,
 	if (copy_from_user(input, buffer, count))
 		return -EFAULT;
 
-	axxia_actlr_el3_set(kstrtoul(input, NULL, 0));
+	ret = kstrtoul(input, 0, &data);
+	if (ret) {
+		pr_err("axxia_actlr_el3_write failed conversion\n");
+		return ret;
+	}
+	axxia_actlr_el3_set(data);
 
 	return count;
 }
@@ -196,8 +208,10 @@ axxia_actlr_el2_write(struct file *file, const char __user *buffer,
 		      size_t count, loff_t *ppos)
 {
 	char *input;
+	unsigned long data = 0;
+	int ret = 0;
 
-	input = kmalloc(count, __GFP_WAIT);
+	input = kmalloc(count, __GFP_RECLAIMABLE);
 	memset(input, 0, count);
 
 	if (NULL == input)
@@ -206,7 +220,12 @@ axxia_actlr_el2_write(struct file *file, const char __user *buffer,
 	if (copy_from_user(input, buffer, count))
 		return -EFAULT;
 
-	axxia_actlr_el2_set(kstrtoul(input, NULL, 0));
+	ret = kstrtoul(input, 0, &data);
+	if (ret) {
+		pr_err("axxia_actlr_el2_write failed conversion\n");
+		return ret;
+	}
+	axxia_actlr_el2_set(data);
 
 	return count;
 }
@@ -267,7 +286,7 @@ axxia_dspc_set_state(unsigned long state)
 	if (0 != parameters.reg0)
 		pr_warn("Setting the DSP State Failed!\n");
 
-	return 0;
+	return;
 }
 EXPORT_SYMBOL(axxia_dspc_set_state);
 
@@ -308,7 +327,7 @@ axxia_actlr_el3_set(unsigned long input)
 	if (0 != parameters.reg0)
 		pr_warn("Setting ACTLR_EL3 Failed!\n");
 
-	return 0;
+	return;
 }
 EXPORT_SYMBOL(axxia_actlr_el3_set);
 
@@ -349,7 +368,7 @@ axxia_actlr_el2_set(unsigned long input)
 	if (0 != parameters.reg0)
 		pr_warn("Setting ACTLR_EL2 Failed!\n");
 
-	return 0;
+	return;
 }
 EXPORT_SYMBOL(axxia_actlr_el2_set);
 
