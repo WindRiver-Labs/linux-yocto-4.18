@@ -430,7 +430,6 @@ static int axxia_dw_pcie_msi_map(struct irq_domain *domain, unsigned int irq,
 	irq_set_chip_and_handler(irq, &axxia_dw_msi_irq_chip,
 				 handle_simple_irq);
 	irq_set_chip_data(irq, domain->host_data);
-	set_irq_flags(irq, IRQF_VALID);
 
 	return 0;
 }
@@ -672,7 +671,7 @@ static void axxia_dw_pcie_msi_set_irq(struct pcie_port *pp, int irq)
 static int assign_irq(int no_irqs, struct msi_desc *desc, int *pos)
 {
 	int irq, pos0, i;
-	struct pcie_port *pp = desc->dev->bus->sysdata;
+	struct pcie_port *pp = (struct pcie_port *)msi_desc_to_pci_sysdata(desc);
 
 	pos0 = bitmap_find_free_region(pp->msi_irq_in_use, MAX_MSI_IRQS,
 				       order_base_2(no_irqs));
@@ -731,8 +730,8 @@ static void axxia_dw_msi_teardown_irq(struct msi_controller *chip,
 				      unsigned int irq)
 {
 	struct irq_data *data = irq_get_irq_data(irq);
-	struct msi_desc *msi = irq_data_get_msi(data);
-	struct pcie_port *pp = msi->dev->bus->sysdata;
+	struct msi_desc *msi = irq_data_get_msi_desc(data);
+	struct pcie_port *pp = (struct pcie_port *)msi_desc_to_pci_sysdata(msi);
 
 	clear_irq_range(pp, irq, 1, data->hwirq);
 }
