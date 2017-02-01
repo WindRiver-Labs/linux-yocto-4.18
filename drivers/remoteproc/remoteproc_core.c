@@ -1660,6 +1660,7 @@ struct rproc *rproc_alloc(struct device *dev, const char *name,
 		rproc->ops->parse_fw = rproc_elf_load_rsc_table;
 		rproc->ops->find_loaded_rsc_table = rproc_elf_find_loaded_rsc_table;
 		rproc->ops->sanity_check = rproc_elf_sanity_check;
+		rproc->ops->get_chksum = rproc_elf_get_chksum,
 		rproc->ops->get_boot_addr = rproc_elf_get_boot_addr;
 	}
 

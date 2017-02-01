@@ -7,6 +7,8 @@ config REMOTEPROC
 	select FW_LOADER
 	select VIRTIO
 	select WANT_DEV_COREDUMP
+	select VIRTUALIZATION
+	select CRYPTO
 	help
 	  Support for remote processors (such as DSP coprocessors). These
 	  are mainly used on embedded systems.
