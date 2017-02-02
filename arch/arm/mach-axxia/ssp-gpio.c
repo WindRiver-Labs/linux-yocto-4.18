@@ -32,7 +32,7 @@ struct gpio_dev {
 static int
 ssp_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
-	struct gpio_dev *priv = dev_get_drvdata(chip->dev);
+	struct gpio_dev *priv = dev_get_drvdata(chip->parent);
 	u32 tmp = readl(priv->regs + 0x30);
 
 	return !!(tmp & (1<<offset));
@@ -48,7 +48,7 @@ ssp_gpio_direction_out(struct gpio_chip *chip, unsigned offset, int value)
 static void
 ssp_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
-	struct gpio_dev *priv = dev_get_drvdata(chip->dev);
+	struct gpio_dev *priv = dev_get_drvdata(chip->parent);
 	u32 tmp = readl(priv->regs + 0x30);
 
 	if (value)
@@ -82,7 +82,7 @@ ssp_gpio_probe(struct platform_device *pdev)
 		return -ENXIO;
 
 	chip = &priv->gpio_chip;
-	chip->dev = &pdev->dev;
+	chip->parent = &pdev->dev;
 #ifdef CONFIG_OF_GPIO
 	chip->of_node = pdev->dev.of_node;
 #endif

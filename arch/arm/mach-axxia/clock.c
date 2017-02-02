@@ -17,6 +17,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
+#define CLK_IS_ROOT		BIT(4)
 
 #define clk_register_clkdev(_clk, _conid, _devfmt, ...) \
 	do { \
@@ -60,16 +61,14 @@ static void axxia_register_clks(void)
 			pr_warn("axxia: No 'frequency' in %s\n", c->path);
 			freq = c->default_freq;
 		}
-		clk[c->id] = clk_register_fixed_rate(NULL, c->name, NULL,
-						     CLK_IS_ROOT, freq);
+		clk[c->id] = clk_register_fixed_rate(NULL, c->name, NULL, CLK_IS_ROOT, freq);
+
 	}
 
 	/* APB clock dummy */
-	clk[clk_apb] = clk_register_fixed_rate(NULL, "apb_pclk", NULL,
-					       CLK_IS_ROOT, 1000000);
+	clk[clk_apb] = clk_register_fixed_rate(NULL, "apb_pclk", NULL, CLK_IS_ROOT, 1000000);
 
-	clk[clk_1mhz] = clk_register_fixed_rate(NULL, "clk_1mhz", NULL,
-						CLK_IS_ROOT, 1000000);
+	clk[clk_1mhz] = clk_register_fixed_rate(NULL, "clk_1mhz", NULL, CLK_IS_ROOT, 1000000);
 }
 
 void __init

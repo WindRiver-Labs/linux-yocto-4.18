@@ -29,7 +29,7 @@
 
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
 
-static int __cpuinitdata wfe_fixup;
+static int  wfe_fixup;
 static int wfe_available;
 
 void __iomem *syscon;
@@ -251,6 +251,7 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 	 */
 	for_each_possible_cpu(cpu) {
 		struct device_node *np;
+		u32 release_phys;
 		u32 *release_virt;
 
 		np = get_cpu_node(cpu);
