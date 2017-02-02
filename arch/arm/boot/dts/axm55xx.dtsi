@@ -66,6 +66,7 @@
 			     <1 11 0xf08>,
 			     <1 10 0xf08>;
 	};
+
 	edac: edac0@0x1000 {
 		compatible = "lsi,edac";
 		reg = <0 0x00220000 0 0x1000>,

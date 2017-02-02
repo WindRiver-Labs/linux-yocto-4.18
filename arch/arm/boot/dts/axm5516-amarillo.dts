@@ -114,7 +114,7 @@
 	flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "s25fl129p1";
+		compatible = "s25fl129p1,spi-nor";
 		reg = <0x0>;
 		spi-max-frequency = <25000000>;
 		pl022,com-mode = <0>;
@@ -154,6 +154,7 @@
 	status = "okay";
 
 	sysfpga@40 {
+		compatible = "sysfpga";
 		reg = <0x40>;
 	};
 };
