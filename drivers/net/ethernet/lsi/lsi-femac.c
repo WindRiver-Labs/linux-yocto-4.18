@@ -729,8 +729,7 @@ femac_open(struct net_device *ndev)
 	priv->link = 0;
 	priv->phy_dev = phy_dev;
 
-	dev_info(&ndev->dev, "[%s] (phy_addr=%s, irq=%d)\n",
-		 phy_dev->drv->name, dev_name(&phy_dev->dev), phy_dev->irq);
+	phy_attached_info(phy_dev);
 
 	napi_enable(&priv->napi);
 
@@ -839,7 +838,7 @@ femac_hard_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	wmb();
 	WARN_ON(priv->txq->head != readl(priv->base + DMAREG_TX_HEAD));
 	writel(queue_inc_head(priv->txq), priv->base + DMAREG_TX_HEAD);
-	ndev->trans_start = jiffies;
+	netif_trans_update(ndev);	/* prevent tx timeout */
 	pr_queue("XMIT", priv->txq);
 
 	spin_unlock_irqrestore(&priv->lock, flags);

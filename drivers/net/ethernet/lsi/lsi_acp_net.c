@@ -205,7 +205,7 @@ static int appnic_mii_probe(struct net_device *dev)
 	int ret;
 
 	if (pdata->phy_address && (pdata->phy_address < PHY_MAX_ADDR)) {
-		phydev = pdata->mii_bus->phy_map[pdata->phy_address];
+		phydev = mdiobus_get_phy(pdata->mii_bus, pdata->phy_address);
 		if (phydev)
 			goto skip_first;
 	}
@@ -244,9 +244,7 @@ skip_first:
 		return ret;
 	}
 
-	netdev_info(dev,
-		    "attached PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
-		    phydev->drv->name, dev_name(&phydev->dev), phydev->irq);
+	phy_attached_info(phydev);
 
 	/* Mask with MAC supported features */
 	phydev->supported &= PHY_BASIC_FEATURES;
@@ -286,7 +284,7 @@ static int appnic_mii_init(struct platform_device *pdev,
 	pdata->mii_bus->priv = pdata;
 	pdata->mii_bus->read = appnic_mii_read;
 	pdata->mii_bus->write = appnic_mii_write;
-	pdata->mii_bus->irq = pdata->phy_irq;
+	memcpy(pdata->mii_bus->irq, pdata->phy_irq, sizeof(pdata->phy_irq));
 	for (i = 0; i < PHY_MAX_ADDR; ++i)
 		pdata->mii_bus->irq[i] = PHY_POLL;
 
@@ -1034,8 +1032,7 @@ static int appnic_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	union appnic_queue_pointer queue;
 	unsigned long flags;
 
-	if (!spin_trylock_irqsave(&pdata->tx_lock, flags))
-		return NETDEV_TX_LOCKED;
+	spin_lock_irqsave(&pdata->tx_lock, flags);
 
 	length = skb->len < ETH_ZLEN ? ETH_ZLEN : skb->len;
 	buf_per_desc = pdata->tx_buf_sz / pdata->tx_num_desc;
@@ -1108,7 +1105,7 @@ static int appnic_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		rmb();
 
 		write_mac(pdata->tx_head.raw, APPNIC_DMA_TX_HEAD_POINTER);
-		dev->trans_start = jiffies;
+		netif_trans_update(dev);
 
 	} else {
 		pdata->out_of_tx_descriptors++;
