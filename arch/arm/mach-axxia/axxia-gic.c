@@ -424,8 +424,14 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 		return -EINVAL;
 
 	/* We only support two interrupt trigger types. */
-	if (type != IRQ_TYPE_LEVEL_HIGH && type != IRQ_TYPE_EDGE_RISING)
-		return -EINVAL;
+	if (type != IRQ_TYPE_LEVEL_HIGH && type != IRQ_TYPE_EDGE_RISING) {
+		/*
+		 * NOTE: the timer interrupt is defaulting to LOW this is here
+		 * to allow this to pass through, TBD needs to be fixed upstream.
+		 */
+		if (!(gicirq == 27 && type == IRQ_TYPE_LEVEL_LOW))
+			return -EINVAL;
+	}
 
 	/*
 	 * Duplicate IRQ type settings across all clusters. Run
@@ -1103,7 +1109,7 @@ static void __init gic_axxia_init(struct gic_chip_data *gic)
 		writel_relaxed(cpumask, ipi_mask_reg_base + 0x40 + i * 4);
 }
 
-static void __cpuinit gic_dist_init(struct gic_chip_data *gic)
+static void  gic_dist_init(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	u32 cpumask;
@@ -1209,7 +1215,7 @@ static void __cpuinit gic_dist_init(struct gic_chip_data *gic)
 	writel_relaxed(1, base + GIC_DIST_CTRL);
 }
 
-static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
+static void  gic_cpu_init(struct gic_chip_data *gic)
 {
 
 	void __iomem *dist_base = gic_data_dist_base(gic);
@@ -1334,11 +1340,11 @@ static int gic_irq_domain_map(struct irq_domain *d, unsigned int irq,
 		irq_set_percpu_devid(irq);
 		irq_set_chip_and_handler(irq, &gic_chip,
 					 handle_percpu_devid_irq);
-		set_irq_flags(irq, IRQF_VALID | IRQF_NOAUTOEN);
+		irq_set_status_flags(irq, IRQ_NOAUTOEN);
 	} else {
 		irq_set_chip_and_handler(irq, &gic_chip,
 					 handle_fasteoi_irq);
-		set_irq_flags(irq, IRQF_VALID | IRQF_PROBE);
+		irq_set_probe(irq);
 	}
 	irq_set_chip_data(irq, d->host_data);
 	return 0;
@@ -1351,8 +1357,9 @@ static int gic_irq_domain_xlate(struct irq_domain *d,
 				unsigned long *out_hwirq,
 				unsigned int *out_type)
 {
-	if (d->of_node != controller)
+	if (irq_domain_get_of_node(d) != controller)
 		return -EINVAL;
+
 	if (intsize < 3)
 		return -EINVAL;
 
@@ -1434,7 +1441,7 @@ void __init axxia_gic_init_bases(int irq_start,
 }
 
 #ifdef CONFIG_SMP
-void __cpuinit axxia_gic_secondary_init(void)
+void  axxia_gic_secondary_init(void)
 {
 	struct gic_chip_data *gic = &gic_data;
 
@@ -1442,7 +1449,7 @@ void __cpuinit axxia_gic_secondary_init(void)
 	gic_cpu_init(&gic_data);
 }
 
-void __cpuinit axxia_hotplug_gic_secondary_init(void)
+void  axxia_hotplug_gic_secondary_init(void)
 {
 	gic_cpu_init(&gic_data);
 }

@@ -23,7 +23,7 @@
   See arch/arm/mach-axxia/timers.c for details.
  */
 
-#include <asm/hardware/timer-sp.h>
+//#include "timer-sp.h"
 
 #define AXXIA_TIMER_1_BASE 0x00
 #define AXXIA_TIMER_2_BASE 0x20

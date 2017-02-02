@@ -33,7 +33,9 @@
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/sched_clock.h>
-#include <asm/hardware/arm_timer.h>
+#include <linux/clockchips.h>
+#include <../drivers/clocksource/timer-sp.h>
+//#include <asm/hardware/arm_timer.h>
 
 struct axxia_timer {
 	struct clock_event_device  dev;
@@ -54,54 +56,68 @@ static u64 sp804_read(void)
 /**
  * axxia_timer_set_mode
  */
-static void
-axxia_timer_set_mode(enum clock_event_mode mode, struct clock_event_device *evt)
-{
-	struct axxia_timer *timer = timer_to_clock_event(evt);
-	unsigned long ctrl = TIMER_CTRL_32BIT | TIMER_CTRL_IE;
-
-	pr_info("axxia_timer_set_mode: CPU#%d set mode %d on timer %s\n",
-		smp_processor_id(), mode, timer->dev.name);
-
-	writel(ctrl, timer->base + TIMER_CTRL);
-
-	switch (mode) {
-	case CLOCK_EVT_MODE_PERIODIC:
-		writel(timer->reload, timer->base + TIMER_LOAD);
-		ctrl |= TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE;
-		break;
-
-	case CLOCK_EVT_MODE_ONESHOT:
-		/* period set, and timer enabled in 'next_event' hook */
-		ctrl |= TIMER_CTRL_ONESHOT;
-		break;
-
-	case CLOCK_EVT_MODE_UNUSED:
-	case CLOCK_EVT_MODE_SHUTDOWN:
-	default:
-		break;
-	}
-
-	writel(ctrl, timer->base + TIMER_CTRL);
-}
-
-/**
- * axxia_timer_set_next_event
- *
- */
-static int
-axxia_timer_set_next_event(unsigned long next, struct clock_event_device *evt)
+static int axxia_set_next_event(unsigned long cycles,
+				  struct clock_event_device *evt)
 {
 	struct axxia_timer *timer = timer_to_clock_event(evt);
 	unsigned long ctrl;
 
 	ctrl = readl(timer->base + TIMER_CTRL);
-	writel(next, timer->base + TIMER_LOAD);
+	writel(cycles, timer->base + TIMER_LOAD);
 	writel(ctrl | TIMER_CTRL_ENABLE, timer->base + TIMER_CTRL);
 
 	return 0;
 }
 
+static int axxia_shutdown(struct clock_event_device *evt)
+{
+	struct axxia_timer *timer = timer_to_clock_event(evt);
+	unsigned long ctrl = TIMER_CTRL_32BIT | TIMER_CTRL_IE;
+
+	pr_info("axxia_timer_shutdown: CPU#%d set on timer %s\n",
+		smp_processor_id(), timer->dev.name);
+
+	writel(ctrl, timer->base + TIMER_CTRL);
+
+	return 0;
+
+}
+
+static int axxia_set_oneshot(struct clock_event_device *evt)
+{
+	struct axxia_timer *timer = timer_to_clock_event(evt);
+	unsigned long ctrl = TIMER_CTRL_32BIT | TIMER_CTRL_IE;
+
+	pr_info("axxia_timer_set_oneshot: CPU#%d set on timer %s\n",
+		smp_processor_id(), timer->dev.name);
+
+	writel(ctrl, timer->base + TIMER_CTRL);
+
+	/* period set, and timer enabled in 'next_event' hook */
+	ctrl |= TIMER_CTRL_ONESHOT;
+
+	writel(ctrl, timer->base + TIMER_CTRL);
+
+	return 0;
+}
+
+static int axxia_set_periodic(struct clock_event_device *evt)
+{
+	struct axxia_timer *timer = timer_to_clock_event(evt);
+	unsigned long ctrl = TIMER_CTRL_32BIT | TIMER_CTRL_IE;
+
+	pr_info("axxia_timer_set_periodic: CPU#%d set on timer %s\n",
+		smp_processor_id(), timer->dev.name);
+
+	writel(ctrl, timer->base + TIMER_CTRL);
+
+	writel(timer->reload, timer->base + TIMER_LOAD);
+	ctrl |= TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE;
+
+	writel(ctrl, timer->base + TIMER_CTRL);
+
+	return 0;
+}
 
 /**
  * axxia_timer_handler - IRQ handler for the timer.
@@ -204,8 +220,10 @@ axxia_timer_clockevents_init(void __iomem *base,
 
 	evt->dev.features       = CLOCK_EVT_FEAT_PERIODIC |
 				  CLOCK_EVT_FEAT_ONESHOT,
-	evt->dev.set_mode	= axxia_timer_set_mode,
-	evt->dev.set_next_event	= axxia_timer_set_next_event,
+	evt->dev.set_next_event		= axxia_set_next_event,
+	evt->dev.set_state_shutdown	= axxia_shutdown,
+	evt->dev.set_state_periodic	= axxia_set_periodic,
+	evt->dev.set_state_oneshot	= axxia_set_oneshot,
 	evt->dev.rating		= 400,
 	evt->dev.name           = name;
 	evt->dev.irq            = irq;

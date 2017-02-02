@@ -138,7 +138,7 @@ void __init axxia_dt_timer_init(void)
 	axxia_init_clocks(is_sim);
 
 	of_clk_init(NULL);
-	clocksource_of_init();
+	timer_probe();
 }
 
 static struct mmci_platform_data mmc_plat_data = {
