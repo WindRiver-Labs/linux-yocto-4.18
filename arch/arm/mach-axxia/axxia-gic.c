@@ -429,7 +429,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 		 * NOTE: the timer interrupt is defaulting to LOW this is here
 		 * to allow this to pass through, TBD needs to be fixed upstream.
 		 */
-		if (!(gicirq == 27 && type == IRQ_TYPE_LEVEL_LOW))
+		if (!((gicirq >= 16 && gicirq <= 32) && type == IRQ_TYPE_LEVEL_LOW))
 			return -EINVAL;
 	}
 
