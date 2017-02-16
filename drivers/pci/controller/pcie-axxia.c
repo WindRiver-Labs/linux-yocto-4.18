@@ -964,7 +964,7 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 			axxia_pcie->initialized = be32_to_cpu(*initialized);
 
 		if (0 == axxia_pcie->initialized)
-			if (0 != pei_setup(axxia_pcie->control)) {
+			if (0 != pei_setup()) {
 				pr_err("pcie-axxia: PEI setup failed!\n");
 
 				return -EINVAL;
@@ -1016,7 +1016,7 @@ axxia_pcie_reset(void)
 		return -1;
 
 	/* Re-initialize the PEIs */
-	pei_setup(control_value);
+	pei_setup();
 
 	/* Re-configure the root complex */
 	axxia_pcie_setup_rc(_pp);
@@ -1060,6 +1060,7 @@ static int pcie2_init(void)
 	struct proc_dir_entry *pf = proc_create("driver/axxia_pcie_reset",
 						S_IWUSR, NULL,
 						&axxia_pcie_reset_proc_ops);
+
 	if (pf == NULL) {
 		pr_err("Could not create /proc/driver/axxia_pcie_reset!\n");
 		return -1;
