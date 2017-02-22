@@ -154,6 +154,7 @@
 			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+		clock-frequency = <8000000>;
 	};
 
 	soc {
@@ -607,6 +608,10 @@
 				#interrupt-cells = <3>;
 				interrupt-parent = <&intc>;
 				#power-domain-cells = <1>;
+				fsl,mf-mix-wakeup-irq = <0x54010000 0xc00 0x0 0x1040640>;
+				mipi-phy-supply = <&reg_1p0d>;
+				pcie-phy-supply = <&reg_1p0d>;
+				vcc-supply = <&reg_1p2>;
 
 				pgc {
 					#address-cells = <1>;
