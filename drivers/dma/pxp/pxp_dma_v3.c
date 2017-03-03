@@ -1394,9 +1394,9 @@ static inline void clkoff_callback(struct work_struct *w)
 	pxp_clk_disable(pxp);
 }
 
-static void pxp_clkoff_timer(unsigned long arg)
+static void pxp_clkoff_timer(struct timer_list *t)
 {
-	struct pxps *pxp = (struct pxps *)arg;
+	struct pxps *pxp = from_timer(pxp, t, clk_timer);
 
 	if ((pxp->pxp_ongoing == 0) && list_empty(&head))
 		schedule_work(&pxp->work);
@@ -5223,6 +5223,13 @@ static void pxp_remove_attrs(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_block_size);
 }
 
+static void pxp_init_timer(struct pxps *pxp)
+{
+	INIT_WORK(&pxp->work, clkoff_callback);
+
+	timer_setup(&pxp->clk_timer, pxp_clkoff_timer, 0);
+}
+
 #ifdef	CONFIG_MXC_FPGA_M4_TEST
 static void pxp_config_m4(struct platform_device *pdev)
 {
@@ -5313,10 +5320,7 @@ static int pxp_probe(struct platform_device *pdev)
 	dump_pxp_reg(pxp);
 	pxp_clk_disable(pxp);
 
-	INIT_WORK(&pxp->work, clkoff_callback);
-	init_timer(&pxp->clk_timer);
-	pxp->clk_timer.function = pxp_clkoff_timer;
-	pxp->clk_timer.data = (unsigned long)pxp;
+	pxp_init_timer(pxp);
 
 	init_waitqueue_head(&pxp->thread_waitq);
 	/* allocate a kernel thread to dispatch pxp conf */
