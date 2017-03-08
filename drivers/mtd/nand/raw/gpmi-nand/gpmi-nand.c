@@ -367,7 +367,7 @@ static int set_geometry_for_large_oob(struct gpmi_nand_data *this)
 {
 	struct bch_geometry *geo = &this->bch_geometry;
 	struct mtd_info *mtd = &this->nand.mtd;
-	struct nand_chip *chip = mtd->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 	unsigned int block_mark_bit_offset;
 	unsigned int max_ecc;
 	unsigned int bbm_chunk;
