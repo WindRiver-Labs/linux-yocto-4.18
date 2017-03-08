@@ -112,6 +112,8 @@ source "drivers/staging/vboxvideo/Kconfig"
 
 source "drivers/staging/pi433/Kconfig"
 
+source "drivers/staging/fclk/Kconfig"
+
 source "drivers/staging/mt7621-pinctrl/Kconfig"
 
 source "drivers/staging/mt7621-gpio/Kconfig"
