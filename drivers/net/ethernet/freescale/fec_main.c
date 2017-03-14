@@ -20,12 +20,13 @@
  * Copyright (c) 2004-2006 Macq Electronique SA.
  *
  * Copyright (C) 2010-2014 Freescale Semiconductor, Inc.
+ *
+ * Copyright 2017 NXP
  */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
-#include <linux/pm_runtime.h>
 #include <linux/ptrace.h>
 #include <linux/errno.h>
 #include <linux/ioport.h>
@@ -48,6 +49,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/clk.h>
+#include <linux/clk/clk-conf.h>
 #include <linux/platform_device.h>
 #include <linux/mdio.h>
 #include <linux/phy.h>
@@ -63,11 +65,11 @@
 #include <linux/pm_runtime.h>
 #include <linux/busfreq-imx.h>
 #include <linux/prefetch.h>
-#include <soc/imx/cpuidle.h>
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 
 #include <asm/cacheflush.h>
+#include <soc/imx/cpuidle.h>
 
 #include "fec.h"
 
@@ -129,10 +131,12 @@ static struct platform_device_id fec_devtype[] = {
 				FEC_QUIRK_BUG_CAPTURE | FEC_QUIRK_HAS_RACC |
 				FEC_QUIRK_HAS_COALESCE,
 	}, {
-		.name = "imx6ul-fec",
+		.name = "imx8qm-fec",
 		.driver_data = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_GBIT |
 				FEC_QUIRK_HAS_BUFDESC_EX | FEC_QUIRK_HAS_CSUM |
-				FEC_QUIRK_HAS_VLAN,
+				FEC_QUIRK_HAS_VLAN | FEC_QUIRK_HAS_AVB |
+				FEC_QUIRK_ERR007885 | FEC_QUIRK_BUG_CAPTURE |
+				FEC_QUIRK_HAS_RACC | FEC_QUIRK_HAS_COALESCE,
 	}, {
 		/* sentinel */
 	}
@@ -147,6 +151,7 @@ enum imx_fec_type {
 	MVF600_FEC,
 	IMX6SX_FEC,
 	IMX6UL_FEC,
+	IMX8QM_FEC,
 };
 
 static const struct of_device_id fec_dt_ids[] = {
@@ -157,6 +162,7 @@ static const struct of_device_id fec_dt_ids[] = {
 	{ .compatible = "fsl,mvf600-fec", .data = &fec_devtype[MVF600_FEC], },
 	{ .compatible = "fsl,imx6sx-fec", .data = &fec_devtype[IMX6SX_FEC], },
 	{ .compatible = "fsl,imx6ul-fec", .data = &fec_devtype[IMX6UL_FEC], },
+	{ .compatible = "fsl,imx8qm-fec", .data = &fec_devtype[IMX8QM_FEC], },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, fec_dt_ids);
@@ -3518,6 +3524,8 @@ fec_probe(struct platform_device *pdev)
 	char irq_name[8];
 	int irq_cnt;
 
+	of_dma_configure(&pdev->dev, np);
+
 	fec_enet_get_queue_num(pdev, &num_tx_qs, &num_rx_qs);
 
 	/* Init network device */
@@ -3594,7 +3602,9 @@ fec_probe(struct platform_device *pdev)
 		fep->phy_interface = ret;
 	}
 
+#if !defined(CONFIG_ARM64)
 	request_bus_freq(BUS_FREQ_HIGH);
+#endif
 
 	fep->clk_ipg = devm_clk_get(&pdev->dev, "ipg");
 	if (IS_ERR(fep->clk_ipg)) {
@@ -3874,7 +3884,9 @@ static int __maybe_unused fec_runtime_suspend(struct device *dev)
 	struct fec_enet_private *fep = netdev_priv(ndev);
 
 	clk_disable_unprepare(fep->clk_ipg);
+#if !defined(CONFIG_ARM64)
 	release_bus_freq(BUS_FREQ_HIGH);
+#endif
 
 	return 0;
 }
@@ -3884,7 +3896,9 @@ static int __maybe_unused fec_runtime_resume(struct device *dev)
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct fec_enet_private *fep = netdev_priv(ndev);
 
+#if !defined(CONFIG_ARM64)
 	request_bus_freq(BUS_FREQ_HIGH);
+#endif
 	return clk_prepare_enable(fep->clk_ipg);
 }
 
