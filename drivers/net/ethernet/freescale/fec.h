@@ -295,7 +295,7 @@ struct bufdesc_ex {
 
 
 /* This device has up to three irqs on some platforms */
-#define FEC_IRQ_NUM		3
+#define FEC_IRQ_NUM		4
 
 /* Maximum number of queues supported
  * ENET with AVB IP can support up to 3 independent tx queues and rx queues.
