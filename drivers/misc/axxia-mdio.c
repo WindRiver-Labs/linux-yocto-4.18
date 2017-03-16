@@ -92,8 +92,6 @@ axxia_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 value)
 	void __iomem *base = bus_to_regs(bus);
 	u32 ctrl;
 
-	printk("%s:%d - base=0x%p\n", __FILE__, __LINE__, base);
-
 	/* Wait for mdio_busy (control) to be clear. */
 	while ((readl(base + MDIO_CONTROL) & CONTROL_BUSY) != 0)
 		cpu_relax();
@@ -153,7 +151,6 @@ axxia_mdio_probe(struct platform_device *pdev)
 	priv->bus->write = axxia_mdio_write,
 	priv->bus->priv  = priv;
 	snprintf(priv->bus->id, MII_BUS_ID_SIZE, pdev->name);
-	printk("%s:%d - pdev->name=%s\n", __FILE__, __LINE__, pdev->name);
 
 	priv->base = devm_ioremap_resource(&pdev->dev, res);
 
