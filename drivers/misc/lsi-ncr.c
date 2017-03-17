@@ -914,7 +914,7 @@ ncr_init(void)
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
 		pr_debug("Using AXC6700 Addresses\n");
 		nca = ioremap(0x8020000000ULL, 0x20000);
-		apb2ser0 = ioremap(0x8080000000ULL, 0x400000);
+		apb2ser0 = ioremap(0x8002000000ULL, 0x400000);
 		is_6700 = 1;
 		nca_big_endian = 0; /* The 6700 NCA is LE */
 	} else {
