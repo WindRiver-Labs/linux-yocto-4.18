@@ -1221,9 +1221,12 @@ pei_setup(unsigned int control)
 
 	rc_mode = (control & 0x80) >> 7;
 
-	disable_ltssm(PEI0);
-	disable_ltssm(PEI1);
-	disable_ltssm(PEI2);
+	if (pei0_mode)
+		disable_ltssm(PEI0);
+	if (pei1_mode)
+		disable_ltssm(PEI1);
+	if (pei2_mode)
+		disable_ltssm(PEI2);
 
 	for (phy = 0; phy < 4; phy++)
 		enable_reset(phy);
