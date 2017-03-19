@@ -168,6 +168,16 @@
 	status = "okay";
 };
 
+&pci1 {
+
+	status = "okay";
+};
+
+&pci2 {
+
+	status = "okay";
+};
+
 &rio0 {
 
 	status = "okay";
