@@ -945,7 +945,6 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 	unsigned int control_value;
 	const unsigned int *initialized;
 	unsigned int initialized_value;
-	u32 val;
 
 	axxia_pcie = devm_kzalloc(&pdev->dev, sizeof(*axxia_pcie),
 				  GFP_KERNEL);
