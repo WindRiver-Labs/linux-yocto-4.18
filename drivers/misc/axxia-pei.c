@@ -1044,27 +1044,36 @@ update_settings(void)
 {
 	int i;
 	unsigned int region;
+	int number_of_serdes;
 
 	/*
 	  Make sure the parameters are version 2...
 	*/
 
-	if (!is_pei_control_v2)
+	if (0 != is_5500 || 0 == is_pei_control_v2)
 		return;
 
 	region = NCP_REGION_ID(0x115, 0);
+
+	if (0 != is_5600)
+		number_of_serdes = 4;
+	else
+		number_of_serdes = 1;
 
 	/*
 	  Set per serdes values.
 	*/
 
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < number_of_serdes; ++i) {
 		unsigned int offset;
 		unsigned int pic;
 		unsigned int ref_range;
 		unsigned int value;
 
-		offset = (0xf8 + (i * 0x18));
+		if (0 != is_5600)
+			offset = (0xf8 + (i * 0x18));
+		else
+			offset = 0x44;
 
 		if (0 != (coefficients.primary_input_clock & (0xff << (i * 8))))
 			pic = 2;
@@ -1089,7 +1098,7 @@ update_settings(void)
 	  Set per lane values.
 	*/
 
-	for (i = 0; i < 8; ++i) {
+	for (i = 0; i < (number_of_serdes * 2); ++i) {
 		unsigned int offset;
 		unsigned int eq_main;
 		unsigned int pre;
@@ -1139,19 +1148,24 @@ update_settings(void)
 			break;
 		}
 
-		offset = 0x18 + (i * 0x1c);
+		if (0 != is_5600)
+			offset = 0x18 + (i * 0x1c);
+		else
+			offset = 0xc + (i * 0x1c);
 
-		ncr_read32(region, offset, &value);
-		pr_debug("0x%x.0x%x.0x%x : 0x%x => ",
-		      NCP_NODE_ID(region), NCP_TARGET_ID(region), offset,
-		      value);
-		value &= ~(1 << 11);
+		if (0 != is_5600) {
+			ncr_read32(region, offset, &value);
+			pr_debug("0x%x.0x%x.0x%x : 0x%x => ",
+				 NCP_NODE_ID(region), NCP_TARGET_ID(region),
+				 offset, value);
+			value &= ~(1 << 11);
 
-		if (0 != boost)
-			value |= (1 << 11);
+			if (0 != boost)
+				value |= (1 << 11);
 
-		pr_debug("0x%x\n", value);
-		ncr_write32(region, offset, value);
+			pr_debug("0x%x\n", value);
+			ncr_write32(region, offset, value);
+		}
 
 		offset += 0x8;
 
