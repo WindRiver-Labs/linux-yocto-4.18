@@ -1,24 +1,13 @@
- /*
-  * drivers/edac/axxia_edac-l2_cpu.c
-  *
-  * EDAC Driver for Avago's Axxia 5500 A15 CPUs and L2 caches
-  *
-  * Copyright (C) 2010 LSI Inc.
-  *
-  * This program is free software; you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation; either version 2 of the License, or
-  * (at your option) any later version.
-  *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  *
-  * You should have received a copy of the GNU General Public License
-  * along with this program.
-  *
-  */
+/*
+ * drivers/edac/axxia_edac-l2_cpu_56xx.c
+ *
+ * EDAC Driver for Intel's Axxia 5600 System Memory Controller
+ *
+ * Copyright (C) 2016 Intel Inc.
+ *
+ * This file may be distributed under the terms of the
+ * GNU General Public License.
+ */
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -35,17 +24,18 @@
 #include <linux/regmap.h>
 #include "edac_core.h"
 #include "edac_module.h"
-#include "axxia_l2_55xx.h"
+#include "axxia_l2_56xx.h"
 
-#define LSI_EDAC_MOD_STR     "lsi_edac"
+
+#define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
 #define CORES_PER_CLUSTER 4
 
-#define APB2_PERSIST_SCRATCH 0xdc
+#define SYSCON_PERSIST_SCRATCH 0xdc
 #define L2_PERSIST_SCRATCH_BIT (0x1 << 5)
 #define CPU_PERSIST_SCRATCH_BIT (0x1 << 6)
 
 /* Private structure for common edac device */
-struct lsi_edac_dev_info {
+struct intel_edac_dev_info {
 	struct platform_device *pdev;
 	char *ctl_name;
 	char *blk_name;
@@ -61,17 +51,17 @@ void log_cpumerrsr(void *edac)
 	u64 val, clear_val;
 	u32 count0, count1;
 	int i;
-	struct lsi_edac_dev_info *dev_info;
+	struct intel_edac_dev_info *dev_info;
 
 	dev_info = edac_dev->pvt_info;
 
-	/* Read cp15 for CPUMERRSR counts */
+	/* Read S3_1_c15_c2_2 for CPUMERRSR_EL1 counts */
 	val = read_cpumerrsr();
 	if (val & 0x80000000) {
 		int cpu = get_cpu();
 
-		count0 = ((val) & 0x000000ff00000000) >> 20;
-		count1 = ((val) & 0x0000ff0000000000) >> 28;
+		count0 = ((val) & 0x000000ff00000000) >> 31;
+		count1 = ((val) & 0x0000ff0000000000) >> 39;
 
 		/* increment correctable error counts */
 		for (i = 0; i < count0+count1; i++) {
@@ -86,7 +76,7 @@ void log_cpumerrsr(void *edac)
 	}
 	if (val & 0x8000000000000000) {
 		regmap_update_bits(dev_info->syscon,
-				   APB2_PERSIST_SCRATCH,
+				   SYSCON_PERSIST_SCRATCH,
 				   CPU_PERSIST_SCRATCH_BIT,
 				   CPU_PERSIST_SCRATCH_BIT);
 		pr_emerg("CPU uncorrectable error\n");
@@ -96,7 +86,7 @@ void log_cpumerrsr(void *edac)
 
 
 /* Check for CPU Errors */
-static void lsi_cpu_error_check(struct edac_device_ctl_info *edac_dev)
+static void intel_cpu_error_check(struct edac_device_ctl_info *edac_dev)
 {
 	/* execute on current cpu */
 	log_cpumerrsr(edac_dev);
@@ -112,7 +102,7 @@ void log_l2merrsr(void *edac)
 	u64 val, clear_val;
 	u32 count0, count1;
 	int i;
-	struct lsi_edac_dev_info *dev_info;
+	struct intel_edac_dev_info *dev_info;
 
 	dev_info = edac_dev->pvt_info;
 
@@ -120,8 +110,8 @@ void log_l2merrsr(void *edac)
 	if (val & 0x80000000) {
 		int cpu = get_cpu();
 
-		count0 = ((val) & 0x000000ff00000000) >> 20;
-		count1 = ((val) & 0x0000ff0000000000) >> 28;
+		count0 = ((val) & 0x000000ff00000000) >> 31;
+		count1 = ((val) & 0x0000ff0000000000) >> 39;
 
 		/* increment correctable error counts */
 		for (i = 0; i < count0+count1; i++) {
@@ -137,7 +127,7 @@ void log_l2merrsr(void *edac)
 	}
 	if (val & 0x8000000000000000) {
 		regmap_update_bits(dev_info->syscon,
-				   APB2_PERSIST_SCRATCH,
+				   SYSCON_PERSIST_SCRATCH,
 				   L2_PERSIST_SCRATCH_BIT,
 				   L2_PERSIST_SCRATCH_BIT);
 		pr_emerg("L2 uncorrectable error\n");
@@ -146,7 +136,7 @@ void log_l2merrsr(void *edac)
 }
 
 /* Check for L2 Errors */
-static void lsi_l2_error_check(struct edac_device_ctl_info *edac_dev)
+static void intel_l2_error_check(struct edac_device_ctl_info *edac_dev)
 {
 	/* 4 cores per cluster */
 	int nr_cluster_ids = ((nr_cpu_ids - 1) / CORES_PER_CLUSTER) + 1;
@@ -177,10 +167,10 @@ static void lsi_l2_error_check(struct edac_device_ctl_info *edac_dev)
 	}
 }
 
-static void lsi_add_edac_devices(struct platform_device *pdev,
+static void intel_add_edac_devices(struct platform_device *pdev,
 	int num)
 {
-	struct lsi_edac_dev_info *dev_info = NULL;
+	struct intel_edac_dev_info *dev_info = NULL;
 	/* 4 cores per cluster */
 	int nr_cluster_ids = ((nr_cpu_ids - 1) / CORES_PER_CLUSTER) + 1;
 	struct device_node *np = pdev->dev.of_node;
@@ -192,10 +182,10 @@ static void lsi_add_edac_devices(struct platform_device *pdev,
 	dev_info->ctl_name = kstrdup(np->name, GFP_KERNEL);
 	if (num == 0) {
 		dev_info->blk_name = "cpumerrsr";
-		dev_info->check = lsi_cpu_error_check;
+		dev_info->check = intel_cpu_error_check;
 	} else {
 		dev_info->blk_name = "l2merrsr";
-		dev_info->check = lsi_l2_error_check;
+		dev_info->check = intel_l2_error_check;
 	}
 	dev_info->pdev = pdev;
 	dev_info->edac_idx = edac_device_alloc_index();
@@ -206,12 +196,14 @@ static void lsi_add_edac_devices(struct platform_device *pdev,
 		goto err1;
 	}
 
-	if (strcmp(dev_info->ctl_name, "edac_cpu") == 0) {
+	if (num == 0) {
+		/* cpu L1 */
 		dev_info->edac_dev =
 		edac_device_alloc_ctl_info(0, dev_info->ctl_name,
-		1, dev_info->blk_name, num_possible_cpus(), 0, NULL,
-		0, dev_info->edac_idx);
-	} else if (strcmp(dev_info->ctl_name, "edac_l2") == 0) {
+			1, dev_info->blk_name, num_possible_cpus(), 0, NULL,
+			0, dev_info->edac_idx);
+	} else {
+		/* cluster L2 */
 		dev_info->edac_dev =
 		edac_device_alloc_ctl_info(0, dev_info->ctl_name,
 			1, dev_info->blk_name, nr_cluster_ids, 0, NULL,
@@ -225,7 +217,7 @@ static void lsi_add_edac_devices(struct platform_device *pdev,
 	dev_info->edac_dev->pvt_info = dev_info;
 	dev_info->edac_dev->dev = &dev_info->pdev->dev;
 	dev_info->edac_dev->ctl_name = dev_info->ctl_name;
-	dev_info->edac_dev->mod_name = LSI_EDAC_MOD_STR;
+	dev_info->edac_dev->mod_name = INTEL_EDAC_MOD_STR;
 	dev_info->edac_dev->dev_name = dev_name(&dev_info->pdev->dev);
 
 	dev_info->edac_dev->edac_check = dev_info->check;
@@ -243,65 +235,65 @@ err1:
 	platform_device_unregister(dev_info->pdev);
 }
 
-static int lsi_edac_cpu_probe(struct platform_device *pdev)
+static int intel_edac_cpu_probe(struct platform_device *pdev)
 {
 	edac_op_state = EDAC_OPSTATE_POLL;
-	lsi_add_edac_devices(pdev, 0);
+	intel_add_edac_devices(pdev, 0);
 	return 0;
 }
 
-static int lsi_edac_cpu_remove(struct platform_device *pdev)
+static int intel_edac_cpu_remove(struct platform_device *pdev)
 {
 	platform_device_unregister(pdev);
 	return 0;
 }
 
-static int lsi_edac_l2_probe(struct platform_device *pdev)
+static int intel_edac_l2_probe(struct platform_device *pdev)
 {
 	edac_op_state = EDAC_OPSTATE_POLL;
-	lsi_add_edac_devices(pdev, 1);
+	intel_add_edac_devices(pdev, 1);
 	return 0;
 }
 
-static int lsi_edac_l2_remove(struct platform_device *pdev)
+static int intel_edac_l2_remove(struct platform_device *pdev)
 {
 	platform_device_unregister(pdev);
 	return 0;
 }
 
-static struct of_device_id lsi_edac_l2_match[] = {
+static const struct of_device_id intel_edac_l2_match[] = {
 	{
-	.compatible = "lsi,cortex-a15-l2-cache",
+	.compatible = "intel,cortex-a57-l2-cache",
 	},
 	{},
 };
 
-static struct platform_driver lsi_edac_l2_driver = {
-	.probe = lsi_edac_l2_probe,
-	.remove = lsi_edac_l2_remove,
+static struct platform_driver intel_edac_l2_driver = {
+	.probe = intel_edac_l2_probe,
+	.remove = intel_edac_l2_remove,
 	.driver = {
-		.name = "lsi_edac_l2",
-		.of_match_table = lsi_edac_l2_match,
+		.name = "intel_edac_l2",
+		.of_match_table = intel_edac_l2_match,
 	}
 };
-static struct of_device_id lsi_edac_cpu_match[] = {
+static const struct of_device_id intel_edac_cpu_match[] = {
 	{
-	.compatible = "lsi,cortex-a15-cpu",
+	.compatible = "intel,cortex-a57-cpu",
 	},
 	{},
 };
 
-static struct platform_driver lsi_edac_cpu_driver = {
-	.probe = lsi_edac_cpu_probe,
-	.remove = lsi_edac_cpu_remove,
+static struct platform_driver intel_edac_cpu_driver = {
+	.probe = intel_edac_cpu_probe,
+	.remove = intel_edac_cpu_remove,
 	.driver = {
-		.name = "lsi_edac_cpu",
-		.of_match_table = lsi_edac_cpu_match,
+		.name = "intel_edac_cpu",
+		.of_match_table = intel_edac_cpu_match,
 	}
 };
 
-module_platform_driver(lsi_edac_cpu_driver);
-module_platform_driver(lsi_edac_l2_driver);
+module_platform_driver(intel_edac_cpu_driver);
+module_platform_driver(intel_edac_l2_driver);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sangeetha Rao <sangeetha.rao@avagotech.com>");
+MODULE_AUTHOR("Marek Majtyka <marekx.majtyka@intel.com>");
