@@ -388,6 +388,22 @@ config EDAC_AXXIA_CMEM_5600
 	  the Configuration Memory error detection. Configuration Memory error
 	  detection is interrupt driven.
 
+config EDAC_AXXIA_L2_CPU_5500
+	tristate "AXXIA EDAC L2/CPU Controller for 5500"
+	help
+	  Support for L2 cache and A15 CPU error detection
+	  on AXXIA AXM55xx devices. This enables the L2
+	  cache and A15 CPU error detction. L2 cache and A15
+	  CPU error detection uses polling mechanism.
+
+config EDAC_AXXIA_L2_CPU_5600
+	tristate "AXXIA EDAC L2/CPU Controller for 5600"
+	help
+	  Support for L2 cache and A57 CPU error detection
+	  on AXXIA AXM56xx devices. This enables the L2
+	  cache and A57 CPU error detction. L2 cache and A57
+	  CPU error detection uses polling mechanism.
+
 config EDAC_THUNDERX
 	tristate "Cavium ThunderX EDAC"
 	depends on ARM64

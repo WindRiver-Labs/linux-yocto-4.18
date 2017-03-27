@@ -208,6 +208,13 @@
 	status = "okay";
 };
 
+&edac_cpu {
+	status = "okay";
+};
+
+&edac_l2 {
+	status = "okay";
+};
 &mtc {
 	status = "okay";
 };
