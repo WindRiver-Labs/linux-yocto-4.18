@@ -382,21 +382,21 @@ axxia_oem_init(void)
 {
 	if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
 		/* Only applicable to the 6700. */
-		if (0 != proc_create("driver/axxia_dspc", S_IWUSR, NULL,
-				     &axxia_dspc_proc_ops))
+		if (NULL == proc_create("driver/axxia_dspc", S_IWUSR, NULL,
+					&axxia_dspc_proc_ops))
 			pr_err("Could not create /proc/driver/axxia_dspc!\n");
 		else
 			pr_info("Axxia DSP Control Initialized\n");
 	}
 
-	if (0 != proc_create("driver/axxia_actlr_el3", S_IWUSR, NULL,
-			     &axxia_actlr_el3_proc_ops))
+	if (NULL == proc_create("driver/axxia_actlr_el3", S_IWUSR, NULL,
+				&axxia_actlr_el3_proc_ops))
 		pr_err("Could not create /proc/driver/axxia_actlr_el3!\n");
 	else
 		pr_info("Axxia ACTLR_EL3 Control Initialized\n");
 
-	if (0 != proc_create("driver/axxia_actlr_el2", S_IWUSR, NULL,
-			     &axxia_actlr_el2_proc_ops))
+	if (NULL == proc_create("driver/axxia_actlr_el2", S_IWUSR, NULL,
+				&axxia_actlr_el2_proc_ops))
 		pr_err("Could not create /proc/driver/axxia_actlr_el2!\n");
 	else
 		pr_info("Axxia ACTLR_EL3 Control Initialized\n");
