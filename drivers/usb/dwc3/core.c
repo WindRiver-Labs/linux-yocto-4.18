@@ -26,6 +26,7 @@
 #include <linux/acpi.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/reset.h>
+#include <linux/of_address.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -536,6 +537,33 @@ static int dwc3_core_ulpi_init(struct dwc3 *dwc)
 	return ret;
 }
 
+static int dwc3_config_soc_bus(struct dwc3 *dwc)
+{
+	int ret;
+
+	/*
+	 * Check if CCI is enabled for USB. Returns true
+	 * if the node has property 'dma-coherent'. Otherwise
+	 * returns false.
+	 */
+	if (of_dma_is_coherent(dwc->dev->of_node)) {
+		u32 reg;
+
+		reg = dwc3_readl(dwc->regs, DWC3_GSBUSCFG0);
+		reg |= DWC3_GSBUSCFG0_DATRDREQINFO |
+			DWC3_GSBUSCFG0_DESRDREQINFO |
+			DWC3_GSBUSCFG0_DATWRREQINFO |
+			DWC3_GSBUSCFG0_DESWRREQINFO;
+		dwc3_writel(dwc->regs, DWC3_GSBUSCFG0, reg);
+
+		ret = dwc3_enable_hw_coherency(dwc->dev);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 /**
  * dwc3_phy_setup - Configure USB PHY Interface of DWC3 Core
  * @dwc: Pointer to our controller context structure
@@ -807,6 +835,10 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		if (dwc->maximum_speed == USB_SPEED_SUPER)
 			dwc->maximum_speed = USB_SPEED_HIGH;
 	}
+
+	ret = dwc3_config_soc_bus(dwc);
+	if (ret)
+		goto err0;
 
 	ret = dwc3_phy_setup(dwc);
 	if (ret)
