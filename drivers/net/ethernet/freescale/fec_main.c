@@ -2110,11 +2110,15 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	fep->mii_bus->parent = &pdev->dev;
 
 	node = of_get_child_by_name(pdev->dev.of_node, "mdio");
-	err = of_mdiobus_register(fep->mii_bus, node);
-	if (node)
+	if (node) {
+		err = of_mdiobus_register(fep->mii_bus, node);
 		of_node_put(node);
-	else if (fep->phy_node)
+	} else if (fep->phy_node && !fep->fixed_link) {
 		err = -EPROBE_DEFER;
+	} else {
+		err = mdiobus_register(fep->mii_bus);
+	}
+
 	if (err)
 		goto err_out_free_mdiobus;
 
@@ -3588,6 +3592,7 @@ fec_probe(struct platform_device *pdev)
 			goto failed_phy;
 		}
 		phy_node = of_node_get(np);
+		fep->fixed_link = true;
 	}
 	fep->phy_node = phy_node;
 
@@ -3729,8 +3734,10 @@ fec_probe(struct platform_device *pdev)
 	if (ret)
 		goto failed_register;
 
-	fep->fixups = of_fec_enet_parse_fixup(np);
-	fec_enet_register_fixup(ndev);
+	if (!fep->fixed_link) {
+		fep->fixups = of_fec_enet_parse_fixup(np);
+		fec_enet_register_fixup(ndev);
+	}
 
 	device_init_wakeup(&ndev->dev, fep->wol_flag &
 			   FEC_WOL_HAS_MAGIC_PACKET);
