@@ -701,6 +701,8 @@ int uvc_dequeue_buffer(struct uvc_video_queue *queue,
 int uvc_queue_streamon(struct uvc_video_queue *queue, enum v4l2_buf_type type);
 int uvc_queue_streamoff(struct uvc_video_queue *queue, enum v4l2_buf_type type);
 void uvc_queue_cancel(struct uvc_video_queue *queue, int disconnect);
+struct uvc_buffer *
+		uvc_queue_get_current_buffer(struct uvc_video_queue *queue);
 struct uvc_buffer *uvc_queue_next_buffer(struct uvc_video_queue *queue,
 					 struct uvc_buffer *buf);
 int uvc_queue_mmap(struct uvc_video_queue *queue,
