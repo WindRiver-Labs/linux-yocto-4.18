@@ -475,6 +475,34 @@ static int caam_get_era(struct caam_ctrl __iomem *ctrl)
 		return caam_get_era_from_hw(ctrl);
 }
 
+static void handle_imx6_err005766(struct caam_drv_private *ctrlpriv)
+{
+	/*
+	 * ERRATA:  mx6 devices have an issue wherein AXI bus transactions
+	 * may not occur in the correct order. This isn't a problem running
+	 * single descriptors, but can be if running multiple concurrent
+	 * descriptors. Reworking the driver to throttle to single requests
+	 * is impractical, thus the workaround is to limit the AXI pipeline
+	 * to a depth of 1 (from it's default of 4) to preclude this situation
+	 * from occurring.
+	 */
+
+	u32 mcr_val;
+ 
+	if (ctrlpriv->era != IMX_ERR005766_ERA)
+		return;
+
+	if (of_machine_is_compatible("fsl,imx6q") ||
+	    of_machine_is_compatible("fsl,imx6dl") ||
+	    of_machine_is_compatible("fsl,imx6qp")) {
+		pr_info("AXI pipeline throttling enabled.\n");
+		mcr_val = rd_reg32(&ctrlpriv->ctrl->mcr);
+		wr_reg32(&ctrlpriv->ctrl->mcr,
+			 (mcr_val & ~(MCFGR_AXIPIPE_MASK)) |
+			 ((1 << MCFGR_AXIPIPE_SHIFT) & MCFGR_AXIPIPE_MASK));
+	}
+}
+
 static const struct of_device_id caam_match[] = {
 	{
 		.compatible = "fsl,sec-v4.0",
@@ -653,21 +681,6 @@ static int caam_probe(struct platform_device *pdev)
 			      (sizeof(dma_addr_t) == sizeof(u64) ?
 			       MCFGR_LONG_PTR : 0));
 
-#ifdef CONFIG_ARCH_MX6
-	/*
-	 * ERRATA:  mx6 devices have an issue wherein AXI bus transactions
-	 * may not occur in the correct order. This isn't a problem running
-	 * single descriptors, but can be if running multiple concurrent
-	 * descriptors. Reworking the driver to throttle to single requests
-	 * is impractical, thus the workaround is to limit the AXI pipeline
-	 * to a depth of 1 (from it's default of 4) to preclude this situation
-	 * from occurring.
-	 */
-	wr_reg32(&topregs->ctrl.mcr,
-		 (rd_reg32(&topregs->ctrl.mcr) & ~(MCFGR_AXIPIPE_MASK)) |
-		 ((1 << MCFGR_AXIPIPE_SHIFT) & MCFGR_AXIPIPE_MASK));
-#endif
-
 	/*
 	 *  Read the Compile Time paramters and SCFGR to determine
 	 * if Virtualization is enabled for this platform
@@ -710,6 +723,8 @@ static int caam_probe(struct platform_device *pdev)
 	}
 
 	ctrlpriv->era = caam_get_era(ctrl);
+
+	handle_imx6_err005766(ctrlpriv);
 
 	ret = of_platform_populate(nprop, caam_match, NULL, dev);
 	if (ret) {
