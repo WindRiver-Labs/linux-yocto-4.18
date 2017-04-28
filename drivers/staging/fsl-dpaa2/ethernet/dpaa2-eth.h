@@ -249,6 +249,14 @@ static inline struct dpaa2_faead *dpaa2_get_faead(void *buf_addr, bool swa)
  */
 #define DPAA2_ETH_ENQUEUE_RETRIES	10
 
+/* Tx congestion entry & exit thresholds, in number of bytes.
+ * We allow a maximum of 512KB worth of frames pending processing on the Tx
+ * queues of an interface
+ */
+#define DPAA2_ETH_TX_CONG_ENTRY_THRESH  (512 * 1024)
+#define DPAA2_ETH_TX_CONG_EXIT_THRESH	\
+	(DPAA2_ETH_TX_CONG_ENTRY_THRESH * 9 / 10)
+
 /* Driver statistics, other than those in struct rtnl_link_stats64.
  * These are usually collected per-CPU and aggregated by ethtool.
  */
@@ -344,6 +352,10 @@ struct dpaa2_eth_priv {
 	u16 bpid;
 	u16 tx_qdid;
 	struct iommu_domain *iommu_domain;
+
+	void *cscn_mem;	/* Tx congestion notifications are written here */
+	void *cscn_unaligned;
+	dma_addr_t cscn_dma;
 
 	u8 num_fqs;
 	struct dpaa2_eth_fq fq[DPAA2_ETH_MAX_QUEUES];
