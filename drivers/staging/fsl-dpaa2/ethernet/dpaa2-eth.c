@@ -587,6 +587,7 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 static netdev_tx_t dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct device *dev = net_dev->dev.parent;
 	struct dpaa2_fd fd;
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
@@ -594,6 +595,17 @@ static netdev_tx_t dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	u16 queue_mapping;
 	unsigned int needed_headroom;
 	int err, i;
+
+	queue_mapping = skb_get_queue_mapping(skb);
+	fq = &priv->fq[queue_mapping];
+
+	/* If we're congested, stop this tx queue; transmission of
+	 * the current skb happens regardless of congestion state
+	 */
+	dma_sync_single_for_cpu(dev, priv->cscn_dma,
+				DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+	if (unlikely(dpaa2_cscn_state_congested(priv->cscn_mem)))
+		netif_stop_subqueue(net_dev, queue_mapping);
 
 	percpu_stats = this_cpu_ptr(priv->percpu_stats);
 	percpu_extras = this_cpu_ptr(priv->percpu_extras);
@@ -645,12 +657,6 @@ static netdev_tx_t dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	/* Tracing point */
 	trace_dpaa2_tx_fd(net_dev, &fd);
 
-	/* TxConf FQ selection relies on queue id from the stack.
-	 * In case of a forwarded frame from another DPNI interface, we choose
-	 * a queue affined to the same core that processed the Rx frame
-	 */
-	queue_mapping = skb_get_queue_mapping(skb);
-	fq = &priv->fq[queue_mapping];
 	for (i = 0; i < DPAA2_ETH_ENQUEUE_RETRIES; i++) {
 		err = dpaa2_io_service_enqueue_qd(fq->channel->dpio,
 						  priv->tx_qdid, 0,
@@ -682,8 +688,9 @@ static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 			      struct dpaa2_eth_channel *ch,
 			      const struct dpaa2_fd *fd,
 			      struct napi_struct *napi __always_unused,
-			      u16 queue_id __always_unused)
+			      u16 queue_id)
 {
+	struct device *dev = priv->net_dev->dev.parent;
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
 	u32 fd_errors;
@@ -694,6 +701,14 @@ static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 	percpu_extras = this_cpu_ptr(priv->percpu_extras);
 	percpu_extras->tx_conf_frames++;
 	percpu_extras->tx_conf_bytes += dpaa2_fd_get_len(fd);
+
+	/* Check congestion state and wake all queues if necessary */
+	if (unlikely(__netif_subqueue_stopped(priv->net_dev, queue_id))) {
+		dma_sync_single_for_cpu(dev, priv->cscn_dma,
+					DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+		if (!dpaa2_cscn_state_congested(priv->cscn_mem))
+			netif_tx_wake_all_queues(priv->net_dev);
+	}
 
 	/* Check frame errors in the FD field */
 	fd_errors = dpaa2_fd_get_ctrl(fd) & DPAA2_FD_TX_ERR_MASK;
@@ -1852,6 +1867,52 @@ static void free_dpbp(struct dpaa2_eth_priv *priv)
 	fsl_mc_object_free(priv->dpbp_dev);
 }
 
+static int setup_tx_congestion(struct dpaa2_eth_priv *priv)
+{
+	struct dpni_congestion_notification_cfg notif_cfg = {0};
+	struct device *dev = priv->net_dev->dev.parent;
+	int err;
+
+	priv->cscn_unaligned = kzalloc(DPAA2_CSCN_SIZE + DPAA2_CSCN_ALIGN,
+				       GFP_KERNEL);
+
+	if (!priv->cscn_unaligned)
+		return -ENOMEM;
+
+	priv->cscn_mem = PTR_ALIGN(priv->cscn_unaligned, DPAA2_CSCN_ALIGN);
+	priv->cscn_dma = dma_map_single(dev, priv->cscn_mem, DPAA2_CSCN_SIZE,
+					DMA_FROM_DEVICE);
+	if (dma_mapping_error(dev, priv->cscn_dma)) {
+		dev_err(dev, "Error mapping CSCN memory area\n");
+		err = -ENOMEM;
+		goto err_dma_map;
+	}
+
+	notif_cfg.units = DPNI_CONGESTION_UNIT_BYTES;
+	notif_cfg.threshold_entry = DPAA2_ETH_TX_CONG_ENTRY_THRESH;
+	notif_cfg.threshold_exit = DPAA2_ETH_TX_CONG_EXIT_THRESH;
+	notif_cfg.message_ctx = (u64)priv;
+	notif_cfg.message_iova = priv->cscn_dma;
+	notif_cfg.notification_mode = DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
+				      DPNI_CONG_OPT_WRITE_MEM_ON_EXIT |
+				      DPNI_CONG_OPT_COHERENT_WRITE;
+	err = dpni_set_congestion_notification(priv->mc_io, 0, priv->mc_token,
+					       DPNI_QUEUE_TX, 0, &notif_cfg);
+	if (err) {
+		dev_err(dev, "dpni_set_congestion_notification failed\n");
+		goto err_set_cong;
+	}
+
+	return 0;
+
+err_set_cong:
+	dma_unmap_single(dev, priv->cscn_dma, DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+err_dma_map:
+	kfree(priv->cscn_unaligned);
+
+	return err;
+}
+
 static int set_buffer_layout(struct dpaa2_eth_priv *priv)
 {
 	struct device *dev = priv->net_dev->dev.parent;
@@ -1977,6 +2038,11 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	if (err)
 		goto close;
 
+	/* Enable congestion notifications for Tx queues */
+	err = setup_tx_congestion(priv);
+	if (err)
+		goto err_tx_cong;
+
 	return 0;
 
 close:
@@ -1987,6 +2053,7 @@ close:
 
 static void free_dpni(struct dpaa2_eth_priv *priv)
 {
+	struct device *dev = priv->net_dev->dev.parent;
 	int err;
 
 	err = dpni_reset(priv->mc_io, 0, priv->mc_token);
@@ -1995,6 +2062,9 @@ static void free_dpni(struct dpaa2_eth_priv *priv)
 			    err);
 
 	dpni_close(priv->mc_io, 0, priv->mc_token);
+
+	dma_unmap_single(dev, priv->cscn_dma, DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+	kfree(priv->cscn_unaligned);
 }
 
 static int setup_rx_flow(struct dpaa2_eth_priv *priv,
