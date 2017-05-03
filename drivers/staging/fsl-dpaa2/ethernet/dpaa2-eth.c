@@ -864,7 +864,7 @@ static int seed_pool(struct dpaa2_eth_priv *priv, u16 bpid)
 	 */
 	preempt_disable();
 	for (j = 0; j < priv->num_channels; j++) {
-		for (i = 0; i < DPAA2_ETH_NUM_BUFS;
+		for (i = 0; i < priv->max_bufs_per_ch;
 		     i += DPAA2_ETH_BUFS_PER_CMD) {
 			new_count = add_bufs(priv, priv->channel[j], bpid);
 			priv->channel[j]->buf_count += new_count;
@@ -920,7 +920,7 @@ static int refill_pool(struct dpaa2_eth_priv *priv,
 {
 	int new_count;
 
-	if (likely(ch->buf_count >= DPAA2_ETH_REFILL_THRESH))
+	if (likely(ch->buf_count >= DPAA2_ETH_REFILL_THRESH(priv)))
 		return 0;
 
 	do {
@@ -930,9 +930,9 @@ static int refill_pool(struct dpaa2_eth_priv *priv,
 			break;
 		}
 		ch->buf_count += new_count;
-	} while (ch->buf_count < DPAA2_ETH_NUM_BUFS);
+	} while (ch->buf_count < priv->max_bufs_per_ch);
 
-	if (unlikely(ch->buf_count < DPAA2_ETH_NUM_BUFS))
+	if (unlikely(ch->buf_count < priv->max_bufs_per_ch))
 		return -ENOMEM;
 
 	return 0;
@@ -1846,6 +1846,9 @@ static int setup_dpbp(struct dpaa2_eth_priv *priv)
 	}
 	priv->bpid = dpbp_attrs.bpid;
 
+	/* By default we start with flow control enabled */
+	priv->max_bufs_per_ch = DPAA2_ETH_NUM_BUFS_FC / priv->num_channels;
+
 	return 0;
 
 err_get_attr:
@@ -1991,6 +1994,7 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	struct device *dev = &ls_dev->dev;
 	struct dpaa2_eth_priv *priv;
 	struct net_device *net_dev;
+	struct dpni_link_cfg cfg = {0};
 	int err;
 
 	net_dev = dev_get_drvdata(dev);
@@ -2043,6 +2047,14 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	if (err)
 		goto err_tx_cong;
 
+	/* Enable flow control */
+	cfg.options = DPNI_LINK_OPT_AUTONEG | DPNI_LINK_OPT_PAUSE;
+	err = dpni_set_link_cfg(priv->mc_io, 0, priv->mc_token, &cfg);
+	if (err) {
+		dev_err(dev, "dpni_set_link_cfg() failed\n");
+		goto err_set_link_cfg;
+	}
+
 	return 0;
 
 close:
@@ -2073,7 +2085,6 @@ static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 	struct device *dev = priv->net_dev->dev.parent;
 	struct dpni_queue queue;
 	struct dpni_queue_id qid;
-	struct dpni_taildrop td;
 	int err;
 
 	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
@@ -2098,14 +2109,36 @@ static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 		return err;
 	}
 
-	td.enable = 1;
+	return 0;
+}
+
+/* Enable/disable Rx FQ taildrop
+ *
+ * Rx FQ taildrop is mutually exclusive with flow control and it only gets
+ * disabled when FC is active. Depending on FC status, we need to compute
+ * the maximum number of buffers in the pool differently, so use the
+ * opportunity to update max number of buffers as well.
+ */
+int set_rx_taildrop(struct dpaa2_eth_priv *priv, bool enable)
+{
+	struct dpni_taildrop td = {0};
+	int i, err;
+
+	td.enable = enable;
 	td.threshold = DPAA2_ETH_TAILDROP_THRESH;
-	err = dpni_set_taildrop(priv->mc_io, 0, priv->mc_token, DPNI_CP_QUEUE,
-				DPNI_QUEUE_RX, 0, fq->flowid, &td);
-	if (err) {
-		dev_err(dev, "dpni_set_threshold() failed\n");
-		return err;
+
+	for (i = 0; i < priv->num_fqs; i++) {
+		if (priv->fq[i].type != DPAA2_RX_FQ)
+			continue;
+		err = dpni_set_taildrop(priv->mc_io, 0, priv->mc_token,
+					DPNI_CP_QUEUE, DPNI_QUEUE_RX, 0,
+					priv->fq[i].flowid, &td);
+		if (err)
+			return err;
 	}
+
+	priv->max_bufs_per_ch = enable ? DPAA2_ETH_NUM_BUFS_PER_CH :
+				DPAA2_ETH_NUM_BUFS_FC / priv->num_channels;
 
 	return 0;
 }
