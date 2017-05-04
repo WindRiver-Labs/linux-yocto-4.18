@@ -133,18 +133,6 @@ dpaa2_eth_set_link_ksettings(struct net_device *net_dev,
 	struct dpni_link_cfg cfg = {0};
 	int err = 0;
 
-	/* If using an older MC version, the DPNI must be down
-	 * in order to be able to change link settings. Taking steps to let
-	 * the user know that.
-	 */
-	if (dpaa2_eth_cmp_dpni_ver(priv, DPNI_DYNAMIC_LINK_SET_VER_MAJOR,
-				   DPNI_DYNAMIC_LINK_SET_VER_MINOR) < 0) {
-		if (netif_running(net_dev)) {
-			netdev_info(net_dev, "Interface must be brought down first.\n");
-			return -EACCES;
-		}
-	}
-
 	/* Need to interrogate link state to get flow control params */
 	err = dpni_get_link_state(priv->mc_io, 0, priv->mc_token, &state);
 	if (err) {
