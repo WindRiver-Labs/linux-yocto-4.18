@@ -83,7 +83,7 @@ void
 arch_setup_pdev_archdata(struct platform_device *pdev)
 {
 	if (strncmp(pdev->name, "xhci-hcd", strlen("xhci-hcd")) == 0)
-		pdev->dev.archdata.dma_coherent = 1;
+		arch_setup_dma_ops(&pdev->dev, 0, 0, NULL, 1);
 }
 
 static const struct of_device_id adwc3_of_match[] = {
