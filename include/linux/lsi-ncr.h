@@ -42,6 +42,9 @@ int ncr_write32(unsigned int, unsigned int, unsigned int);
 int ncr_read_nolock(unsigned int, unsigned int, int, void *);
 int ncr_write_nolock(unsigned int, unsigned int, int, void *);
 
+void ncr_start_trace(void);
+void ncr_stop_trace(void);
+
  /*
   * when defined, the RTE driver module will set/clear
   * the ncr_reset_active flag to indicate when Axxia device
