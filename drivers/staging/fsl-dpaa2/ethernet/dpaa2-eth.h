@@ -43,6 +43,7 @@
 #include "dpni-cmd.h"
 
 #include "dpaa2-eth-trace.h"
+#include "dpaa2-eth-debugfs.h"
 
 #define DPAA2_WRIOP_VERSION(x, y, z) ((x) << 10 | (y) << 5 | (z) << 0)
 
@@ -282,6 +283,8 @@ struct dpaa2_eth_drv_stats {
 struct dpaa2_eth_fq_stats {
 	/* Number of frames received on this queue */
 	__u64 frames;
+	/* Number of times this queue entered congestion */
+	__u64 congestion_entry;
 };
 
 /* Per-channel statistics */
@@ -405,6 +408,9 @@ struct dpaa2_eth_priv {
 	u8 num_hash_fields;
 	/* enabled ethtool hashing bits */
 	u64 rx_hash_fields;
+#ifdef CONFIG_FSL_DPAA2_ETH_DEBUGFS
+	struct dpaa2_debugfs dbg;
+#endif
 	/* array of classification rules */
 	struct dpaa2_eth_cls_rule *cls_rule;
 	struct dpni_tx_shaping_cfg shaping_cfg;
