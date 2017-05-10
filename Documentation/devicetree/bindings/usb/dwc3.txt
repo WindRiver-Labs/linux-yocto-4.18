@@ -94,6 +94,10 @@ Optional properties:
 			this and tx-thr-num-pkt-prd to a valid, non-zero value
 			1-16 (DWC_usb31 programming guide section 1.2.3) to
 			enable periodic ESS TX threshold.
+ - snps,enable_guctl1_resume_quirk: Adding this flag sets bit 10 of GUCTL1
+	thus enabling the workaround in HW to fix the issue where the controller
+	was not able to generate correct CRC checksum on the very first transfer
+	packet after sending resume signal.
 
  - <DEPRECATED> tx-fifo-resize: determines if the FIFO *has* to be reallocated.
 
