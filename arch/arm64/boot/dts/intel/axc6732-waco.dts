@@ -55,6 +55,13 @@
 	};
 };
 
+&mdio1 {
+	status = "okay";
+	lsi,mdio-clk-offset = <0x1c>;
+	lsi,mdio-clk-period = <0xf0>;
+	max-speed = <10>;
+};
+
 &spi0 {
 	status = "okay";
 
