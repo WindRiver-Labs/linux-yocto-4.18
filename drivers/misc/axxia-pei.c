@@ -31,16 +31,28 @@
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/lsi-ncr.h>
+#include <linux/mutex.h>
 
 static int is_5500;
 static int is_5600;
 static int is_6700;
 
 static void __iomem *pcie_gpreg0;
+static void __iomem *pcie_gpreg1;
+static void __iomem *pcie_gpreg2;
 static void __iomem *pcie_rc;
 
+static int pcie_cc_gpreg_offset = 0x8000;
 static int is_pei_control_available;
 static int is_pei_control_v2;
+
+DEFINE_MUTEX(axxia_pei_mux);
+
+struct axxia_pei {
+	unsigned int	control;
+	int		control_set;
+	unsigned int	initialized;
+};
 
 struct pei_coefficients {
 	unsigned version;
@@ -57,6 +69,7 @@ struct pei_coefficients {
 	unsigned lane_1_vboost;
 };
 
+static struct axxia_pei axxia_pei;
 static struct pei_coefficients coefficients;
 
 enum SataMode {
@@ -79,6 +92,12 @@ enum SrioSpeed {
 	SRIO_SPEED_5G,
 	SRIO_SPEED_6_25G
 };
+
+enum PCIMode {
+	PEI0,
+	PEI1,
+	PEI2
+};
 enum PLLMode {
 	PLLA,
 	PLLB
@@ -92,6 +111,37 @@ enum PowerState {
 enum Dir {
 	TX,
 	RX
+};
+
+/* PEI0x8 000/010 which is valid? */
+enum port_config0 {
+	pc0_PEI0x8 = 0x0,
+	pc0_PEI0x4 = 0x1,
+	pc0_PEI0x8_alt = 0x2,
+	pc0_PEI0x2_PEI2x2 = 0x3,
+	pc0_SRIO1x2_SRIO0x2 = 0x4,
+	pc0_PEI0x2_SRIO0x2 = 0x7,
+};
+
+enum port_config1 {
+	pc1_PEI0x8 = 0x0,
+	pc1_PEI1x4 = 0x1,
+	pc1_PEI1x2_SATA0x1_SATA1x1 = 0x2,
+	pc1_PEI1x2_PEI2x2 = 0x3,
+};
+
+enum pipe_port {
+	pp_disable = 0x0,
+	pp_0 = 0x1,
+	pp_0_1 = 0x2,
+	pp_0_1_2_3 = 0x3,
+};
+
+enum pipe_nphy {
+	one_phy = 0x0,
+	two_phy = 0x1,
+	three_phy = 0x2,
+	four_phy = 0x3,
 };
 
 /******************************************************************************
@@ -185,7 +235,7 @@ enum Dir {
  * Bit 2: PEI2 enabled
  * Bit 1: PEI1 enabled
  * Bit 0: PEI0 enabled
- *******************************************************************************/
+ ******************************************************************************/
 
 void setup_sata_mode(enum SataMode mode, enum SataSpeed speed)
 {
@@ -369,6 +419,7 @@ void setup_srio_mode(enum SrioMode mode, enum SrioSpeed speed)
 	u32 regVal;
 	u32 phy, lane, rate, width, pll;
 	int i = 0;
+
 	if (mode == SRIO0) {
 		phy = 1;
 		lane = 2;
@@ -566,69 +617,172 @@ void setup_srio_mode(enum SrioMode mode, enum SrioSpeed speed)
 	}
 }
 
+void disable_ltssm(enum PCIMode mode)
+{
+	u32 val;
+
+	if (!is_5600 && !is_6700)
+		return;
+
+	switch (mode) {
+	case PEI0:
+		/* LTSSM Disable for PEI0 */
+		val = readl(pcie_gpreg0 + pcie_cc_gpreg_offset + 0x38);
+		val &= (~(0x1));
+		writel(val, pcie_gpreg0 + pcie_cc_gpreg_offset + 0x38);
+		break;
+	case PEI1:
+		/* LTSSM Disable for PEI1 */
+		if (!is_5600)
+			break;
+		val = readl(pcie_gpreg1 + pcie_cc_gpreg_offset + 0x38);
+		val &= (~(0x1));
+		writel(val, pcie_gpreg1 + pcie_cc_gpreg_offset + 0x38);
+		break;
+	case PEI2:
+		/* LTSSM Disable for PEI2 */
+		if (!is_5600)
+			break;
+		val = readl(pcie_gpreg2 + pcie_cc_gpreg_offset + 0x38);
+		val &= (~(0x1));
+		writel(val, pcie_gpreg2 + pcie_cc_gpreg_offset + 0x38);
+		break;
+	default:
+		pr_err("%s Unsupported PEI %d\n", __func__, mode);
+	};
+
+	mdelay(100);		/* TODO: Why is this needed? */
+}
+
+void set_sw_port_config0(enum port_config0 mode)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
+	regVal &= ~(0x7 << 26);
+	regVal |= ((mode & 0x7) << 26);
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
+}
+
+void set_sw_port_config1(enum port_config1 mode)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
+	regVal &= ~(0x3 << 22);
+	regVal |= ((mode & 0x3) << 22);
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
+}
+
+static void set_pipe_port_sel(enum pipe_port pp)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
+	regVal &= ~(0x3 << 24);
+	regVal |= ((pp & 0x3) << 24);
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
+}
+
+static void set_pipe_nphy(enum pipe_nphy nphy)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
+	regVal &= ~(0x3 << 20);
+	regVal |= ((nphy & 0x3) << 20);
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
+}
+
+static void set_srio_mode(enum SrioMode mode, unsigned int ctrl)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
+	if (SRIO0 == mode) {
+		regVal &= ~(0x3 << 20);
+		regVal |= ((ctrl & 0x3) << 20);
+	} else {
+		regVal &= ~(0x3 << 24);
+		regVal |= ((ctrl & 0x3) << 24);
+	}
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
+}
+
+static void set_srio_speed(enum SrioMode mode, enum SrioSpeed speed)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0x0), 0x4, &regVal);
+	if (SRIO0 == mode) {
+		regVal &= ~(0x7 << 12);
+		regVal |= ((speed & 0x7) << 12);
+	} else {
+		regVal &= ~(0x7 << 16);
+		regVal |= ((speed & 0x7) << 16);
+	}
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
+}
+
+static void set_pei0_rc_mode(u32 rc)
+{
+	u32 regVal;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0x0), 0x0, &regVal);
+	if (rc)
+		regVal |= (0x1 << 22);
+	else
+		regVal &= ~(0x1 << 22);
+	ncr_write32(NCP_REGION_ID(0x115, 0x0), 0x0, regVal);
+}
+
 void enable_reset(u32 phy)
 {
 	u32 regVal;
 
 	if (phy == 0) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
 		regVal |= (1 << 5);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
 	} else if (phy == 1) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
 		regVal |= (1 << 14);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
 	} else if (phy == 2) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
 		regVal |= (1 << 19);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
 	} else if (phy == 3) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
 		regVal |= (1 << 29);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
 	}
 }
 
-void release_reset(u32 phy)
+static void release_reset(u32 phy)
 {
 	u32 regVal;
 
 	if (phy == 0) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
 		regVal &= (~(1 << 5));
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
 	} else if (phy == 1) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &regVal);
 		regVal &= (~(1 << 14));
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, regVal);
 	} else if (phy == 2) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
 		regVal &= (~(1 << 19));
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
 	} else if (phy == 3) {
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4,
-			   &regVal);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &regVal);
 		regVal &= (~(1 << 29));
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4,
-			    regVal);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, regVal);
 	}
 }
 
-int check_pll_lock(enum PLLMode mode, u32 phy)
+static int check_pll_lock(enum PLLMode mode, u32 phy)
 {
 	u32 regVal;
 	int count = 0;
@@ -647,7 +801,36 @@ int check_pll_lock(enum PLLMode mode, u32 phy)
 	return regVal;
 }
 
-int check_ack(u32 phy, u32 lane, enum Dir dir)
+static int release_srio_reset(enum SrioMode mode, enum SrioSpeed speed)
+{
+	u32 phy;
+	enum PLLMode pll;
+
+	switch (mode) {
+	case SRIO0:
+		phy = 1;
+		break;
+	case SRIO1:
+		phy = 0;
+		break;
+	default:
+		pr_err("Wrong SRIO%d\n", mode);
+		return 1;
+	}
+
+	release_reset(phy);
+	pll = PLLA;
+	if ((SRIO_SPEED_3_125G == speed) ||
+	    (SRIO_SPEED_6_25G == speed))
+		pll = PLLB;
+	if (!check_pll_lock(pll, phy)) {
+		pr_err("%s didn't lock\n", pll == PLLA ? "PLLA" : "PLLB");
+		return 1;
+	}
+	return 0;
+}
+
+static int check_ack(u32 phy, u32 lane, enum Dir dir)
 {
 	u32 regVal;
 	int count = 0;
@@ -670,6 +853,33 @@ int check_ack(u32 phy, u32 lane, enum Dir dir)
 	} while ((!regVal) && (count++ < 5));
 
 	return regVal;
+}
+
+static int check_srio_ack(enum SrioMode mode)
+{
+	unsigned int phy;
+	unsigned int lane;
+
+	switch (mode) {
+	case SRIO0:
+		phy = 1;
+		break;
+	case SRIO1:
+		phy = 0;
+		break;
+	default:
+		pr_err("Wrong SRIO%d\n", mode);
+		return 1;
+	}
+
+	for (lane = 0; lane < 2; lane++) {
+		if (!check_ack(phy, lane, RX)) {
+			pr_err("RX ACK not set for PHY%d LANE%d\n", phy, lane);
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 void set_tx_clk_ready(void)
@@ -733,6 +943,40 @@ powerup_lane(u32 phy, u32 lane, enum PowerState state, enum Dir dir)
 	return ret;
 }
 
+static int
+powerup_srio_lanes(enum SrioMode mode, enum PowerState state)
+{
+	u32 lane;
+	u32 phy;
+
+	switch (mode) {
+	case SRIO0:
+		phy = 1;
+		break;
+	case SRIO1:
+		phy = 0;
+		break;
+	default:
+		pr_err("Wrong SRIO%d\n", mode);
+		return 1;
+	}
+
+	/* Power up TX/RX lanes */
+	for (lane = 0; lane < 2; lane++) {
+		if (!powerup_lane(phy, lane, state, TX)) {
+			pr_err("TX powerup failed for PHY%d LANE%d\n",
+			       phy, lane);
+			return 1;
+		}
+		if (!powerup_lane(phy, lane, state, RX)) {
+			pr_err("RX powerup failed for PHY%d LANE%d\n",
+			       phy, lane);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /*
   ------------------------------------------------------------------------------
   enable_lane
@@ -757,8 +1001,29 @@ enable_lane(u32 phy, u32 lane, enum Dir dir)
 		regVal |= (1 << 21);
 
 	ncr_write32(NCP_REGION_ID(0x115, 0), offset, regVal);
+}
 
-	return;
+static void enable_srio_lanes(enum SrioMode mode)
+{
+	u32 lane;
+	u32 phy;
+
+	switch (mode) {
+	case SRIO0:
+		phy = 1;
+		break;
+	case SRIO1:
+		phy = 0;
+		break;
+	default:
+		pr_err("Wrong SRIO%d\n", mode);
+		return;
+	}
+
+	for (lane = 0; lane < 2; lane++) {
+		enable_lane(phy, lane, TX);
+		enable_lane(phy, lane, RX);
+	}
 }
 
 /*
@@ -900,7 +1165,6 @@ update_settings(void)
 		ncr_write32(region, offset, value);
 	}
 
-	return;
 }
 
 
@@ -909,15 +1173,11 @@ update_settings(void)
   pei_setup
 */
 
-int
-pei_setup(void)
+static int
+pei_setup(unsigned int control)
 {
-	unsigned int control;
 	unsigned int pci_srio_sata_mode;
-	unsigned int val;
 	unsigned int rc_mode;
-	unsigned int phyVal0;
-	unsigned int phyVal1;
 	unsigned int srio0_mode;
 	unsigned int srio1_mode;
 	unsigned int srio0_speed;
@@ -928,19 +1188,18 @@ pei_setup(void)
 	unsigned int sata1_mode;
 	unsigned int srio0_ctrl;
 	unsigned int srio1_ctrl;
-	unsigned int reg_val = 0;
-	enum PLLMode pll;
+	unsigned int pei0_mode;
+	unsigned int pei1_mode;
+	unsigned int pei2_mode;
+	u32 reg_val = 0;
 	int phy, lane;
 
-	if (!is_pei_control_available) {
-		pr_err("Control value is NOT available!\n");
-
-		return 1;
-	}
-
-	control = coefficients.control;
-
 	pci_srio_sata_mode = (control & 0x03c00000) >> 22;
+	/*
+	pr_debug("YYY: pei_setup control=0x%08x pci_srio_sata_mode=%d\n",
+		control, pci_srio_sata_mode);
+	*/
+
 	sata0_mode = (control & 0x20) >> 5;
 	sata1_mode = (control & 0x40) >> 6;
 
@@ -953,749 +1212,578 @@ pei_setup(void)
 	srio0_speed = (control & 0x7000) >> 12;
 	srio1_speed = (control & 0x38000) >> 15;
 
-	/* LTSSM Disable for PEI0 */
-	val = readl(pcie_gpreg0 + 0x8038);
-	val &= (~(0x1));
-	writel(val, pcie_gpreg0 + 0x8038);
-	msleep(100);
+	srio0_ctrl = (control & 0x300) >> 8;
+	srio1_ctrl = (control & 0xc00) >> 10;
+
+	pei0_mode = (control & 0x1);
+	pei1_mode = (control & 0x2) >> 1;
+	pei2_mode = (control & 0x4) >> 2;
+
+	rc_mode = (control & 0x80) >> 7;
+
+	disable_ltssm(PEI0);
+	disable_ltssm(PEI1);
+	disable_ltssm(PEI2);
 
 	for (phy = 0; phy < 4; phy++)
 		enable_reset(phy);
 
-	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-	phyVal0 &= ~1;
-	ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+	/* Disable all interfaces */
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+	reg_val &= ~(0xf | (0x1 << 10) | (0x3 << 29));
+	ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
 	mdelay(100);		/* TODO: Why is this needed? */
 
 	switch (pci_srio_sata_mode) {
 	case 0:
-		/* PEI0x8 */
-		rc_mode = (control & 0x80)<<15;
-		/* Enable PEI0, PEI0 RC mode */
-		phyVal0 = (control & 0x1) | rc_mode;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
-		/* PIPE port select -- Enable PIPE0 interface */
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, (0x1<<24));
+		set_sw_port_config0(pc0_PEI0x8);
+		set_sw_port_config1(pc1_PEI0x8);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0);
+		set_pipe_nphy(four_phy);
+
+		if (pei0_mode)
+			for (phy = 0; phy < 4; phy++)
+				release_reset(phy);
+
+		/* Enable PEI0 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x0, &reg_val);
+		reg_val |= (pei0_mode << 0);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x0, reg_val);
 		break;
 	case 1:
 		/*
 		  PEI0x4, PEI1x4
 		*/
-		phyVal1 = 0x0e7001ac;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, phyVal1);
+		set_sw_port_config0(pc0_PEI0x4);
+		set_sw_port_config1(pc1_PEI1x4);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0_1);
+		set_pipe_nphy(four_phy);
 
-		phyVal0 = 0x84400040;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+		if (pei0_mode)
+			for (phy = 0; phy < 2; phy++)
+				release_reset(phy);
+		if (pei1_mode)
+			for (phy = 2; phy < 4; phy++)
+				release_reset(phy);
+
+		/* Enable PEI0/PEI1 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0x0, &reg_val);
+		reg_val |=
+			(pei0_mode << 0) |
+			(pei1_mode << 1);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0x0, reg_val);
 		break;
 	case 2:
 		/* PEI0x4_PEI1x2_SATA0x1_SATA1x1 */
-		rc_mode = (control & 0x80)<<15;
 		/* Enable PEI0/PEI1, PEI0 RC mode */
-		phyVal0 = (control & 0x3) | rc_mode;
-		/* PEI0x4 */
-		phyVal0 |= (0x1 << 26);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
-		/* PEI1x2_SATA0_SATA1 */
-		phyVal1 = (0x1 << 23);
-		/* PIPE port select -- Enable PIPE0/PIPE1 interface */
-		phyVal1 |= (0x2 << 24);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, phyVal1);
+		set_sw_port_config0(pc0_PEI0x4);
+		set_sw_port_config1(pc1_PEI1x2_SATA0x1_SATA1x1);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0_1);
+
+		if (pei0_mode)
+			for (phy = 0; phy < 2; phy++)
+				release_reset(phy);
+		if (pei1_mode)
+			release_reset(2);
+
+		/* Enable PEI0/PEI1 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (pei0_mode << 0) | (pei1_mode << 1);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+
 		if (sata0_mode)
 			setup_sata_mode(SATA0, sata0_speed);
 		if (sata1_mode)
 			setup_sata_mode(SATA1, sata1_speed);
-		if (!check_pll_lock(PLLA, 1)) {
-			printk("PLLA didn't lock\n");
-			return 1;
-		}
-		for (lane = 0; lane < 2; lane++) {
-			if (!check_ack(3, lane, TX)) {
-				printk("TX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
+		if (sata0_mode || sata1_mode) {
+			release_reset(3);
+			for (lane = 0; lane < 2; lane++) {
+				if (!check_ack(3, lane, TX)) {
+					pr_err("TX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
+				if (!check_ack(3, lane, RX)) {
+					pr_err("RX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
 			}
-			if (!check_ack(3, lane, RX)) {
-				printk("RX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
-			}
-		}
 
-		/* Set TX clock ready */
-		set_tx_clk_ready();
+			/* Set TX clock ready */
+			set_tx_clk_ready();
+		}
 
 		/* Enable SATA0/SATA1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &phyVal0);
-		phyVal0 |= (control & 0x20) << 24;
-		phyVal0 |= (control & 0x40) << 24;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (sata0_mode << 29) | (sata1_mode << 30);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
 
-		if (!check_rx_valid(3, 0)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE0\n");
-			return 1;
-		}
-		if (!check_rx_valid(3, 1)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE1\n");
-			return 1;
+		if (sata0_mode || sata1_mode) {
+			if (!check_rx_valid(3, 0)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE0\n");
+				return 1;
+			}
+			if (!check_rx_valid(3, 1)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE1\n");
+				return 1;
+			}
 		}
 		break;
 	case 3:
-		/* PEI0x2_PEI2x2_PEI1x2_SATA0x1_SATA1x1 */
-		rc_mode = (control & 0x80)<<15;
-		/* Enable PEI0/PEI1/PEI2, PEI0 RC mode */
-		phyVal0 = (control & 0x7) | rc_mode;
 		/* PEI0x2_PEI2x2 */
-		phyVal0 |= (0x3 << 26);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
 		/* PEI1x2_SATA0_SATA1 */
-		phyVal1 = (0x1 << 23);
-		/* PIPE port select -- Enable PIPE0, PIPE1
-		 * and PIPE2 interface */
-		phyVal1 |= (0x3 << 24);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, phyVal1);
+		set_sw_port_config0(pc0_PEI0x2_PEI2x2);
+		set_sw_port_config1(pc1_PEI1x2_SATA0x1_SATA1x1);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0_1_2_3);
+
+		if (pei0_mode)
+			release_reset(0);
+		if (pei1_mode)
+			release_reset(1);
+		if (pei2_mode)
+			release_reset(2);
+
+		/* Enable PEI0/PEI1/PEI2 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (pei0_mode << 0) | (pei1_mode << 1) |
+			(pei2_mode << 2);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+
 		if (sata0_mode)
 			setup_sata_mode(SATA0, sata0_speed);
 		if (sata1_mode)
 			setup_sata_mode(SATA1, sata1_speed);
-
-		if (!check_pll_lock(PLLA, 1)) {
-			printk("PLLA didn't lock\n");
-			return 1;
-		}
-		for (lane = 0; lane < 2; lane++) {
-			if (!check_ack(3, lane, TX)) {
-				printk("TX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
+		if (sata0_mode || sata1_mode) {
+			release_reset(3);
+			for (lane = 0; lane < 2; lane++) {
+				if (!check_ack(3, lane, TX)) {
+					pr_err("TX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
+				if (!check_ack(3, lane, RX)) {
+					pr_err("RX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
 			}
-			if (!check_ack(3, lane, RX)) {
-				printk("RX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
-			}
+			/* Set TX clock ready */
+			set_tx_clk_ready();
 		}
-		/* Set TX clock ready */
-		set_tx_clk_ready();
 
 		/* Enable SATA0/SATA1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		phyVal0 |= (control & 0x20) << 24;
-		phyVal0 |= (control & 0x40) << 24;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (sata0_mode << 29) | (sata1_mode << 30);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
 
-		if (!check_rx_valid(3, 0)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE0\n");
-			return 1;
-		}
-		if (!check_rx_valid(3, 1)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE1\n");
-			return 1;
+		if (sata0_mode || sata1_mode) {
+			if (!check_rx_valid(3, 0)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE0\n");
+				return 1;
+			}
+			if (!check_rx_valid(3, 1)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE1\n");
+				return 1;
+			}
 		}
 		break;
 	case 4:
 		/* PEI0x2_SRIO0x2_PEI1x4 */
-		rc_mode = (control & 0x80)<<15;
 		/* Enable PEI0/PEI1/SRIO0, PEI0 RC mode */
-		phyVal0 = (control & 0x3) | rc_mode;
-		/* PEI0x2_SRI0x2 */
-		phyVal0 |= (0x7 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
+		set_sw_port_config0(pc0_PEI0x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x4);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0_1);
+
+		if (pei0_mode)
+			release_reset(0);
+		if (pei1_mode)
+			for (phy = 2; phy < 4; phy++)
+				release_reset(phy);
+
+		/* Enable PEI0/PEI1 */
 		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x1 << 22) | (0x7<<26) | (0x3 << 20));
-		reg_val |= phyVal0 | srio0_ctrl;
+		reg_val |= (pei0_mode << 0) | (pei1_mode << 1);
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x4 */
-		phyVal1 = (0x1 << 22);
-		/* PIPE port select -- Enable PIPE0/PIPE1 interface */
-		phyVal1 |= (0x2 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3<<24) | (0x3 << 22) | (0x7 << 12));
-		reg_val |= (phyVal1 | srio0_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
-		if (srio0_mode)
-			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
 
-		pll = PLLA;
-		if ((srio0_speed == SRIO_SPEED_3_125G)
-		    || (srio0_speed == SRIO_SPEED_6_25G))
-			pll = PLLB;
-		if (!check_pll_lock(pll, 1)) {
-			printk("%s didn't lock\n",
-			       pll == PLLA ? "PLLA" : "PLLB");
-			return 1;
-		}
-		printk("Enabling sRIO .");
-		for (lane = 0; lane < 2; lane++) {
-			if (!check_ack(3, lane, RX)) {
-				printk("RX ACK not set for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
+		if (srio0_mode && release_srio_reset(SRIO0, srio0_speed))
+			srio0_mode = 0;
+		pr_debug("Enabling sRIO .");
+		if (srio0_mode && check_srio_ack(SRIO0))
+			srio0_mode = 0;
 		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P1, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P1, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
-
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
 		/* Set TX clock ready */
-		set_tx_clk_ready();
-
-		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P0, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P0, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
-
-		for (lane = 0; lane < 2; lane++) {
-			enable_lane(1, lane, TX);
-			enable_lane(1, lane, RX);
-		}
+		if (srio0_mode)
+			set_tx_clk_ready();
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
 		/* Enable SRIO0 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x8);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	case 5:
 		/* PEI0x2_SRIO0x2_PEI1x2_SATA0x1_SATA1x1 */
-		rc_mode = (control & 0x80)<<15;
 		/* Enable PEI0/PEI1/SRIO0, PEI0 RC mode */
-		phyVal0 = (control & 0x3) | rc_mode;
-		/* PEI0x2_SRI0x2 */
-		phyVal0 |= (0x7 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
+		set_sw_port_config0(pc0_PEI0x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x2_SATA0x1_SATA1x1);
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0_1);
+		set_pipe_nphy(three_phy);
+
+		if (pei0_mode)
+			release_reset(0);
+		if (pei1_mode)
+			release_reset(2);
+
+		/* Enable PEI0/PEI1 */
 		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x1 << 22) | (0x7<<26) | (0x3 << 20));
-		reg_val |= phyVal0 | srio0_ctrl;
+		reg_val |= (pei0_mode << 0) | (pei1_mode << 1);
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x2_SATA0x1_SATA1x1 */
-		phyVal1 = (0x1 << 23);
-		/* PIPE port select -- Enable PIPE0/PIPE1 interface */
-		phyVal1 |= (0x2 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3<<24) | (0x3 << 22) | (0x7 << 12));
-		reg_val |= (phyVal1 | srio0_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+
 		if (sata0_mode)
 			setup_sata_mode(SATA0, sata0_speed);
 		if (sata1_mode)
 			setup_sata_mode(SATA1, sata1_speed);
 		if (srio0_mode)
 			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
-		pll = PLLA;
-		if ((srio0_speed == SRIO_SPEED_3_125G)
-		    || (srio0_speed == SRIO_SPEED_6_25G))
-			pll = PLLB;
-		if (!check_pll_lock(pll, 1)) {
-			printk("%s didn't lock\n",
-			       pll == PLLA ? "PLLA" : "PLLB");
-			return 1;
-		}
-		for (lane = 0; lane < 2; lane++) {
-			if (!check_ack(3, lane, TX)) {
-				printk("TX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
-			}
-			if (!check_ack(3, lane, RX)) {
-				printk("RX ACK not set for PHY3 LANE%d\n", lane);
-				return 1;
+		pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
+		if (srio0_mode && release_srio_reset(SRIO0, srio0_speed))
+			srio0_mode = 0;
+		if (sata0_mode || sata1_mode)
+			release_reset(3);
+		if (sata0_mode || sata1_mode) {
+			for (lane = 0; lane < 2; lane++) {
+				if (!check_ack(3, lane, TX)) {
+					pr_err("TX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
+				if (!check_ack(3, lane, RX)) {
+					pr_err("RX ACK not set for PHY3 LANE%d\n",
+					       lane);
+					return 1;
+				}
 			}
 		}
-		printk("Enabling sRIO/SATA .");
-		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P1, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P1, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
+		pr_debug("Enabling sRIO/SATA .");
+		if (srio0_mode && check_srio_ack(SRIO0))
+			srio0_mode = 0;
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
 
 		/* Set TX clock ready */
-		set_tx_clk_ready();
+		if (srio0_mode || sata0_mode || sata1_mode)
+			set_tx_clk_ready();
 
-		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P0, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P0, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
-		printk(".");
-		for (lane = 0; lane < 2; lane++) {
-			enable_lane(1, lane, TX);
-			enable_lane(1, lane, RX);
-		}
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
 
 		/* Enable SATA0/SATA1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		phyVal0 |= (control & 0x20) << 24;
-		phyVal0 |= (control & 0x40) << 24;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (sata0_mode << 29) | (sata1_mode << 30);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
 
-		if (!check_rx_valid(3, 0)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE0\n");
-			return 1;
+		if (sata0_mode || sata1_mode) {
+			if (!check_rx_valid(3, 0)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE0\n");
+				return 1;
+			}
+			if (!check_rx_valid(3, 1)) {
+				pr_err("RX clock/data recovery not asserted for PHY3 LANE1\n");
+				return 1;
+			}
 		}
-		if (!check_rx_valid(3, 1)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE1\n");
-			return 1;
-		}
+
 		/* Enable SRIO0 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x8);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	case 6:
 		/* PEI0x2_SRIO0x2_PEI1x2_PEI2x2 */
-		rc_mode = (control & 0x80)<<15;
 		/* Enable PEI0/PEI1/PEI2/SRIO0, PEI0 RC mode */
-		phyVal0 = (control & 0x7) | rc_mode;
-		/* PEI0x2_SRIO0x2 */
-		phyVal0 |= (0x7 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
+		set_pei0_rc_mode(rc_mode);
+		set_sw_port_config0(pc0_PEI0x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x2_PEI2x2);
+		set_pipe_port_sel(pp_0_1_2_3);
+		set_pipe_nphy(three_phy);
+
+		if (pei0_mode)
+			release_reset(0);
+		if (pei1_mode)
+			release_reset(2);
+		if (pei2_mode)
+			release_reset(3);
+
+		/* Enable PEI0/PEI1/PEI2 */
 		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x1 << 22) | (0x7<<26) | (0x3 << 20));
-		reg_val |= phyVal0 | srio0_ctrl;
+		reg_val |= (pei0_mode << 0) | (pei1_mode << 1) |
+			(pei2_mode << 2);
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x2_PEI2x2 */
-		phyVal1 = (0x3 << 22);
-		/* PIPE port select -- Enable PIPE0, PIPE1
-		 * and PIPE2 interface */
-		phyVal1 |= (0x3 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3<<24) | (0x3 << 22) | (0x7 << 12));
-		reg_val |= (phyVal1 | srio0_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
-		if (srio0_mode)
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		if (srio0_mode) {
+			pr_err("Set up sRIO0 -- %d\n", srio0_speed);
 			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
-
-		pll = PLLA;
-		if ((srio0_speed == SRIO_SPEED_3_125G)
-		    || (srio0_speed == SRIO_SPEED_6_25G))
-			pll = PLLB;
-		if (!check_pll_lock(pll, 1)) {
-			printk("%s didn't lock\n",
-			       pll == PLLA ? "PLLA" : "PLLB");
-			return 1;
+			if (release_srio_reset(SRIO0, srio0_speed))
+				srio0_mode = 0;
 		}
 
-		printk("Enabling sRIO .");
-		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P1, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P1, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-		}
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
 
 		/* Set TX clock ready */
-		set_tx_clk_ready();
+		if (srio0_mode) {
+			set_tx_clk_ready();
 
-		/* Power up TX/RX lanes */
-		for (lane = 0; lane < 2; lane++) {
-			if (!powerup_lane(1, lane, P0, TX)) {
-				printk("TX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
-			if (!powerup_lane(1, lane, P0, RX)) {
-				printk("RX powerup failed for PHY1 LANE%d\n", lane);
-				return 1;
-			}
+			if (powerup_srio_lanes(SRIO0, P0))
+				srio0_mode = 0;
 		}
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
 
-		for (lane = 0; lane < 2; lane++) {
-			enable_lane(1, lane, TX);
-			enable_lane(1, lane, RX);
-		}
 		/* Enable SRIO0 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x8);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	case 7:
 		/* SRIO1x2_SRIO0x2_PEI1x4 */
 		/* Enable PEI1/SRIO0/SRIO1 */
-		phyVal0 = (control & 0x2);
-		/* SRIO1x2_SRIO0x2 */
-		phyVal0 |= (0x4 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
-		/* SRIO1 mode */
-		srio1_ctrl = ((control & 0xC00) << 14);
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x7<<26) | (0x3 << 20) | (0x3 << 24));
-		reg_val |= (phyVal0 | srio0_ctrl | srio1_ctrl);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x4 */
-		phyVal1 = (0x1 << 22);
-		/* PIPE port select -- Enable PIPE0/PIPE1 interface */
-		phyVal1 |= (0x2 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		/* SRIO1 speed */
-		srio1_speed = (control & 0x38000) << 1;
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3 << 24) | (0x3 << 22) | (0x7 << 12) |
-			     (0x7 << 16));
-		reg_val |= (phyVal1 | srio0_speed | srio1_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
-		srio1_speed = srio1_speed >> 16;
-		if (srio0_mode)
-			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		if (srio1_mode)
-			setup_srio_mode(SRIO1, srio1_speed);
-		printk("Set up sRIO1 -- %d\n", srio1_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
+		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x4);
+		set_pipe_port_sel(pp_0_1);
+		set_pipe_nphy(four_phy);
 
-		for (phy = 0; phy < 2; phy++) {
-			pll = PLLA;
-			if ((phy == 0) &&
-			    ((srio1_speed == SRIO_SPEED_3_125G) ||
-			     (srio1_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			else if ((phy == 1) &&
-				 ((srio0_speed == SRIO_SPEED_3_125G) ||
-				  (srio0_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			if (!check_pll_lock(pll, phy)) {
-				printk("%s didn't lock\n",
-				       pll == PLLA ? "PLLA" : "PLLB");
-				return 1;
-			}
+		if (pei1_mode)
+			for (phy = 2; phy < 4; phy++)
+				release_reset(phy);
+		/* Enable PEI1 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (pei1_mode << 1);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_mode(SRIO1, srio1_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		set_srio_speed(SRIO1, srio1_speed);
+		pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
+		if (srio0_mode) {
+			setup_srio_mode(SRIO0, srio0_speed);
+			if (release_srio_reset(SRIO0, srio0_speed))
+				srio0_mode = 0;
 		}
-		printk("Enabling sRIO .");
+		pr_debug("Set up sRIO1 -- %d\n", srio1_speed);
+		if (srio1_mode) {
+			setup_srio_mode(SRIO1, srio1_speed);
+			if (release_srio_reset(SRIO1, srio1_speed))
+				srio1_mode = 0;
+		}
+		pr_debug("Enabling sRIO .");
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P1, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P1, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
+		if (srio0_mode) {
+			pr_debug("0 .");
+			if (powerup_srio_lanes(SRIO0, P1))
+				srio0_mode = 0;
 		}
-		printk(".");
+		if (srio1_mode) {
+			pr_debug("1 .");
+			if (powerup_srio_lanes(SRIO1, P1))
+				srio1_mode = 0;
+		}
+		pr_debug(".");
 		/* Set TX clock ready */
-		set_tx_clk_ready();
+		if (srio0_mode || srio1_mode)
+			set_tx_clk_ready();
+
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P0, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P0, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
-		}
-		printk(".");
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				enable_lane(phy, lane, TX);
-				enable_lane(phy, lane, RX);
-			}
-		}
-		printk(".");
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		if (srio1_mode && powerup_srio_lanes(SRIO1, P0))
+			srio1_mode = 0;
+		pr_debug(".");
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
+		if (srio1_mode)
+			enable_srio_lanes(SRIO1);
+		pr_debug(".");
 		/* Enable SRIO0/SRIO1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x408);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3) | (srio1_mode << 10);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	case 8:
 		/* SRIO1x2_SRIO0x2_PEI1x2_SATA0x1_SATA1x1 */
 		/* Enable PEI1 */
-		phyVal0 = (control & 0x2);
-		/* SRIO1x2_SRIO0x2 */
-		phyVal0 |= (0x4 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
-		/* SRIO1 mode */
-		srio1_ctrl = ((control & 0xC00) << 14);
+		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x2_SATA0x1_SATA1x1);
+		set_pipe_port_sel(pp_0_1);
+		set_pipe_nphy(two_phy);
+
+		if (pei1_mode)
+			release_reset(2);
+
+		/* Enable PEI1 */
 		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x7 << 26) | (0x3 << 20) | (0x3 << 24));
-		reg_val |= (phyVal0 | srio0_ctrl | srio1_ctrl);
+		reg_val |= (pei1_mode << 1);
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x2_SATA0x1_SATA1x1 */
-		phyVal1 = (0x1 << 23);
-		/* PIPE port select -- Enable PIPE0/PIPE1 interface */
-		phyVal1 |= (0x2 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		/* SRIO1 speed */
-		srio1_speed = (control & 0x38000) << 1;
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3 << 24) | (0x3 << 22) | (0x7 << 12) |
-			     (0x7 << 16));
-		reg_val |= (phyVal1 | srio0_speed | srio1_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
-		srio1_speed = srio1_speed >> 16;
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_mode(SRIO1, srio1_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		set_srio_speed(SRIO1, srio1_speed);
 		if (sata0_mode)
 			setup_sata_mode(SATA0, sata0_speed);
 		if (sata1_mode)
 			setup_sata_mode(SATA1, sata1_speed);
-		if (srio0_mode)
+		pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
+		if (srio0_mode) {
 			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		if (srio1_mode)
+			if (release_srio_reset(SRIO0, srio0_speed))
+				srio0_mode = 0;
+		}
+		pr_debug("Set up sRIO1 -- %d\n", srio1_speed);
+		if (srio1_mode) {
 			setup_srio_mode(SRIO1, srio1_speed);
-		printk("Set up sRIO1 -- %d\n", srio1_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
-
-		for (phy = 0; phy < 2; phy++) {
-			pll = PLLA;
-			if ((phy == 0) && ((srio1_speed == SRIO_SPEED_3_125G)
-					   || (srio1_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			else if ((phy == 1) &&
-				 ((srio0_speed == SRIO_SPEED_3_125G)
-				  || (srio0_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			if (!check_pll_lock(pll, phy)) {
-				printk("%s didn't lock\n",
-				       pll == PLLA ? "PLLA" : "PLLB");
-				return 1;
-			}
+			if (release_srio_reset(SRIO1, srio1_speed))
+				srio1_mode = 0;
 		}
-		printk("Enabling sRIO/SATA .");
+		if (sata0_mode || sata1_mode)
+			release_reset(3);
+
+		pr_debug("Enabling sRIO/SATA .");
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P1, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P1, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
-		}
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
+		if (srio1_mode && powerup_srio_lanes(SRIO1, P1))
+			srio1_mode = 0;
 
-		printk(".");
+		pr_debug(".");
 		/* Set TX clock ready */
-		set_tx_clk_ready();
+		if (srio0_mode || srio1_mode || sata0_mode || sata1_mode)
+			set_tx_clk_ready();
 
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P0, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P0, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
-		}
-		printk(".");
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		if (srio1_mode && powerup_srio_lanes(SRIO1, P0))
+			srio1_mode = 0;
+		pr_debug(".");
 
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				enable_lane(phy, lane, TX);
-				enable_lane(phy, lane, RX);
-			}
-		}
-		printk(".");
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
+		if (srio1_mode)
+			enable_srio_lanes(SRIO1);
+		pr_debug(".");
 
 		/* Enable SATA0/SATA1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		phyVal0 |= (control & 0x20) << 24;
-		phyVal0 |= (control & 0x40) << 24;
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (sata0_mode << 29) | (sata1_mode << 30);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
 
-		if (!check_rx_valid(3, 0)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE0\n");
-			return 1;
-		}
-		if (!check_rx_valid(3, 1)) {
-			printk("RX clock/data recovery not asserted for PHY3 LANE1\n");
-			return 1;
-		}
+		if (sata0_mode && !check_rx_valid(3, 0))
+			pr_err("RX clock/data recovery not asserted for PHY3 LANE0\n");
+		if (sata1_mode && !check_rx_valid(3, 1))
+			pr_err("RX clock/data recovery not asserted for PHY3 LANE1\n");
 		/* Enable SRIO0/SRIO1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x408);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3) | (srio1_mode << 10);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	case 9:
 		/* SRIO1x2_SRIO0x2_PEI1x2_PEI2x2 */
 		/* Enable PEI2/PEI1 */
-		phyVal0 = (control & 0x6);
-		/* SRIO1x2_SRIO0x2 */
-		phyVal0 |= (0x4 << 26);
-		/* SRIO0 mode */
-		srio0_ctrl = ((control & 0x300) << 12);
-		/* SRIO1 mode */
-		srio1_ctrl = ((control & 0xC00) << 14);
+		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x2_PEI2x2);
+		set_pipe_port_sel(pp_0_1_2_3);
+
+		if (pei1_mode)
+			release_reset(2);
+		if (pei2_mode)
+			release_reset(3);
+
+		/* Enable PEI1/PEI2 */
 		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
-		reg_val &= ~(0xf | (0x7 << 26) | (0x3 << 20) | (0x3 << 24));
-		reg_val |= (phyVal0 | srio0_ctrl | srio1_ctrl);
+		reg_val |= (pei1_mode << 1) | (pei2_mode << 2);
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
-		/* PEI1x2_PEI2x2 */
-		phyVal1 = (0x3 << 22);
-		/* PIPE port select -- Enable PIPE0, PIPE1
-		 * and PIPE2 interface */
-		phyVal1 |= (0x3 << 24);
-		/* SRIO0 speed */
-		srio0_speed = (control & 0x7000);
-		/* SRIO1 speed */
-		srio1_speed = (control & 0x38000) << 1;
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0x4, &reg_val);
-		reg_val &= ~((0x3 << 24) | (0x3 << 22) | (0x7 << 12) |
-			     (0x7 << 16));
-		reg_val |= (phyVal1 | srio0_speed | srio1_speed);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0x4, reg_val);
-		srio0_speed = srio0_speed >> 12;
-		srio1_speed = srio1_speed >> 16;
-		if (srio0_mode)
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_mode(SRIO1, srio1_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		set_srio_speed(SRIO1, srio1_speed);
+		if (srio0_mode) {
+			pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
 			setup_srio_mode(SRIO0, srio0_speed);
-		printk("Set up sRIO0 -- %d\n", srio0_speed);
-		if (srio1_mode)
+			if (release_srio_reset(SRIO0, srio0_speed))
+				srio0_mode = 0;
+		}
+		if (srio1_mode) {
+			pr_debug("Set up sRIO1 -- %d\n", srio1_speed);
 			setup_srio_mode(SRIO1, srio1_speed);
-		printk("Set up sRIO1 -- %d\n", srio1_speed);
-		for (phy = 0; phy < 4; phy++)
-			release_reset(phy);
-
-		for (phy = 0; phy < 2; phy++) {
-			pll = PLLA;
-			if ((phy == 0) &&
-			    ((srio1_speed == SRIO_SPEED_3_125G) ||
-			     (srio1_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			else if ((phy == 1) &&
-				 ((srio0_speed == SRIO_SPEED_3_125G) ||
-				  (srio0_speed == SRIO_SPEED_6_25G)))
-				pll = PLLB;
-			if (!check_pll_lock(pll, phy)) {
-				printk("%s didn't lock\n",
-				       pll == PLLA ? "PLLA" : "PLLB");
-				return 1;
-			}
+			if (release_srio_reset(SRIO1, srio1_speed))
+				srio1_mode = 0;
 		}
-		printk("Enabling sRIO .");
+		pr_debug("Enabling sRIO .");
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P1, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P1, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
-		}
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
+		if (srio1_mode && powerup_srio_lanes(SRIO1, P1))
+			srio1_mode = 0;
 
-		printk(".");
+		pr_debug(".");
 		/* Set TX clock ready */
-		set_tx_clk_ready();
+		if (srio0_mode || srio1_mode)
+			set_tx_clk_ready();
 
 		/* Power up TX/RX lanes */
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				if (!powerup_lane(phy, lane, P0, TX)) {
-					printk("TX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-				if (!powerup_lane(phy, lane, P0, RX)) {
-					printk("RX powerup failed for PHY%d LANE%d\n", phy, lane);
-					return 1;
-				}
-			}
-		}
-		printk(".");
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		if (srio1_mode && powerup_srio_lanes(SRIO1, P0))
+			srio1_mode = 0;
+		pr_debug(".");
 
-		for (phy = 0; phy < 2; phy++) {
-			for (lane = 0; lane < 2; lane++) {
-				enable_lane(phy, lane, TX);
-				enable_lane(phy, lane, RX);
-			}
-		}
-		printk(".");
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
+		if (srio1_mode)
+			enable_srio_lanes(SRIO1);
+		pr_debug(".");
 		/* Enable SRIO0/SRIO1 */
-		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-		ncr_write32(NCP_REGION_ID(0x115, 0), 0,
-			    phyVal0 | 0x408);
-		printk("Done\n");
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3) | (srio1_mode << 10);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
 		break;
 	}
 
-	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &phyVal0);
-	phyVal0 |= 1;
-	ncr_write32(NCP_REGION_ID(0x115, 0), 0, phyVal0);
-	msleep(100);
-
-	switch (pci_srio_sata_mode) {
-	case 1:
-		writel(0x70120, pcie_rc + 0x710);
-		writel(0x104be, pcie_rc + 0x80c);
-		writel(0x1017201, pcie_rc + 0x8a8);
-		break;
-	default:
-		break;
-	}
 
 	update_settings();
 
 	return 0;
 }
-
 EXPORT_SYMBOL(pei_setup);
 
 /*
@@ -1703,12 +1791,7 @@ EXPORT_SYMBOL(pei_setup);
   get_v2_coefficients
 */
 
-static int
-get_v2_coefficients(struct device_node *pei_control)
-{
-	int i;
-	unsigned *lvalue;
-	char *names[] = {
+static char *names[] = {
 		"primary_input_clock",
 		"input_ref_clock_range",
 		"lane_0_eq_main",
@@ -1719,7 +1802,13 @@ get_v2_coefficients(struct device_node *pei_control)
 		"lane_1_eq_pre",
 		"lane_1_eq_post",
 		"lane_1_vboost"
-	};
+};
+
+static int
+get_v2_coefficients(struct device_node *pei_control)
+{
+	int i;
+	unsigned *lvalue;
 
 	lvalue = &coefficients.primary_input_clock;
 
@@ -1740,6 +1829,70 @@ get_v2_coefficients(struct device_node *pei_control)
 	return 0;
 }
 
+int axxia_pei_setup(unsigned int control, unsigned int force)
+{
+	int ret = 0;
+
+	mutex_lock(&axxia_pei_mux);
+
+	pr_debug("axxia_pei_setup: control=0x%08x, force = 0x%08x\n",
+			control, force);
+	axxia_pei.control = control;
+	axxia_pei.control_set = 1;
+
+	if (1 == force)
+		axxia_pei.initialized = 0;
+
+	if (axxia_pei.initialized)
+		goto cleanup;
+
+	/*
+	  Previously, if the boot loader set 'control', it did
+	  not initialized the PEI.  Start with that
+	  assumption.
+	*/
+	if (0 == axxia_pei.initialized) {
+		if (0 != pei_setup(control)) {
+			pr_err("pcie-axxia: PEI setup failed!\n");
+
+			ret = -EINVAL;
+			goto cleanup;
+		} else {
+			axxia_pei.initialized = 1;
+		}
+
+	msleep(100);
+	}
+
+cleanup:
+	mutex_unlock(&axxia_pei_mux);
+	return ret;
+}
+EXPORT_SYMBOL(axxia_pei_setup);
+
+unsigned int axxia_pei_get_control(void)
+{
+	unsigned int ret;
+
+	mutex_lock(&axxia_pei_mux);
+	ret = axxia_pei.control;
+	mutex_unlock(&axxia_pei_mux);
+	return ret;
+}
+EXPORT_SYMBOL(axxia_pei_get_control);
+
+int axxia_pei_is_control_set(void)
+{
+	int ret;
+
+	mutex_lock(&axxia_pei_mux);
+	ret = axxia_pei.control_set;
+	mutex_unlock(&axxia_pei_mux);
+	return ret;
+}
+EXPORT_SYMBOL(axxia_pei_is_control_set);
+
+
 /*
   ------------------------------------------------------------------------------
   pei_init
@@ -1755,9 +1908,13 @@ pei_init(void)
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axm5616")) {
 		is_5600 = 1;
 		pcie_gpreg0 = ioremap(0xa003000000, 0x10000);
+		pcie_gpreg1 = ioremap(0xa005000000, 0x10000);
+		pcie_gpreg2 = ioremap(0xa007000000, 0x10000);
 		pcie_rc = ioremap(0xa002000000, 0x1000);
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
 		is_6700 = 1;
+		pcie_gpreg0 = ioremap(0xa003000000, 0x10000);
+		pcie_rc = ioremap(0xa002000000, 0x1000);
 	} else {
 		pr_err("No Valid Compatible String Found for PEI!\n");
 

@@ -18,7 +18,11 @@
 #ifndef __AXXIA_PEI_H
 #define __AXXIA_PEI_H
 
-int pei_setup(void);
+int axxia_pei_setup(unsigned int, unsigned int);
 int axxia_pcie_reset(void);
+
+unsigned int axxia_pei_get_control(void);
+int axxia_pei_is_control_set(void);
+
 
 #endif	/* __AXXIA_PEI_H */

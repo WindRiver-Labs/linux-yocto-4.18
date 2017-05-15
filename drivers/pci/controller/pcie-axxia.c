@@ -44,13 +44,15 @@
 #define PORT_LINK_MODE_1_LANES          (0x1 << 16)
 #define PORT_LINK_MODE_2_LANES          (0x3 << 16)
 #define PORT_LINK_MODE_4_LANES          (0x7 << 16)
+#define PORT_LINK_MODE_8_LANES          (0xf << 16)
 
 #define PCIE_LINK_WIDTH_SPEED_CONTROL   0x80C
 #define PORT_LOGIC_SPEED_CHANGE         (0x1 << 17)
-#define PORT_LOGIC_LINK_WIDTH_MASK      (0x1ff << 8)
+#define PORT_LOGIC_LINK_WIDTH_MASK      (0x1f << 8)
 #define PORT_LOGIC_LINK_WIDTH_1_LANES   (0x1 << 8)
 #define PORT_LOGIC_LINK_WIDTH_2_LANES   (0x2 << 8)
 #define PORT_LOGIC_LINK_WIDTH_4_LANES   (0x4 << 8)
+#define PORT_LOGIC_LINK_WIDTH_8_LANES   (0x8 << 8)
 
 #define PCIE_GEN3_EQ_CONTROL_OFF        0x8a8
 
@@ -107,9 +109,6 @@
 /* SYSCON */
 #define AXXIA_SYSCON_BASE             0x8002C00000
 
-static int control_set;
-static unsigned int control_value;
-static struct pcie_port *_pp;
 
 static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
 {
@@ -127,9 +126,10 @@ axxia_is_x9(void)
 
 struct axxia_pcie {
 	struct pcie_port pp;
-	unsigned int     control;
-	unsigned int     initialized;
+	struct axxia_pcie *next;
 };
+
+static struct axxia_pcie *axxia_pcie_controllers;
 
 static unsigned long global_io_offset;
 
@@ -458,16 +458,16 @@ irqreturn_t axxia_dw_handle_msi_irq(struct pcie_port *pp)
 
 	for (i = 0; i < MAX_MSI_CTRLS; i++) {
 		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS + i * 12, 4,
-				       (u32 *)&val);
+				(u32 *)&val);
 		if (val) {
 			ret = IRQ_HANDLED;
 			pos = 0;
 			while ((pos = find_next_bit(&val, 32, pos)) != 32) {
 				irq = irq_find_mapping(pp->irq_domain,
-						       i * 32 + pos);
+						i * 32 + pos);
 				axxia_pcie_wr_own_conf(pp,
-						       PCIE_MSI_INTR0_STATUS + i * 12,
-						       4, 1 << pos);
+						PCIE_MSI_INTR0_STATUS + i * 12,
+						4, 1 << pos);
 				generic_handle_irq(irq);
 				pos++;
 			}
@@ -510,9 +510,10 @@ int axxia_pcie_link_up(struct pcie_port *pp)
 
 	axxia_cc_gpreg_readl(pp, PEI_SII_PWR_MGMT_REG, &smlh_state);
 	smlh_state = (smlh_state & PEI_SMLH_LINK_STATE) >> 4;
+
 	if ((smlh_state != 0x11) && (smlh_state != 0x23)) {
-		pr_info("smlh_state = 0x%x\n", smlh_state);
-		pr_err("PCIe LINK IS NOT UP\n");
+		dev_err(pp->dev, "PCIe LINK IS NOT UP: smlh_state = %x\n",
+			smlh_state);
 		return 0;
 	}
 	return 1;
@@ -524,8 +525,26 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	u32 membase;
 	u32 memlimit;
 
+	axxia_pcie_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+	val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
+	switch (pp->lanes) {
+	case 2:
+		val |= PORT_LOGIC_LINK_WIDTH_2_LANES;
+		break;
+	case 4:
+		val |= PORT_LOGIC_LINK_WIDTH_4_LANES;
+		break;
+	case 8:
+		val |= PORT_LOGIC_LINK_WIDTH_8_LANES;
+		break;
+	case 1:
+	default:
+		val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
+	}
+	axxia_pcie_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
+
 	/* Set the number of lanes based on the device tree. */
-	axxia_pcie_readl_rc(pp, PCIE_PORT_LINK_CONTROL, &val);
+	axxia_pcie_rd_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, &val);
 	val &= ~PORT_LINK_MODE_MASK;
 
 	switch (pp->lanes) {
@@ -538,11 +557,13 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	case 4:
 		val |= PORT_LINK_MODE_4_LANES;
 		break;
+	case 8:
+		val |= PORT_LINK_MODE_8_LANES;
+		break;
 	default:
 		break;
 	}
-
-	axxia_pcie_writel_rc(pp, val, PCIE_PORT_LINK_CONTROL);
+	axxia_pcie_wr_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, val);
 
 	/* Add Mikes tweak for GEN3_EQ_CONTROL */
 	axxia_pcie_writel_rc(pp, 0x1017201, PCIE_GEN3_EQ_CONTROL_OFF);
@@ -570,9 +591,10 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
 	msleep(100);
 	val |= 0x1;
-	axxia_cc_gpreg_writel(pp, 0x1, PEI_GENERAL_CORE_CTL_REG);
+	axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
 	msleep(100);
 }
+
 
 static int axxia_pcie_establish_link(struct pcie_port *pp)
 {
@@ -585,6 +607,20 @@ static int axxia_pcie_establish_link(struct pcie_port *pp)
 		return 1;
 
 	return 0;
+}
+
+static void pci_axxia_program_rc_class(struct pcie_port *pp)
+{
+	u32 dbi_ro_wr_en;
+	/* program correct class for RC */
+	axxia_pcie_readl_rc(pp, 0x8bc, &dbi_ro_wr_en);
+	/* DBI_RO_WR_EN */
+	if (!(dbi_ro_wr_en & 0x1))
+		axxia_pcie_writel_rc(pp, (dbi_ro_wr_en | 0x1), 0x8bc);
+	axxia_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
+	/* DBI_RO_WR_EN */
+	if (!(dbi_ro_wr_en & 0x1))
+		axxia_pcie_writel_rc(pp, dbi_ro_wr_en, 0x8bc);
 }
 
 static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
@@ -846,6 +882,8 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		return -EINVAL;
 	}
 
+	/* program correct class for RC */
+	pci_axxia_program_rc_class(pp);
 
 	if (axxia_pcie_establish_link(pp))
 		dev_warn(pp->dev, "axxia_pcie_establish_link failed\n");
@@ -865,8 +903,8 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		pp->irq_domain = irq_domain_add_linear(pp->dev->of_node,
-						       MAX_MSI_IRQS, &axxia_msi_domain_ops,
-						       &axxia_dw_pcie_msi_chip);
+					MAX_MSI_IRQS, &axxia_msi_domain_ops,
+					&axxia_dw_pcie_msi_chip);
 		if (!pp->irq_domain) {
 			dev_err(pp->dev, "irq domain init failed\n");
 			return -ENXIO;
@@ -877,9 +915,6 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 	}
 
 	axxia_pcie_enable_interrupts(pp);
-
-	/* program correct class for RC */
-	axxia_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
 
 	bus = pci_create_root_bus(&pdev->dev, pp->root_bus_nr,
 				  &axxia_pciex_pci_ops, pp, &res);
@@ -899,7 +934,6 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 	return 0;
 }
 
-
 static int axxia_pcie_probe(struct platform_device *pdev)
 {
 	struct axxia_pcie *axxia_pcie;
@@ -908,15 +942,21 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 	int ret;
 	struct device_node *pei_control;
 	const unsigned int *control;
+	unsigned int control_value;
 	const unsigned int *initialized;
+	unsigned int initialized_value;
+	u32 val;
 
 	axxia_pcie = devm_kzalloc(&pdev->dev, sizeof(*axxia_pcie),
 				  GFP_KERNEL);
 	if (!axxia_pcie)
 		return -ENOMEM;
 
-	pp = &axxia_pcie->pp;
+	/* add this instance to the list */
+	axxia_pcie->next = axxia_pcie_controllers;
+	axxia_pcie_controllers = axxia_pcie;
 
+	pp = &axxia_pcie->pp;
 	pp->dev = &pdev->dev;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "dbi");
@@ -935,40 +975,45 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 		return PTR_ERR(pp->cc_gpreg_base);
 
 	pp->root_bus_nr = 0;
-	_pp = pp;
 	pei_control = of_find_node_by_name(NULL, "pei_control");
+
+	/* LTSSM disable */
+	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
+	msleep(100);
+	val &= ~(0x1);
+	axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
+	msleep(100);
 
 	if (pei_control) {
 		control = of_get_property(pei_control, "control", NULL);
 
 		if (NULL == control) {
 			pr_err("pcie-axxia: 'control' NOT set!!!\n");
-
 			return -EINVAL;
 		}
 
-		axxia_pcie->control = be32_to_cpu(*control);
-		control_value = axxia_pcie->control;
-		control_set = 1;
+		control_value = be32_to_cpu(*control);
+
+		initialized = of_get_property(pei_control, "initialized", NULL);
 
 		/*
 		  Previously, if the boot loader set 'control', it did
-		  not initialized the PEI.  Start with that
-		  assumption.
+		  not initialized the PEI.  Start with that assumption.
 		*/
-
-		axxia_pcie->initialized = 1;
-		initialized = of_get_property(pei_control, "initialized", NULL);
-
+		initialized_value = 1;
 		if (NULL != initialized)
-			axxia_pcie->initialized = be32_to_cpu(*initialized);
+			initialized_value = be32_to_cpu(*initialized);
 
-		if (0 == axxia_pcie->initialized)
-			if (0 != pei_setup()) {
-				pr_err("pcie-axxia: PEI setup failed!\n");
-
-				return -EINVAL;
-			}
+		/*
+		 * always call pei_setup regardless of the 'initialized' value.
+		 * this is needed to save the control_value.
+		 * the axxia_pei setup will only be done once
+		 */
+		ret = axxia_pei_setup(control_value, 0);
+		if (0 != ret) {
+			pr_err("pcie-axxia: PEI setup failed!\n");
+			return ret;
+		}
 	}
 
 	ret = axxia_pcie_host_init(pp);
@@ -1011,15 +1056,26 @@ axxia_pcie_reset(void)
 {
 	struct pci_bus *pci_bus = NULL;
 	int sub_buses;
+	unsigned int control;
+	struct pcie_port *_pp = NULL;
+	struct axxia_pcie *axx_pcie = axxia_pcie_controllers;
 
-	if (0 == control_set || NULL == _pp)
+
+	if (0 == axxia_pei_is_control_set())
 		return -1;
 
+
+	control = axxia_pei_get_control();
+
 	/* Re-initialize the PEIs */
-	pei_setup();
+	axxia_pei_setup(control, 1);
 
 	/* Re-configure the root complex */
-	axxia_pcie_setup_rc(_pp);
+	while (axx_pcie) {
+		_pp = &axx_pcie->pp;
+		axxia_pcie_setup_rc(_pp);
+		axx_pcie = axx_pcie->next;
+	}
 
 	/* Re-scan the Bus */
 	while (NULL != (pci_bus = pci_find_next_bus(pci_bus))) {
@@ -1030,7 +1086,6 @@ axxia_pcie_reset(void)
 
 	return 0;
 }
-
 EXPORT_SYMBOL(axxia_pcie_reset);
 
 static ssize_t
@@ -1046,6 +1101,7 @@ axxia_pcie_reset_trigger(struct file *file, const char __user *buf,
 
 static int pcie_init(void)
 {
+	axxia_pcie_controllers = NULL;
 	return platform_driver_register(&axxia_pcie_driver);
 }
 subsys_initcall(pcie_init);
