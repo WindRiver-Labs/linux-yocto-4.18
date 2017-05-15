@@ -130,7 +130,7 @@
 		};
 
 		mdio: mdio@8080200000 {
-			compatible = "lsi,axm-mdio";
+			compatible = "lsi,axm-mdio", "intel,axxia-mdio0";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x80200000 0 0x1000>;

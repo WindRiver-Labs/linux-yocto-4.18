@@ -518,6 +518,12 @@ config AXXIA_PEI
        help
 	 Set up the PEI controllers in Linux instead of the boot loader.
 
+config AXXIA_MDIO
+       bool "Axxia MDIO Driver"
+       depends on ARCH_AXXIA
+       help
+	 Provide access to the Axxia MDIO bus.
+
 config VEXPRESS_SYSCFG
 	bool "Versatile Express System Configuration driver"
 	depends on VEXPRESS_CONFIG
