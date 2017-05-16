@@ -977,13 +977,6 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 	pp->root_bus_nr = 0;
 	pei_control = of_find_node_by_name(NULL, "pei_control");
 
-	/* LTSSM disable */
-	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
-	msleep(100);
-	val &= ~(0x1);
-	axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
-	msleep(100);
-
 	if (pei_control) {
 		control = of_get_property(pei_control, "control", NULL);
 
