@@ -1113,13 +1113,9 @@ update_settings(void)
 			     (0xff << (i * 8))) >> (i * 8);
 
 		ncr_read32(region, offset, &value);
-		pr_debug("0x%x.0x%x.0x%x : 0x%x => ",
-		      NCP_NODE_ID(region), NCP_TARGET_ID(region), offset,
-		      value);
 		value &= ~0x72;
 		value |= pic;
 		value |= ref_range << 4;
-		pr_debug("0x%x\n", value);
 		ncr_write32(region, offset, value);
 	}
 
@@ -1129,9 +1125,11 @@ update_settings(void)
 
 	for (i = 0; i < (number_of_serdes * 2); ++i) {
 		unsigned int offset;
+		int eq_override;
 		unsigned int eq_main;
 		unsigned int pre;
 		unsigned int post;
+		int boost_override;
 		unsigned int boost;
 		unsigned int value;
 
@@ -1149,63 +1147,129 @@ update_settings(void)
 
 		switch (i % 4) {
 		case 0:
-			eq_main &= 0x3f;
+			eq_main &= 0xbf;
 			pre &= 0x3f;
 			post &= 0x3f;
-			boost &= 0x3f;
+			boost &= 0x81;
 			break;
 		case 1:
-			eq_main = (eq_main & 0x3f00) >> 8;
+			eq_main = (eq_main & 0xbf00) >> 8;
 			pre = (pre & 0x3f00) >> 8;
 			post = (post & 0x3f00) >> 8;
-			boost = (boost & 0x3f00) >> 8;
+			boost = (boost & 0x8100) >> 8;
 			break;
 		case 2:
-			eq_main = (eq_main & 0x3f0000) >> 16;
+			eq_main = (eq_main & 0xbf0000) >> 16;
 			pre = (pre & 0x3f0000) >> 16;
 			post = (post & 0x3f0000) >> 16;
-			boost = (boost & 0x3f0000) >> 16;
+			boost = (boost & 0x810000) >> 16;
 			break;
 		case 3:
-			eq_main = (eq_main & 0x3f000000) >> 24;
+			eq_main = (eq_main & 0xbf000000) >> 24;
 			pre = (pre & 0x3f000000) >> 24;
 			post = (post & 0x3f000000) >> 24;
-			boost = (boost & 0x3f000000) >> 24;
+			boost = (boost & 0x81000000) >> 24;
 			break;
 		default:
 			pr_err("Error setting coefficients!\n");
 			break;
 		}
 
-		if (is_5600)
-			offset = 0x18 + (i * 0x1c);
-		else
-			offset = 0xc + (i * 0x1c);
+		/* Initialize the eq override bit. */
 
-		if (is_5600) {
+		if (0 != (eq_main & 0x80))
+			eq_override = 1;
+		else
+			eq_override = 0;
+
+		eq_main &= 0x3f;
+
+		/* Initialize the vboost override bit. */
+
+		if (0 != (boost & 0x80))
+			boost_override = 1;
+		else
+			boost_override = 0;
+
+		boost &= 1;
+
+		/*
+		  To set the EQ values, use the cobalt registers
+		  (0x115.1+), not the config registers (0x115.0).
+		*/
+
+		region = NCP_REGION_ID(0x115, ((i / 2) + 1));
+
+		/*
+		  Set VBOOST (5600 only).
+		*/
+
+		if (is_5600 && 0 != boost_override) {
+			/* Set or clear txN_vboost_en. */
+
+			if (0 == (i % 2))
+				offset = 0xe002;
+			else
+				offset = 0xe202;
+
 			ncr_read32(region, offset, &value);
-			pr_debug("0x%x.0x%x.0x%x : 0x%x => ",
-				 NCP_NODE_ID(region), NCP_TARGET_ID(region),
-				 offset, value);
-			value &= ~(1 << 11);
 
 			if (0 != boost)
-				value |= (1 << 11);
+				value |= (1 << 6);
+			else
+				value &= ~(1 << 6);
 
-			pr_debug("0x%x\n", value);
+			value |= (1 << 7); /* override enable */
+
 			ncr_write32(region, offset, value);
 		}
 
-		offset += 0x8;
+		if (0 != eq_override) {
+			/* Set EQ main. */
 
-		ncr_read32(region, offset, &value);
-		pr_debug("0x%x.0x%x.0x%x : 0x%x => ",
-		      NCP_NODE_ID(region), NCP_TARGET_ID(region), offset,
-		      value);
-		value &= ~0x3f3f3f;
-		value |= ((post << 16) | (pre << 8) | eq_main);
-		pr_debug("0x%x\n", value);
-		ncr_write32(region, offset, value);
+			if (0 == (i % 2))
+				offset = 0x24;
+			else
+				offset = 0x44;
+
+			if (is_6700)
+				offset *= 2;
+
+			ncr_read32(region, offset, &value);
+			value &= ~0x3f;
+			value |= eq_main;
+			ncr_write32(region, offset, value);
+
+			/* Set EQ pre/post. */
+
+			if (0 == (i % 2))
+				offset = 0x26;
+			else
+				offset = 0x46;
+
+			if (is_6700)
+				offset *= 2;
+
+			ncr_read32(region, offset, &value);
+			value &= ~0xfff;
+			value |= ((post << 6) | pre);
+			ncr_write32(region, offset, value);
+
+			/* Set the override: 0x115.1.<0x16|0x18> bit 4. */
+
+			if (0 == (i % 2))
+				offset = 0x16;
+			else
+				offset = 0x18;
+
+#if defined(CONFIG_AXXIA_ANY_XLF)
+			offset *= 2;
+#endif
+
+			ncr_read32(region, offset, &value);
+			value |= (1 << 4);
+			ncr_write32(region, offset, value);
+		}
 	}
 
 	return;
