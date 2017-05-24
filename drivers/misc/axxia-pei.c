@@ -1133,7 +1133,7 @@ update_settings(void)
 		unsigned int boost;
 		unsigned int value;
 
-		if (4 > i) {
+		if (0 == (i % 2)) {
 			eq_main = coefficients.lane_0_eq_main;
 			pre = coefficients.lane_0_eq_pre;
 			post = coefficients.lane_0_eq_post;
@@ -1145,7 +1145,7 @@ update_settings(void)
 			boost = coefficients.lane_1_vboost;
 		}
 
-		switch (i % 4) {
+		switch (i / 2) {
 		case 0:
 			eq_main &= 0xbf;
 			pre &= 0x3f;
