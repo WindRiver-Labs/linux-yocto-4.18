@@ -314,6 +314,9 @@ __create_page_tables:
 	orr	r3, r7, r3, lsl #SECTION_SHIFT
 #ifdef CONFIG_ARM_LPAE
 	mov	r7, #1 << (54 - 32)		@ XN
+#ifdef CONFIG_ARCH_AXXIA
+	orr	r7, r7, #0x20
+#endif
 #ifdef CONFIG_CPU_ENDIAN_BE8
 	str	r7, [r0], #4
 	str	r3, [r0], #4
@@ -323,9 +326,6 @@ __create_page_tables:
 #endif
 #else
 	orr	r3, r3, #PMD_SECT_XN
-#ifdef CONFIG_ARCH_AXXIA
-	orr	r7, r7, #0x20
-#endif
 	str	r3, [r0], #4
 #endif
 
