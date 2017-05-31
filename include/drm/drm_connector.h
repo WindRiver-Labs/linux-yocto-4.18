@@ -429,6 +429,13 @@ struct drm_connector_state {
 	 * protection. This is most commonly used for HDCP.
 	 */
 	unsigned int content_protection;
+
+	/**
+	 * @metadata_blob_ptr:
+	 * DRM blob property for HDR metadata
+	 */
+	struct drm_property_blob *hdr_source_metadata_blob_ptr;
+	bool hdr_metadata_changed : 1;
 };
 
 /**
@@ -991,6 +998,10 @@ struct drm_connector {
 	 * &drm_mode_config.connector_free_work.
 	 */
 	struct llist_node free_node;
+
+	/* HDR metdata */
+	struct hdr_static_metadata *hdr_panel_metadata;
+	struct hdr_static_metadata *hdr_source_metadata;
 };
 
 #define obj_to_connector(x) container_of(x, struct drm_connector, base)
