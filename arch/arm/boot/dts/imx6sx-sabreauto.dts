@@ -318,6 +318,7 @@
 &gpmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpmi_nand_1>;
+	nand-on-flash-bbt;
 	status = "okay";
 };
 
@@ -1183,7 +1184,6 @@
 	dcic_id = <1>;
 	dcic_mux = "dcic-lvds";
 	status = "okay";
-	nand-on-flash-bbt;
 };
 
 &vadc {
