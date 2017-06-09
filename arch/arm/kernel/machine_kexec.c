@@ -68,9 +68,21 @@ int machine_kexec_prepare(struct kimage *image)
 		err = get_user(header, (__be32*)current_segment->buf);
 		if (err)
 			return err;
-
+#ifdef CONFIG_ARCH_AXXIA
+		if (header == cpu_to_be32(OF_DT_HEADER)) {
+			/*
+			 * In axm55xx, kernel entry is not 0x8000 but 0x408000, this will
+			 * result that when secondary kernel boot, dtb will corrupt because
+			 * entry + kernel_size + zImage_size > dtb_mem, so add 4M to dtb_mem
+			 * to avoid this.
+			 */
+			current_segment->mem += 0xF00000;
+			image->arch.kernel_r2 = current_segment->mem;
+		}
+#else
 		if (header == cpu_to_be32(OF_DT_HEADER))
 			image->arch.kernel_r2 = current_segment->mem;
+#endif
 	}
 	return 0;
 }
