@@ -165,6 +165,7 @@ struct pcie_port {
 	u64			mem_base;
 	phys_addr_t		mem_bus_addr;
 	u32			mem_size;
+	int			cpu_addr_offset;
 	struct resource		*cfg;
 	struct resource		*io;
 	struct resource		*mem;
