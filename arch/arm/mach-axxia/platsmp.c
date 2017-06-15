@@ -44,6 +44,13 @@ __axxia_arch_wfe(void)
 }
 EXPORT_SYMBOL(__axxia_arch_wfe);
 
+unsigned int mpidr_to_hwcpu(int mpidr)
+{
+	/* hwcpu = cluster * CORES_PER_CLUSTER + cpu */
+		return MPIDR_AFFINITY_LEVEL(mpidr, 1) * CORES_PER_CLUSTER +
+			MPIDR_AFFINITY_LEVEL(mpidr, 0);
+}
+
 /*
  * Check if we need to enable cross-cluster SEV workaround for a bug in
  * revision 1.0 silicon (which could cause event signals (from SEV instruction)
@@ -93,7 +100,7 @@ void  axxia_secondary_init(unsigned int cpu)
 	int phys_cpu;
 	int phys_cluster;
 
-	phys_cpu = cpu_logical_map(cpu);
+	phys_cpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 	phys_cluster = phys_cpu / 4;
 
 	/*
@@ -150,7 +157,7 @@ int  axxia_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 */
 	_raw_spin_lock(&boot_lock);
 
-	phys_cpu = cpu_logical_map(cpu);
+	phys_cpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 
 	powered_down_cpu = pm_get_powered_down_cpu();
 
@@ -265,7 +272,7 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 		 * bring them online later.
 		 */
 		if (cpu != 0) {
-			u32 phys_cpu = cpu_logical_map(cpu);
+			u32 phys_cpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 			u32 tmp = readl(syscon + 0x1010);
 			writel(0xab, syscon + 0x1000);
 			tmp &= ~(1 << phys_cpu);

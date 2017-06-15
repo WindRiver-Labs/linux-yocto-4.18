@@ -187,6 +187,6 @@ void pm_init_syscon(void);
 extern bool pm_in_progress[];
 extern bool cluster_power_up[];
 extern u32 pm_cpu_powered_down;
-
+extern unsigned int mpidr_to_hwcpu(int mpidr);
 
 #endif /* AXXIA_POWER_MANAGEMENT_H_ */

@@ -445,7 +445,7 @@ void pm_cpu_shutdown(u32 cpu)
 {
 
 	bool success;
-	u32 reqcpu = cpu_logical_map(cpu);
+	u32 reqcpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 	u32 cluster = reqcpu / CORES_PER_CLUSTER;
 	u32 cluster_mask = (0x01 << cluster);
 	bool last_cpu;
@@ -534,7 +534,7 @@ int pm_cpu_powerup(u32 cpu)
 	int rval = 0;
 	u32 cpu_mask = (0x01 << cpu);
 
-	u32 reqcpu = cpu_logical_map(cpu);
+	u32 reqcpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 	u32 cluster = reqcpu / CORES_PER_CLUSTER;
 
 	u32 cluster_mask = (0x01 << cluster);
