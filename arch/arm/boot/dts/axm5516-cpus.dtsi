@@ -49,7 +49,7 @@
 		cpu@4 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x04>;
+			reg = <0x100>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -57,7 +57,7 @@
 		cpu@5 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x05>;
+			reg = <0x101>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -65,7 +65,7 @@
 		cpu@6 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x06>;
+			reg = <0x102>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -73,7 +73,7 @@
 		cpu@7 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x07>;
+			reg = <0x103>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -81,7 +81,7 @@
 		cpu@8 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x08>;
+			reg = <0x200>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -89,7 +89,7 @@
 		cpu@9 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x09>;
+			reg = <0x201>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -97,7 +97,7 @@
 		cpu@10 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0a>;
+			reg = <0x202>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -105,7 +105,7 @@
 		cpu@11 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0b>;
+			reg = <0x203>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -113,7 +113,7 @@
 		cpu@12 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0c>;
+			reg = <0x300>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -121,7 +121,7 @@
 		cpu@13 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0d>;
+			reg = <0x301>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -129,7 +129,7 @@
 		cpu@14 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0e>;
+			reg = <0x302>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};
@@ -137,7 +137,7 @@
 		cpu@15 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a15";
-			reg = <0x0f>;
+			reg = <0x303>;
 			cpu-release-addr = <0>; // Fixed by the boot loader
 			clock-frequency = <0>;  // Placeholder
 		};

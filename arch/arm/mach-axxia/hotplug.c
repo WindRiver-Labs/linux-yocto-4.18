@@ -192,7 +192,7 @@ static void __ref platform_do_lowpower(unsigned int cpu, int *spurious)
 	* Bits:   |11 10 9 8|7 6 5 4 3 2|1 0
 	*         | CLUSTER | Reserved  |CPU
 	*/
-	phys_cpu = cpu_logical_map(cpu);
+	phys_cpu = mpidr_to_hwcpu(cpu_logical_map(cpu));
 	cluster = (phys_cpu / 4) << 8;
 	phys_cpu = cluster + (phys_cpu % 4);
 
