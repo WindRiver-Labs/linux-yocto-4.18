@@ -1509,6 +1509,62 @@ pei_setup_56xx(unsigned int control)
 		pr_debug("Done\n");
 		break;
 
+	case 15:
+		/*
+		  This configuration is not documented, but is used.
+
+		  UNUSED  (HSS10-ch0,1)
+		  SRIO0x2 (HSS11-ch0,1)
+		  PEI1x4  (HSS12-ch0,1; HSS13-ch0,1)
+		*/
+
+		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
+		set_sw_port_config1(pc1_PEI1x4);
+		set_pipe_port_sel(pp_0_1_2_3);
+
+		if (pei1_mode) {
+			release_reset(2);
+			release_reset(3);
+		}
+
+		/* Enable PEI1 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (pei1_mode << 1);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+
+		set_srio_mode(SRIO0, srio0_ctrl);
+		set_srio_speed(SRIO0, srio0_speed);
+		if (srio0_mode) {
+			pr_debug("Set up sRIO0 -- %d\n", srio0_speed);
+			setup_srio_mode(SRIO0, srio0_speed);
+			if (release_srio_reset(SRIO0, srio0_speed))
+				srio0_mode = 0;
+		}
+		pr_debug("Enabling sRIO .");
+		/* Power up TX/RX lanes */
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P1))
+			srio0_mode = 0;
+
+		pr_debug(".");
+		/* Set TX clock ready */
+		if (srio0_mode)
+			set_tx_clk_ready();
+
+		/* Power up TX/RX lanes */
+		if (srio0_mode && powerup_srio_lanes(SRIO0, P0))
+			srio0_mode = 0;
+		pr_debug(".");
+
+		if (srio0_mode)
+			enable_srio_lanes(SRIO0);
+		pr_debug(".");
+		/* Enable SRIO0/SRIO1 */
+		ncr_read32(NCP_REGION_ID(0x115, 0), 0, &reg_val);
+		reg_val |= (srio0_mode << 3);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, reg_val);
+		pr_debug("Done\n");
+		break;
+
 	default:
 		pr_err("axxia_pei: invalid PCI/SRIO config\n");
 		pr_err("pei_setup control=0x%08x pci_srio_sata_mode=%d\n",
