@@ -56,6 +56,7 @@ static int imx_dt_node_to_map(struct pinctrl_dev *pctldev,
 			struct pinctrl_map **map, unsigned *num_maps)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
 	const struct group_desc *grp;
 	struct pinctrl_map *new_map;
 	struct device_node *parent;
@@ -153,6 +154,7 @@ static int imx_pmx_set(struct pinctrl_dev *pctldev, unsigned selector,
 		       unsigned group)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
 	unsigned int npins;
 	int i, err;
 	struct group_desc *grp = NULL;
@@ -176,7 +178,11 @@ static int imx_pmx_set(struct pinctrl_dev *pctldev, unsigned selector,
 		func->name, grp->name);
 
 	for (i = 0; i < npins; i++) {
-		err = imx_pmx_set_one_pin(ipctl, &((struct imx_pin *)(grp->data))[i]);
+		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
+		if (info->flags & IMX8_USE_SCU)
+			err = imx_pmx_set_one_pin_scu(ipctl, pin);
+		else
+			err = imx_pmx_set_one_pin_mem(ipctl, pin);
 		if (err)
 			return err;
 	}
@@ -250,23 +256,41 @@ static u32 imx_pinconf_parse_generic_config(struct device_node *np,
 static int imx_pinconf_get(struct pinctrl_dev *pctldev,
 			     unsigned pin_id, unsigned long *config)
 {
-	return imx_pinconf_backend_get(pctldev, pin_id, config);
+	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+
+	if (info->flags & IMX8_USE_SCU)
+		return imx_pinconf_backend_get_scu(pctldev, pin_id, config);
+	else
+		return imx_pinconf_backend_get_mem(pctldev, pin_id, config);
 }
 
 static int imx_pinconf_set(struct pinctrl_dev *pctldev,
 			     unsigned pin_id, unsigned long *configs,
 			     unsigned num_configs)
 {
-	return imx_pinconf_backend_set(pctldev, pin_id, configs, num_configs);
+	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+
+	if (info->flags & IMX8_USE_SCU)
+		return imx_pinconf_backend_set_scu(pctldev, pin_id, configs, num_configs);
+	else
+		return imx_pinconf_backend_set_mem(pctldev, pin_id, configs, num_configs);
 }
 
 static void imx_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 				   struct seq_file *s, unsigned pin_id)
 {
+	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
 	unsigned long config;
 	int ret;
 
-	ret = imx_pinconf_backend_get(pctldev, pin_id, &config);
+	if (info->flags & IMX8_USE_SCU)
+		ret = imx_pinconf_backend_get_scu(pctldev, pin_id, &config);
+	else
+		ret = imx_pinconf_backend_get_mem(pctldev, pin_id, &config);
+
 	if (ret) {
 		seq_puts(s, "N/A");
 		return;
@@ -394,8 +418,12 @@ static int imx_pinctrl_parse_groups(struct device_node *np,
 	for (i = 0; i < grp->num_pins; i++) {
 		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
 
-		imx_pinctrl_parse_pin(ipctl, &grp->pins[i], pin,
-				      list_p, config);
+		if (info->flags & IMX8_USE_SCU)
+			imx_pinctrl_parse_pin_scu(ipctl, &grp->pins[i],
+				pin, list_p, config);
+		else
+			imx_pinctrl_parse_pin_mem(ipctl, &grp->pins[i],
+				pin, list_p, config);
 	}
 
 	return 0;
