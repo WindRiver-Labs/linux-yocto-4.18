@@ -54,6 +54,7 @@
 
 #define SDIO_FUNC1_BLOCKSIZE		64
 #define SDIO_FUNC2_BLOCKSIZE		512
+#define SDIO_4373_FUNC2_BLOCKSIZE	256
 /* Maximum milliseconds to wait for F2 to come up */
 #define SDIO_WAIT_F2RDY	3000
 
@@ -905,6 +906,7 @@ static void brcmf_sdiod_host_fixup(struct mmc_host *host)
 static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
 {
 	int ret = 0;
+	unsigned int f2_blksz = SDIO_FUNC2_BLOCKSIZE;
 
 	sdio_claim_host(sdiodev->func1);
 
@@ -914,11 +916,18 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
 		sdio_release_host(sdiodev->func1);
 		goto out;
 	}
-	ret = sdio_set_block_size(sdiodev->func2, SDIO_FUNC2_BLOCKSIZE);
+
+	if (sdiodev->func0->device == SDIO_DEVICE_ID_CYPRESS_4373) {
+		f2_blksz = SDIO_4373_FUNC2_BLOCKSIZE;
+	}
+
+	ret = sdio_set_block_size(sdiodev->func2, f2_blksz);
 	if (ret) {
 		brcmf_err("Failed to set F2 blocksize\n");
 		sdio_release_host(sdiodev->func1);
 		goto out;
+	} else {
+		brcmf_dbg(SDIO, "set F2 blocksize to %d\n", f2_blksz);
 	}
 
 	/* increase F2 timeout */
@@ -1031,6 +1040,8 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 	/* store refs to functions used. mmc_card does
 	 * not hold the F0 function pointer.
 	 */
+	sdiodev->func0 = kmemdup(func, sizeof(*func), GFP_KERNEL);
+	sdiodev->func0->num = 0;
 	sdiodev->func1 = func->card->sdio_func[0];
 	sdiodev->func2 = func;
 
@@ -1056,6 +1067,7 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 fail:
 	dev_set_drvdata(&func->dev, NULL);
 	dev_set_drvdata(&sdiodev->func1->dev, NULL);
+	kfree(sdiodev->func0);
 	kfree(sdiodev);
 	kfree(bus_if);
 	return err;
@@ -1088,6 +1100,7 @@ static void brcmf_ops_sdio_remove(struct sdio_func *func)
 		dev_set_drvdata(&sdiodev->func2->dev, NULL);
 
 		kfree(bus_if);
+		kfree(sdiodev->func0);
 		kfree(sdiodev);
 	}
 
