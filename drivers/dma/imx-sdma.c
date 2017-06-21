@@ -9,6 +9,7 @@
 // Based on code from Freescale:
 //
 // Copyright 2004-2016 Freescale Semiconductor, Inc. All Rights Reserved.
+// Copyright 2017 NXP.
 
 #include <linux/init.h>
 #include <linux/iopoll.h>
@@ -1580,7 +1581,7 @@ static struct dma_async_tx_descriptor *sdma_prep_memcpy(
 			param &= ~BD_CONT;
 		}
 
-		dev_dbg(sdma->dev, "entry %d: count: %d dma: 0x%u %s%s\n",
+		dev_dbg(sdma->dev, "entry %d: count: %zd dma: 0x%x %s%s\n",
 				i, count, bd->buffer_addr,
 				param & BD_WRAP ? "wrap" : "",
 				param & BD_INTR ? " intr" : "");
@@ -1753,8 +1754,8 @@ static struct dma_async_tx_descriptor *sdma_prep_dma_cyclic(
 		if (i + 1 == num_periods)
 			param |= BD_WRAP;
 
-		dev_dbg(sdma->dev, "entry %d: count: %zu dma: %#llx %s%s\n",
-				i, period_len, (u64)dma_addr,
+		dev_dbg(sdma->dev, "entry %d: count: %zu dma: %pad %s%s\n",
+				i, period_len, &dma_addr,
 				param & BD_WRAP ? "wrap" : "",
 				param & BD_INTR ? " intr" : "");
 
