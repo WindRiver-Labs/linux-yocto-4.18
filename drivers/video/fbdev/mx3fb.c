@@ -743,7 +743,7 @@ static int mx3fb_set_fix(struct fb_info *fbi)
 	struct fb_fix_screeninfo *fix = &fbi->fix;
 	struct fb_var_screeninfo *var = &fbi->var;
 
-	strncpy(fix->id, "DISP3 BG", 8);
+	strncpy(fix->id, "DISP3 BG", 9);
 
 	fix->line_length = var->xres_virtual * var->bits_per_pixel / 8;
 
