@@ -1367,9 +1367,10 @@ pei_setup_56xx(unsigned int control)
 		*/
 
 		set_sw_port_config0(pc0_PEI0x2_PEI2x2);
-		set_sw_port_config1(pc1_PEI1x2_PEI2x2);
+		set_sw_port_config1(pc1_PEI1x2_SATA0x1_SATA1x1);
 		set_pei0_rc_mode(rc_mode);
 		set_pipe_port_sel(pp_0_1_2_3);
+		set_pipe_nphy(four_phy);
 
 		if (pei0_mode)
 			release_reset(0);
@@ -1397,7 +1398,7 @@ pei_setup_56xx(unsigned int control)
 		set_sw_port_config0(pc0_PEI0x2_SRIO0x2);
 		set_sw_port_config1(pc1_PEI1x2_PEI2x2);
 		set_pipe_port_sel(pp_0_1_2_3);
-		set_pipe_nphy(three_phy);
+		set_pipe_nphy(four_phy);
 
 		if (pei0_mode)
 			release_reset(0);
@@ -1451,6 +1452,7 @@ pei_setup_56xx(unsigned int control)
 		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
 		set_sw_port_config1(pc1_PEI1x2_PEI2x2);
 		set_pipe_port_sel(pp_0_1_2_3);
+		set_pipe_nphy(four_phy);
 
 		if (pei1_mode)
 			release_reset(2);
@@ -1521,6 +1523,7 @@ pei_setup_56xx(unsigned int control)
 		set_sw_port_config0(pc0_SRIO1x2_SRIO0x2);
 		set_sw_port_config1(pc1_PEI1x4);
 		set_pipe_port_sel(pp_0_1_2_3);
+		set_pipe_nphy(four_phy);
 
 		if (pei1_mode) {
 			release_reset(2);
@@ -1614,11 +1617,9 @@ pei_setup_67xx(unsigned int control)
 		/*
 		 * PEI0x2
 		 */
-		if (0) {
-			set_pei0_rc_mode(rc_mode);
-			set_pipe_port_sel(pp_0);
-			set_pipe_nphy(one_phy);
-		}
+		set_pei0_rc_mode(rc_mode);
+		set_pipe_port_sel(pp_0);
+		set_pipe_nphy(one_phy);
 
 		if (pei0_mode)
 			release_reset(0);
