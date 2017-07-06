@@ -588,22 +588,14 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	u32 membase;
 	u32 memlimit;
 
+	/*
+	  To work around a hardware problem, set
+	  PCIE_LINK_WIDTH_SPEED_CONTROL to 1 lane in all cases.
+	*/
+
 	axxia_pcie_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
 	val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
-	switch (pp->lanes) {
-	case 2:
-		val |= PORT_LOGIC_LINK_WIDTH_2_LANES;
-		break;
-	case 4:
-		val |= PORT_LOGIC_LINK_WIDTH_4_LANES;
-		break;
-	case 8:
-		val |= PORT_LOGIC_LINK_WIDTH_8_LANES;
-		break;
-	case 1:
-	default:
-		val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
-	}
+	val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
 	axxia_pcie_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
 
 	/* Set the number of lanes based on the device tree. */
