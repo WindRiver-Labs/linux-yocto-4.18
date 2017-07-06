@@ -588,78 +588,103 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 	u32 membase;
 	u32 memlimit;
 
-	/*
-	  To work around a hardware problem, set
-	  PCIE_LINK_WIDTH_SPEED_CONTROL to 1 lane in all cases.
-	*/
+	if (1 > pp->lanes)
+		return;
 
-	axxia_pcie_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
-	val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
-	val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
-	axxia_pcie_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
+	if (-1 == pp->pei_nr)
+		return;
 
-	/* Set the number of lanes based on the device tree. */
-	axxia_pcie_rd_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, &val);
-	val &= ~PORT_LINK_MODE_MASK;
+	for (;;) {
+		/*
+		  To work around a hardware problem, set
+		  PCIE_LINK_WIDTH_SPEED_CONTROL to 1 lane in all cases.
+		*/
 
-	switch (pp->lanes) {
-	case 1:
-		val |= PORT_LINK_MODE_1_LANES;
-		break;
-	case 2:
-		val |= PORT_LINK_MODE_2_LANES;
-		break;
-	case 4:
-		val |= PORT_LINK_MODE_4_LANES;
-		break;
-	case 8:
-		val |= PORT_LINK_MODE_8_LANES;
-		break;
-	default:
-		break;
+		axxia_pcie_rd_own_conf(pp,
+				       PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+		val &= ~PORT_LOGIC_LINK_WIDTH_MASK;
+		val |= PORT_LOGIC_LINK_WIDTH_1_LANES;
+		axxia_pcie_wr_own_conf(pp,
+				       PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
+
+		/* Set the number of lanes based on the device tree. */
+		axxia_pcie_rd_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, &val);
+		val &= ~PORT_LINK_MODE_MASK;
+
+		switch (pp->lanes) {
+		case 1:
+			val |= PORT_LINK_MODE_1_LANES;
+			break;
+		case 2:
+			val |= PORT_LINK_MODE_2_LANES;
+			break;
+		case 4:
+			val |= PORT_LINK_MODE_4_LANES;
+			break;
+		case 8:
+			val |= PORT_LINK_MODE_8_LANES;
+			break;
+		default:
+			break;
+		}
+		axxia_pcie_wr_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, val);
+
+		/* Add Mikes tweak for GEN3_EQ_CONTROL */
+		axxia_pcie_writel_rc(pp, 0x1017201, PCIE_GEN3_EQ_CONTROL_OFF);
+
+		/* setup bus numbers */
+		axxia_pcie_readl_rc(pp, PCI_PRIMARY_BUS, &val);
+		val &= 0xff000000;
+		val |= 0x00010100;
+		axxia_pcie_writel_rc(pp, val, PCI_PRIMARY_BUS);
+
+		/* setup memory base, memory limit */
+		membase = ((u32)pp->mem_base & 0xfff00000) >> 16;
+		memlimit = (pp->mem_size + (u32)pp->mem_base) & 0xfff00000;
+		val = memlimit | membase;
+		axxia_pcie_writel_rc(pp, val, PCI_MEMORY_BASE);
+
+		/* setup command register */
+		axxia_pcie_readl_rc(pp, PCI_COMMAND, &val);
+		val &= 0xffff0000;
+		val |= PCI_COMMAND_IO | PCI_COMMAND_MEMORY |
+			PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
+		axxia_pcie_writel_rc(pp, val, PCI_COMMAND);
+
+		/* LTSSM enable */
+		axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
+		msleep(100);
+		val |= 0x1;
+		axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
+		msleep(100);
+
+		if (axxia_pcie_link_up(pp))
+			break;
+
+		if (1 >= pp->lanes)
+			break;
+
+		pp->lanes >>= 1;
+		axxia_pei_reset(pp->pei_nr);
+		mdelay(100);
 	}
-	axxia_pcie_wr_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, val);
-
-	/* Add Mikes tweak for GEN3_EQ_CONTROL */
-	axxia_pcie_writel_rc(pp, 0x1017201, PCIE_GEN3_EQ_CONTROL_OFF);
-
-	/* setup bus numbers */
-	axxia_pcie_readl_rc(pp, PCI_PRIMARY_BUS, &val);
-	val &= 0xff000000;
-	val |= 0x00010100;
-	axxia_pcie_writel_rc(pp, val, PCI_PRIMARY_BUS);
-
-	/* setup memory base, memory limit */
-	membase = ((u32)pp->mem_base & 0xfff00000) >> 16;
-	memlimit = (pp->mem_size + (u32)pp->mem_base) & 0xfff00000;
-	val = memlimit | membase;
-	axxia_pcie_writel_rc(pp, val, PCI_MEMORY_BASE);
-
-	/* setup command register */
-	axxia_pcie_readl_rc(pp, PCI_COMMAND, &val);
-	val &= 0xffff0000;
-	val |= PCI_COMMAND_IO | PCI_COMMAND_MEMORY |
-		PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
-	axxia_pcie_writel_rc(pp, val, PCI_COMMAND);
-
-	/* LTSSM enable */
-	axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
-	msleep(100);
-	val |= 0x1;
-	axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
-	msleep(100);
 }
 
 
 static int axxia_pcie_establish_link(struct pcie_port *pp)
 {
+	u32 value;
+
 	/* setup root complex */
 	axxia_pcie_setup_rc(pp);
 
-	if (axxia_pcie_link_up(pp))
-		dev_info(pp->dev, "Link up\n");
-	else
+	if (!axxia_pcie_link_up(pp))
 		return 1;
+
+	axxia_pcie_readl_rc(pp, 0x80, &value);
+	dev_info(pp->dev, "PEI%d Link Up: Gen%d x%d\n", pp->pei_nr,
+		 (((value & 0xf0000) >> 16) & 0xff),
+		 (((value & 0x3f00000) >> 20) & 0xff));
 
 	return 0;
 }
@@ -1031,6 +1056,18 @@ static int axxia_pcie_probe(struct platform_device *pdev)
 	pp->dev = &pdev->dev;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "dbi");
+
+	if (0xa002000000 == res->start) {
+		pp->pei_nr = 0;
+	} else if (0xa004000000 == res->start) {
+		pp->pei_nr = 1;
+	} else if (0xa006000000 == res->start) {
+		pp->pei_nr = 2;
+	} else {
+		pr_warning("Unknown PEI!\n");
+		pp->pei_nr = -1;
+	}
+
 	pp->dbi_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(pp->dbi_base))
 		return PTR_ERR(pp->dbi_base);

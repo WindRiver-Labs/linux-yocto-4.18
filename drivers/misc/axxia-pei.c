@@ -148,6 +148,17 @@ static int pei_trace;
 module_param(pei_trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(pei_trace, "enable pei_trace");
 
+/*
+  ------------------------------------------------------------------------------
+  get_config
+*/
+
+static inline unsigned
+get_config(unsigned control)
+{
+	return (0xf & (control >> 22));
+}
+
 static u32
 pei_readl(void *address)
 {
@@ -1772,6 +1783,344 @@ int axxia_pei_is_control_set(void)
 }
 EXPORT_SYMBOL(axxia_pei_is_control_set);
 
+/*
+  ------------------------------------------------------------------------------
+  pei_reset_56xx
+*/
+
+static int
+pei_reset_56xx(enum PCIMode mode, unsigned int control)
+{
+	unsigned int ctrl0;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &ctrl0);
+
+	switch (get_config(control)) {
+	case 1:
+		/*
+		  PEI0x4  (HSS10-ch0,1; HSS11-ch0,1)
+		  PEI1x4  (HSS12-ch0,1; HSS13-ch0,1)
+		*/
+
+		switch (mode) {
+		case PEI0:
+			enable_reset(0);
+			enable_reset(1);
+			ctrl0 &= ~(1 << 0);
+			break;
+		case PEI1:
+			enable_reset(2);
+			enable_reset(3);
+			ctrl0 &= ~(1 << 1);
+			break;
+		default:
+			pr_err("Invalid PEI for mode %d!\n",
+			       get_config(control));
+			return -1;
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+
+		switch (mode) {
+		case PEI0:
+			release_reset(0);
+			release_reset(1);
+			ctrl0 |= (1 << 0);
+			break;
+		case PEI1:
+			release_reset(2);
+			release_reset(3);
+			ctrl0 |= (1 << 1);
+			break;
+		default:
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	case 2:
+		/*
+		  PEI0x2  (HSS10-ch0,1)
+		  PEI2x2  (HSS11-ch0,1)
+		  PEI1x2  (HSS12-ch0,1)
+		  UNUSED  (HSS13-ch0,1)
+		*/
+
+		/* Disable srio0 and srio1. */
+		ctrl0 &= ~((1 << 10) | (1 << 3));
+
+		switch (mode) {
+		case PEI0:
+			enable_reset(0);
+			ctrl0 &= ~(1 << 0);
+			break;
+		case PEI1:
+			enable_reset(2);
+			ctrl0 &= ~(1 << 1);
+			break;
+		case PEI2:
+			enable_reset(1);
+			ctrl0 &= ~(1 << 2);
+			break;
+		default:
+			pr_err("Invalid PEI for mode %d!\n",
+			       get_config(control));
+			return -1;
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+
+		switch (mode) {
+		case PEI0:
+			release_reset(0);
+			ctrl0 |= (1 << 0);
+			break;
+		case PEI1:
+			release_reset(2);
+			ctrl0 |= (1 << 1);
+			break;
+		case PEI2:
+			release_reset(1);
+			ctrl0 |= (1 << 2);
+			break;
+		default:
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	case 3:
+		/*
+		  PEI0x2  (HSS10-ch0,1)
+		  SRIO0x2 (HSS11-ch0,1)
+		  UNUSED  (HSS12-ch0,1)
+		  PEI2x2  (HSS13-ch0,1)
+		  INFO: Formerly case 6...
+		*/
+
+		switch (mode) {
+		case PEI0:
+			enable_reset(0);
+			ctrl0 &= ~(1 << 0);
+			break;
+		case PEI2:
+			enable_reset(3);
+			ctrl0 &= ~(1 << 2);
+			break;
+		default:
+			pr_err("Invalid PEI for mode %d!\n",
+			       get_config(control));
+			return -1;
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+
+		switch (mode) {
+		case PEI0:
+			release_reset(0);
+			ctrl0 |= (1 << 0);
+			break;
+		case PEI2:
+			release_reset(3);
+			ctrl0 |= (1 << 2);
+			break;
+		default:
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	case 4:
+		/*
+		  SRIO1x2 (HSS10-ch0,1)
+		  SRIO0x2 (HSS11-ch0,1)
+		  UNUSED  (HSS12-ch0,1)
+		  PEI2x2  (HSS13-ch0,1)
+		*/
+
+		switch (mode) {
+		case PEI2:
+			enable_reset(3);
+			ctrl0 &= ~(1 << 2);
+			break;
+		default:
+			pr_err("Invalid PEI for mode %d!\n",
+			       get_config(control));
+			return -1;
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+
+		switch (mode) {
+		case PEI2:
+			release_reset(3);
+			ctrl0 |= (1 << 2);
+			break;
+		default:
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+
+		/* Undocumented Configurations */
+
+	case 15:
+		/*
+		  UNUSED  (HSS10-ch0,1)
+		  SRIO0x2 (HSS11-ch0,1)
+		  PEI1x4  (HSS12-ch0,1; HSS13-ch0,1)
+		*/
+
+		switch (mode) {
+		case PEI1:
+			enable_reset(2);
+			enable_reset(3);
+			ctrl0 &= ~(1 << 1);
+			break;
+		default:
+			pr_err("Invalid PEI for mode %d!\n",
+			       get_config(control));
+			return -1;
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+
+		switch (mode) {
+		case PEI1:
+			release_reset(2);
+			release_reset(3);
+			ctrl0 |= (1 << 1);
+			break;
+		default:
+			break;
+		}
+
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	default:
+		pr_err("Invalid Configuration: 0x%x\n", get_config(control));
+		return -1;
+		break;
+	}
+
+	return 0;
+}
+
+/*
+  ------------------------------------------------------------------------------
+  pei_reset_67xx
+*/
+
+static int
+pei_reset_67xx(unsigned int control)
+{
+	unsigned int ctrl0;
+
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &ctrl0);
+
+	switch (get_config(control)) {
+	case 1:
+		/*
+		  PEI0x2  (HSS15-ch0,1)
+		*/
+
+		enable_reset(0);
+		ctrl0 &= ~(1 << 0);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		release_reset(0);
+		ctrl0 |= (1 << 0);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	case 2:
+		/*
+		  PEI0x1  (HSS15-ch0)
+		*/
+
+		enable_reset(0);
+		ctrl0 &= ~(1 << 0);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		release_reset(0);
+		ctrl0 |= (1 << 0);
+		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
+		break;
+	default:
+		pr_err("Invalid Configuration: 0x%x\n", get_config(control));
+		return -1;
+		break;
+	}
+
+	return 0;
+}
+
+/*
+  ------------------------------------------------------------------------------
+  axxia_pei_reset
+
+  Assumes that pei_init() has been run.
+
+  Only resets PCI ports.
+*/
+
+int
+axxia_pei_reset(unsigned int pei)
+{
+	unsigned int control;
+	enum PCIMode mode;
+	unsigned int ctrl0;
+
+	if (0 == axxia_pei_is_control_set()) {
+		pr_err("Control is Not Set\n");
+		return -1;
+	}
+
+	control = axxia_pei_get_control();
+
+	if (is_5500) {
+		pr_err("Invalid Target\n");
+		return -1;
+	}
+
+	if (is_6700 && 0 != pei) {
+		pr_err("Invalid PEI: %d\n", pei);
+		return -1;
+	}
+
+	switch (pei) {
+	case 0:
+		mode = PEI0;
+		break;
+	case 1:
+		mode = PEI1;
+		break;
+	case 2:
+		mode = PEI2;
+		break;
+	default:
+		pr_err("Invalid PEI: %d\n", pei);
+		return -1;
+		break;
+	}
+
+	disable_ltssm(mode);
+	ncr_read32(NCP_REGION_ID(0x115, 0), 0, &ctrl0);
+
+	if (is_5600) {
+		return pei_reset_56xx(mode, control);
+	} else if (is_6700) {
+		return pei_reset_67xx(control);
+	}
+
+	pr_err("Invalid Target\n");
+
+	return -1;
+}
+EXPORT_SYMBOL(axxia_pei_reset);
 
 /*
   ------------------------------------------------------------------------------

@@ -18,6 +18,7 @@
 #ifndef __AXXIA_PEI_H
 #define __AXXIA_PEI_H
 
+int axxia_pei_reset(unsigned int);
 int axxia_pei_setup(unsigned int, unsigned int);
 int axxia_pcie_reset(void);
 
