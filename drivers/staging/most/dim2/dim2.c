@@ -20,6 +20,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
+#include <linux/delay.h>
 
 #include "most/core.h"
 #include "hal.h"
@@ -157,6 +158,26 @@ void dimcb_on_error(u8 error_id, const char *error_message)
 {
 	pr_err("%s: error_id - %d, error_message - %s\n", __func__, error_id,
 	       error_message);
+}
+
+static int dim_rcar_init(struct dim2_hdm *dev)
+{
+        /* PLL */
+	__raw_writel(0x04, dev->io_base + 0x600);
+
+	/* 512FS Enable Register */
+	if (dev->clk_speed == CLK_512FS)
+		__raw_writel(0x01, dev->io_base + 0x604);
+	else
+		__raw_writel(0x00, dev->io_base + 0x604);
+
+	udelay(200);
+
+	/* BBCR  = 0b11 */
+	__raw_writel(0x03, dev->io_base + 0x500);
+	__raw_writel(0x0002FF02, dev->io_base + 0x508);
+
+	return 0;
 }
 
 /**
@@ -786,6 +807,10 @@ static int dim2_probe(struct platform_device *pdev)
 		return ret;
 
 	dev->disable_platform = pdata ? pdata->disable : 0;
+
+	if (1 /* renesas */) {
+		dim_rcar_init(dev);
+	}
 
 	dev_info(&pdev->dev, "sync: num of frames per sub-buffer: %u\n", fcnt);
 	hal_ret = dim_startup(dev->io_base, dev->clk_speed, fcnt);
