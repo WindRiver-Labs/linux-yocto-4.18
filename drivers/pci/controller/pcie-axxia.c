@@ -26,6 +26,8 @@
 #include <linux/of_pci.h>
 #include <linux/proc_fs.h>
 #include <linux/axxia-pei.h>
+#include <linux/time.h>
+#include <linux/lsi-ncr.h>
 
 #include "pcie-axxia.h"
 #include "../pci.h"
@@ -109,6 +111,9 @@
 /* SYSCON */
 #define AXXIA_SYSCON_BASE             0x8002C00000
 
+static int enable_los_wa = 1;
+module_param(enable_los_wa, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(enable_los_wa, "Enable the LOS Work Around");
 
 static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
 {
@@ -582,6 +587,217 @@ int axxia_pcie_link_up(struct pcie_port *pp)
 	return 1;
 }
 
+static int
+axxia_pcie_los_wa(struct pcie_port *pp)
+{
+	unsigned int value;
+	int rc = 1;
+	unsigned int control;
+	struct timeval start;
+	struct timeval now;
+
+	/*
+	  There are four SerDes, each with 2 lanes or channels.  The
+	  following uses one byte for each SerDes, and in each byte,
+	  one nibble for each lane.  Only lanes that are in RC mode
+	  and configured for PCIe should be part of the work around.
+	*/
+
+	unsigned int lane_mask = 0;
+
+	int max_target;
+	unsigned int lane0_dig_asic_rx_asic_in_0;
+	unsigned int lane0_dig_asic_rx_asic_out_0;
+	unsigned int lane0_idg_asic_rx_ovrd_in_0;
+	unsigned int lane1_dig_asic_rx_asic_in_0;
+	unsigned int lane1_dig_asic_rx_asic_out_0;
+	unsigned int lane1_idg_asic_rx_ovrd_in_0;
+
+	if (0 == axxia_pei_is_control_set())
+		return -1;
+
+	control = axxia_pei_get_control();
+
+	/* If PEI0, make sure it is configured as the root complex. */
+	if ((0 == pp->pei_nr) && (0 == (control & 0x80)))
+		return 0;
+
+	/*
+	  The "control" value in the parameters defines the number of
+	  lanes used.  Use bits 25:22 to initialize "lane_mask".
+	*/
+
+	if (axxia_is_x9()) {
+		switch ((control & 0x3c00000) >> 22) {
+		case 1:
+			/* PEI0x4 and PEI1x4 */
+			if (0 == pp->pei_nr)
+				lane_mask = 0x00001111;
+			else if (1 == pp->pei_nr)
+				lane_mask = 0x11110000;
+			else
+				return 0;
+
+			break;
+		case 2:
+			/* PEI0x2, PEI2x2, and PEI1x2 */
+			if (0 == pp->pei_nr)
+				lane_mask = 0x00000011;
+			else if (1 == pp->pei_nr)
+				lane_mask = 0x00110000;
+			else if (2 == pp->pei_nr)
+				lane_mask = 0x00001100;
+			else
+				return 0;
+
+			break;
+		case 3:
+			/* PEI0x2 and PEI2x2 */
+			if (0 == pp->pei_nr)
+				lane_mask = 0x00000011;
+			else if (2 == pp->pei_nr)
+				lane_mask = 0x11000000;
+			else
+				return 0;
+
+			break;
+		case 4:
+			/* PEI2x2 */
+			if (2 == pp->pei_nr)
+				lane_mask = 0x11000000;
+			else
+				return 0;
+
+			break;
+		case 5:
+			/* PEI1x2 and PEI2x2 */
+			if (1 == pp->pei_nr)
+				lane_mask = 0x00110000;
+			else if (2 == pp->pei_nr)
+				lane_mask = 0x11000000;
+			break;
+		case 15:
+			/* PEI1x4 */
+			if (1 == pp->pei_nr)
+				lane_mask = 0x11110000;
+			else
+				return 0;
+			break;
+		default:
+			return 0;
+			break;
+		}
+	} else {
+		switch ((control & 0x3c00000) >> 22) {
+		case 1:
+			lane_mask = 0x00000011;
+			break;
+		case 2:
+			lane_mask = 0x00000001;
+			break;
+		default:
+			return 0;
+			break;
+		}
+	}
+
+	/* Run the LOS work around until a link is established. */
+
+	if (axxia_is_x9()) {
+		max_target = 4;
+		lane0_dig_asic_rx_asic_in_0 = 0x2022;
+		lane0_dig_asic_rx_asic_out_0 = 0x202e;
+		lane0_idg_asic_rx_ovrd_in_0 = 0x200a;
+		lane1_dig_asic_rx_asic_in_0 = 0x2222;
+		lane1_dig_asic_rx_asic_out_0 = 0x222e;
+		lane1_idg_asic_rx_ovrd_in_0 = 0x220a;
+	} else {
+		max_target = 1;
+		lane0_dig_asic_rx_asic_in_0 = 0x4044;
+		lane0_dig_asic_rx_asic_out_0 = 0x405c;
+		lane0_idg_asic_rx_ovrd_in_0 = 0x4014;
+		lane1_dig_asic_rx_asic_in_0 = 0x4444;
+		lane1_dig_asic_rx_asic_out_0 = 0x445c;
+		lane1_idg_asic_rx_ovrd_in_0 = 0x4414;
+	}
+
+	do_gettimeofday(&start);
+
+	for (;;) {
+		int i;
+		unsigned short temp;
+
+		/*
+		   In all cases (see the initialization of lane_mask
+		   above), either both lanes or none are used in each
+		   HSS.
+		*/
+
+		for (i = 1; i <= max_target; ++i) {
+			if (0 == (lane_mask & (0xff << ((i - 1) * 8))))
+				continue;
+
+			ncr_read(NCP_REGION_ID(0x115, i),
+				 lane0_dig_asic_rx_asic_in_0, 2, &temp);
+
+			if (2 == ((temp & 0x180) >> 7)) {
+				ncr_read(NCP_REGION_ID(0x115, i),
+					 lane0_dig_asic_rx_asic_out_0,
+					 2, &temp);
+
+				if (0 != (temp & 2))
+					temp = 0x4700;
+				else
+					temp = 0x0700;
+
+				ncr_write(NCP_REGION_ID(0x115, i),
+					  lane0_idg_asic_rx_ovrd_in_0,
+					  2, &temp);
+			}
+
+			ncr_read(NCP_REGION_ID(0x115, i),
+				 lane1_dig_asic_rx_asic_in_0,
+				 2, &temp);
+
+			if (2 == ((temp & 0x180) >> 7)) {
+				ncr_read(NCP_REGION_ID(0x115, i),
+					 lane1_dig_asic_rx_asic_out_0,
+					 2, &temp);
+
+				if (0 != (temp & 2))
+					temp = 0x4700;
+				else
+					temp = 0x0700;
+
+				ncr_write(NCP_REGION_ID(0x115, i),
+					  lane1_idg_asic_rx_ovrd_in_0,
+					  2, &temp);
+			}
+		}
+
+		axxia_cc_gpreg_readl(pp, PEI_SII_PWR_MGMT_REG, &value);
+
+		if (0 != (value & (1 << 12)) &&
+		    0x11 == ((value & 0x3f0) >> 4)) {
+			rc = 0;
+
+			break;
+		}
+
+		do_gettimeofday(&now);
+
+		if ((2 * 1000 * 1000) <
+		    (((now.tv_sec * 1000 * 1000) + now.tv_usec) -
+		     ((start.tv_sec * 1000 * 1000) + start.tv_usec))) {
+			rc = -1;
+
+			break;
+		}
+	}
+
+	return rc;
+}
+
 void axxia_pcie_setup_rc(struct pcie_port *pp)
 {
 	u32 val;
@@ -629,9 +845,6 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 		}
 		axxia_pcie_wr_own_conf(pp, PCIE_PORT_LINK_CONTROL, 4, val);
 
-		/* Add Mikes tweak for GEN3_EQ_CONTROL */
-		axxia_pcie_writel_rc(pp, 0x1017201, PCIE_GEN3_EQ_CONTROL_OFF);
-
 		/* setup bus numbers */
 		axxia_pcie_readl_rc(pp, PCI_PRIMARY_BUS, &val);
 		val &= 0xff000000;
@@ -651,12 +864,35 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 			PCI_COMMAND_MASTER | PCI_COMMAND_SERR;
 		axxia_pcie_writel_rc(pp, val, PCI_COMMAND);
 
-		/* LTSSM enable */
-		axxia_cc_gpreg_readl(pp, PEI_GENERAL_CORE_CTL_REG, &val);
-		msleep(100);
-		val |= 0x1;
-		axxia_cc_gpreg_writel(pp, val, PEI_GENERAL_CORE_CTL_REG);
-		msleep(100);
+		if (0 != enable_los_wa) {
+			/* Update GEN3_EQ_CONTROL */
+			axxia_pcie_writel_rc(pp, 0x1017221,
+					     PCIE_GEN3_EQ_CONTROL_OFF);
+
+			/* LTSSM enable */
+			axxia_cc_gpreg_readl(pp,
+					     PEI_GENERAL_CORE_CTL_REG, &val);
+			val |= 0x1;
+			axxia_cc_gpreg_writel(pp,
+					      val, PEI_GENERAL_CORE_CTL_REG);
+
+			printk("%s:%d - Running LOS WA\n", __FILE__, __LINE__);
+			axxia_pcie_los_wa(pp);
+		} else {
+			/* Update GEN3_EQ_CONTROL */
+			axxia_pcie_writel_rc(pp, 0x1017201,
+					     PCIE_GEN3_EQ_CONTROL_OFF);
+
+			/* LTSSM enable */
+			axxia_cc_gpreg_readl(pp,
+					     PEI_GENERAL_CORE_CTL_REG, &val);
+			msleep(100);
+			val |= 0x1;
+			axxia_cc_gpreg_writel(pp,
+					      val, PEI_GENERAL_CORE_CTL_REG);
+			printk("%s:%d - Skipping LOS WA\n", __FILE__, __LINE__);
+			msleep(100);
+		}
 
 		if (axxia_pcie_link_up(pp))
 			break;
