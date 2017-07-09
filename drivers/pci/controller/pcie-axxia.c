@@ -588,7 +588,7 @@ int axxia_pcie_link_up(struct pcie_port *pp)
 }
 
 static int
-axxia_pcie_los_wa(struct pcie_port *pp)
+axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 {
 	unsigned int value;
 	int rc = 1;
@@ -618,6 +618,11 @@ axxia_pcie_los_wa(struct pcie_port *pp)
 
 	control = axxia_pei_get_control();
 
+	if ((4 != max_width) &&
+	    (2 != max_width) &&
+	    (1 != max_width))
+		return -1;
+
 	/* If PEI0, make sure it is configured as the root complex. */
 	if ((0 == pp->pei_nr) && (0 == (control & 0x80)))
 		return 0;
@@ -631,57 +636,104 @@ axxia_pcie_los_wa(struct pcie_port *pp)
 		switch ((control & 0x3c00000) >> 22) {
 		case 1:
 			/* PEI0x4 and PEI1x4 */
-			if (0 == pp->pei_nr)
+			if (0 == pp->pei_nr) {
 				lane_mask = 0x00001111;
-			else if (1 == pp->pei_nr)
+
+				if (2 == max_width)
+					lane_mask = 0x00000011;
+				else if (1 == max_width)
+					lane_mask = 0x00000001;
+			} else if (1 == pp->pei_nr) {
 				lane_mask = 0x11110000;
-			else
+
+				if (2 == max_width)
+					lane_mask = 0x00110000;
+				else if (1 == max_width)
+					lane_mask = 0x00010000;
+			} else {
 				return 0;
+			}
 
 			break;
 		case 2:
 			/* PEI0x2, PEI2x2, and PEI1x2 */
-			if (0 == pp->pei_nr)
+			if (0 == pp->pei_nr) {
 				lane_mask = 0x00000011;
-			else if (1 == pp->pei_nr)
+
+				if (1 == max_width)
+					lane_mask = 0x00000001;
+			} else if (1 == pp->pei_nr) {
 				lane_mask = 0x00110000;
-			else if (2 == pp->pei_nr)
+
+				if (1 == max_width)
+					lane_mask = 0x00010000;
+			} else if (2 == pp->pei_nr) {
 				lane_mask = 0x00001100;
-			else
+
+				if (1 == max_width)
+					lane_mask = 0x00000100;
+			} else {
 				return 0;
+			}
 
 			break;
 		case 3:
 			/* PEI0x2 and PEI2x2 */
-			if (0 == pp->pei_nr)
+			if (0 == pp->pei_nr) {
 				lane_mask = 0x00000011;
-			else if (2 == pp->pei_nr)
+
+				if (1 == max_width)
+					lane_mask = 0x00000001;
+			} else if (2 == pp->pei_nr) {
 				lane_mask = 0x11000000;
-			else
+
+				if (1 == max_width)
+					lane_mask = 0x01000000;
+			} else {
 				return 0;
+			}
 
 			break;
 		case 4:
 			/* PEI2x2 */
-			if (2 == pp->pei_nr)
+			if (2 == pp->pei_nr) {
 				lane_mask = 0x11000000;
-			else
+
+				if (1 == max_width)
+					lane_mask = 0x01000000;
+			} else {
 				return 0;
+			}
 
 			break;
 		case 5:
 			/* PEI1x2 and PEI2x2 */
-			if (1 == pp->pei_nr)
+			if (1 == pp->pei_nr) {
 				lane_mask = 0x00110000;
-			else if (2 == pp->pei_nr)
+
+				if (1 == max_width)
+					lane_mask = 0x00010000;
+			} else if (2 == pp->pei_nr) {
 				lane_mask = 0x11000000;
+
+				if (1 == max_width)
+					lane_mask = 0x01000000;
+			}
+
 			break;
 		case 15:
 			/* PEI1x4 */
-			if (1 == pp->pei_nr)
+			if (1 == pp->pei_nr) {
 				lane_mask = 0x11110000;
-			else
+
+				if (2 == max_width)
+					lane_mask = 0x00110000;
+				else if (1 == max_width)
+					lane_mask = 0x00010000;
+			} else {
 				return 0;
+			}
+
 			break;
 		default:
 			return 0;
@@ -690,7 +742,10 @@ axxia_pcie_los_wa(struct pcie_port *pp)
 	} else {
 		switch ((control & 0x3c00000) >> 22) {
 		case 1:
-			lane_mask = 0x00000011;
+			if (1 == max_width)
+				lane_mask = 0x00000001;
+			else
+				lane_mask = 0x00000011;
 			break;
 		case 2:
 			lane_mask = 0x00000001;
@@ -876,8 +931,7 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 			axxia_cc_gpreg_writel(pp,
 					      val, PEI_GENERAL_CORE_CTL_REG);
 
-			printk("%s:%d - Running LOS WA\n", __FILE__, __LINE__);
-			axxia_pcie_los_wa(pp);
+			axxia_pcie_los_wa(pp, pp->lanes);
 		} else {
 			/* Update GEN3_EQ_CONTROL */
 			axxia_pcie_writel_rc(pp, 0x1017201,
@@ -890,7 +944,6 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 			val |= 0x1;
 			axxia_cc_gpreg_writel(pp,
 					      val, PEI_GENERAL_CORE_CTL_REG);
-			printk("%s:%d - Skipping LOS WA\n", __FILE__, __LINE__);
 			msleep(100);
 		}
 
