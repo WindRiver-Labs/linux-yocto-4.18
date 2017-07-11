@@ -137,10 +137,13 @@ union command_data_register_2 {
 	} __packed bits;
 } __packed;
 
-static int ncr_trace;
-module_param(ncr_trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-MODULE_PARM_DESC(ncr_trace, "NCR Tracing");
+static int trace;
+module_param(trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(trace, "Trace NCR Accesses");
 
+static int trace_value_read;
+module_param(trace_value_read, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(trace_value_read, "Trace NCR Value Read");
 
 /*
  * ncr_register_read/write
@@ -846,22 +849,48 @@ _		  Copy data words to the buffer.
 		return -1;
 	}
 
-	if (0 != ncr_trace) {
-		int i;
+	if (0 != trace) {
+		printk("ncpRead");
 
-		printk("NCR: Read [");
-
-		for (i = 0; i < number; ++i) {
-			if ((i + 1) < number)
-				printk("0x%02x, ", *input++);
-			else
-				printk("0x%02x", *input++);
+		switch (number) {
+		case 1:
+			printk("   -w8 0.");
+			break;
+		case 2:
+			printk("  -w16 0.");
+			break;
+		case 4:
+			printk("       0.");
+			break;
+		default:
+			break;
 		}
 
-		printk("] from 0x%x.0x%x.0x%lx\n",
+		printk("%u.%u.0x00%08lx 1",
 		       NCP_NODE_ID(region),
 		       NCP_TARGET_ID(region),
 		       address);
+
+		if (0 != trace_value_read) {
+			switch (number) {
+			case 1:
+				printk(" [0x%02x]\n",
+				       *((unsigned char *)input));
+				break;
+			case 2:
+				printk(" [0x%04x]\n",
+				       *((unsigned short *)input));
+				break;
+			case 4:
+				printk(" [0x%08x]\n",
+				       *((unsigned int *)input));
+				break;
+			default:
+				break;
+			}
+		} else {
+			printk("\n");
+		}
 	}
 
 	return 0;
@@ -949,23 +978,41 @@ __ncr_write(struct ncr_io_fns *io_fn,
 	if (0 == ncr_available)
 		return -1;
 
-	if (0 != ncr_trace) {
-		int i;
-		unsigned char *input = buffer;
+	if (0 != trace) {
+		printk("ncpWrite");
 
-		printk("NCR: Writing [");
-
-		for (i = 0; i < number; ++i) {
-			if ((i + 1) < number)
-				printk("0x%02x, ", *input++);
-			else
-				printk("0x%02x", *input++);
+		switch (number) {
+		case 1:
+			printk("  -w8 0.");
+			break;
+		case 2:
+			printk(" -w16 0.");
+			break;
+		case 4:
+			printk("      0.");
+			break;
+		default:
+			break;
 		}
 
-		printk("] to 0x%x.0x%x.0x%x\n",
+		printk("%u.%u.0x00%08x",
 		       NCP_NODE_ID(region),
 		       NCP_TARGET_ID(region),
 		       address);
+
+		switch (number) {
+		case 1:
+			printk(" 0x%02x\n", *((unsigned char *)buffer));
+			break;
+		case 2:
+			printk(" 0x%04x\n", *((unsigned short *)buffer));
+			break;
+		case 4:
+			printk(" 0x%08x\n", *((unsigned int *)buffer));
+			break;
+		default:
+			break;
+		}
 	}
 
 	if (0x110 <= NCP_NODE_ID(region) &&
@@ -1124,7 +1171,7 @@ EXPORT_SYMBOL(ncr_write32);
 void
 ncr_start_trace(void)
 {
-	ncr_trace = 1;
+	trace = 1;
 }
 EXPORT_SYMBOL(ncr_start_trace);
 
@@ -1136,7 +1183,7 @@ EXPORT_SYMBOL(ncr_start_trace);
 void
 ncr_stop_trace(void)
 {
-	ncr_trace = 0;
+	trace = 0;
 }
 EXPORT_SYMBOL(ncr_stop_trace);
 
