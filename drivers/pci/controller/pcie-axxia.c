@@ -115,10 +115,9 @@ static int enable_los_wa = 1;
 module_param(enable_los_wa, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(enable_los_wa, "Enable the LOS Work Around");
 
-static inline uint32_t axxia_mmio_read_32(uintptr_t addr)
-{
-	return *(uint32_t *)addr;
-}
+static int trace;
+module_param(trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(trace, "Trace PCI Accesses");
 
 int
 axxia_is_x9(void)
@@ -138,39 +137,70 @@ static struct axxia_pcie *axxia_pcie_controllers;
 
 static unsigned long global_io_offset;
 
-static inline void axxia_pcie_readl_rc(struct pcie_port *pp, u32 reg, u32 *val)
+static inline void
+axxia_pcie_readl_rc(struct pcie_port *pp, u32 reg, u32 *val)
 {
 	*val = readl(pp->dbi_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Read 0x%x from DBI + 0x%x\n",
+		       pp->pei_nr, *val, reg);
+
+	return;
 }
 
-static inline void axxia_pcie_writel_rc(struct pcie_port *pp, u32 val, u32 reg)
+static inline void
+axxia_pcie_writel_rc(struct pcie_port *pp, u32 val, u32 reg)
 {
 	writel(val, pp->dbi_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Wrote 0x%x to DBI + 0x%x\n",
+		       pp->pei_nr, val, reg);
 }
 
-static inline void axxia_cc_gpreg_writel(struct pcie_port *pp, u32 val, u32 reg)
+static inline void
+axxia_cc_gpreg_writel(struct pcie_port *pp, u32 val, u32 reg)
 {
 	writel(val, pp->cc_gpreg_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Wrote 0x%x to CC_GPREG + 0x%x\n",
+		       pp->pei_nr, val, reg);
 }
 
-static inline void axxia_cc_gpreg_readl(struct pcie_port *pp, u32 reg, u32 *val)
+static inline void
+axxia_cc_gpreg_readl(struct pcie_port *pp, u32 reg, u32 *val)
 {
 	*val = readl(pp->cc_gpreg_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Read 0x%x from CC_GPREG + 0x%x\n",
+		       pp->pei_nr, *val, reg);
 }
 
-static inline void axxia_axi_gpreg_writel(struct pcie_port *pp, u32 val,
-					  u32 reg)
+static inline void
+axxia_axi_gpreg_writel(struct pcie_port *pp, u32 val, u32 reg)
 {
 	writel(val, pp->axi_gpreg_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Wrote 0x%x to AXI_GPREG + 0x%x\n",
+		       pp->pei_nr, val, reg);
 }
 
-static inline void axxia_axi_gpreg_readl(struct pcie_port *pp, u32 reg,
-					 u32 *val)
+static inline void
+axxia_axi_gpreg_readl(struct pcie_port *pp, u32 reg, u32 *val)
 {
 	*val = readl(pp->axi_gpreg_base + reg);
+
+	if (0 != trace)
+		printk("PEI%d: Read 0x%x from AXI_GPREG + 0x%x\n",
+		       pp->pei_nr, *val, reg);
 }
 
-int axxia_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
+int
+axxia_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
 {
 	*val = readl(addr);
 
@@ -184,7 +214,8 @@ int axxia_pcie_cfg_read(void __iomem *addr, int where, int size, u32 *val)
 	return PCIBIOS_SUCCESSFUL;
 }
 
-int axxia_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
+int
+axxia_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
 {
 	if (size == 4)
 		writel(val, addr);
@@ -198,13 +229,18 @@ int axxia_pcie_cfg_write(void __iomem *addr, int where, int size, u32 val)
 	return PCIBIOS_SUCCESSFUL;
 }
 
-static int axxia_pcie_rd_own_conf(struct pcie_port *pp, int where,
-				  int size, u32 *val)
+static int
+axxia_pcie_rd_own_conf(struct pcie_port *pp, int where, int size, u32 *val)
 {
 	int ret;
 
 	ret = axxia_pcie_cfg_read(pp->dbi_base + (where & ~0x3),
 				  where, size, val);
+
+	if (0 != trace)
+		printk("PEI%d: rd_own_conf where=%d size=%d ret=%d *val=0x%x\n",
+		       pp->pei_nr, where, size, ret, *val);
+
 	return ret;
 }
 
@@ -215,6 +251,11 @@ static int axxia_pcie_wr_own_conf(struct pcie_port *pp, int where,
 
 	ret = axxia_pcie_cfg_write(pp->dbi_base + (where & ~0x3), where,
 				   size, val);
+
+	if (0 != trace)
+		printk("PEI%d: wr_own_conf where=%d size=%d ret=%d val=0x%x\n",
+		       pp->pei_nr, where, size, ret, val);
+
 	return ret;
 }
 
