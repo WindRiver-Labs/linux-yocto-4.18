@@ -1665,7 +1665,7 @@ static void mlb_rx_isr(s32 ctype, u32 ahb_ch, struct mlb_dev_info *pdevinfo)
 	read_lock(&rx_rbuf->rb_lock);
 
 	head = (rx_rbuf->head + 1) & (TRANS_RING_NODES - 1);
-	tail = ACCESS_ONCE(rx_rbuf->tail);
+	tail = READ_ONCE(rx_rbuf->tail);
 	read_unlock(&rx_rbuf->rb_lock);
 
 	if (CIRC_SPACE(head, tail, TRANS_RING_NODES) >= 1) {
@@ -1699,7 +1699,7 @@ static void mlb_tx_isr(s32 ctype, u32 ahb_ch, struct mlb_dev_info *pdevinfo)
 
 	read_lock(&tx_rbuf->rb_lock);
 
-	head = ACCESS_ONCE(tx_rbuf->head);
+	head = READ_ONCE(tx_rbuf->head);
 	tail = (tx_rbuf->tail + 1) & (TRANS_RING_NODES - 1);
 	read_unlock(&tx_rbuf->rb_lock);
 
@@ -2293,7 +2293,7 @@ static ssize_t mxc_mlb150_read(struct file *filp, char __user *buf,
 
 	read_lock_irqsave(&rx_rbuf->rb_lock, flags);
 
-	head = ACCESS_ONCE(rx_rbuf->head);
+	head = READ_ONCE(rx_rbuf->head);
 	tail = rx_rbuf->tail;
 
 	read_unlock_irqrestore(&rx_rbuf->rb_lock, flags);
@@ -2337,9 +2337,8 @@ static ssize_t mxc_mlb150_read(struct file *filp, char __user *buf,
 	size = pdevinfo->adt_buf_dep;
 	if (size > count) {
 		/* the user buffer is too small */
-		pr_warning
-			("mxc_mlb150: received data size is bigger than "
-			"size: %d, count: %d\n", size, count);
+		pr_warn("mxc_mlb150: received data size is biggerthan size:"
+			"%d, count: %d\n", size, (int)count);
 		return -EINVAL;
 	}
 
@@ -2393,7 +2392,7 @@ static ssize_t mxc_mlb150_write(struct file *filp, const char __user *buf,
 	read_lock_irqsave(&tx_rbuf->rb_lock, flags);
 
 	head = tx_rbuf->head;
-	tail = ACCESS_ONCE(tx_rbuf->tail);
+	tail = READ_ONCE(tx_rbuf->tail);
 	read_unlock_irqrestore(&tx_rbuf->rb_lock, flags);
 
 	if (0 == CIRC_SPACE(head, tail, TRANS_RING_NODES)) {
@@ -2654,7 +2653,6 @@ static int mxc_mlb150_probe(struct platform_device *pdev)
 		goto err_dev;
 	}
 	mlb_base = devm_ioremap_resource(&pdev->dev, res);
-	dev_dbg(&pdev->dev, "mapped base address: 0x%08x\n", (u32)mlb_base);
 	if (IS_ERR(mlb_base)) {
 		dev_err(&pdev->dev,
 			"failed to get ioremap base\n");
