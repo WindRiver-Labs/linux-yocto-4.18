@@ -894,6 +894,20 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 	return rc;
 }
 
+static void pci_axxia_program_rc_class(struct pcie_port *pp)
+{
+	u32 dbi_ro_wr_en;
+	/* program correct class for RC */
+	axxia_pcie_readl_rc(pp, 0x8bc, &dbi_ro_wr_en);
+	/* DBI_RO_WR_EN */
+	if (!(dbi_ro_wr_en & 0x1))
+		axxia_pcie_writel_rc(pp, (dbi_ro_wr_en | 0x1), 0x8bc);
+	axxia_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
+	/* DBI_RO_WR_EN */
+	if (!(dbi_ro_wr_en & 0x1))
+		axxia_pcie_writel_rc(pp, dbi_ro_wr_en, 0x8bc);
+}
+
 void axxia_pcie_setup_rc(struct pcie_port *pp)
 {
 	u32 val;
@@ -907,6 +921,9 @@ void axxia_pcie_setup_rc(struct pcie_port *pp)
 		return;
 
 	for (;;) {
+		/* program correct class for RC */
+		pci_axxia_program_rc_class(pp);
+
 		/*
 		  To work around a hardware problem, set
 		  PCIE_LINK_WIDTH_SPEED_CONTROL to 1 lane in all cases.
@@ -1017,20 +1034,6 @@ static int axxia_pcie_establish_link(struct pcie_port *pp)
 		 (((value & 0x3f00000) >> 20) & 0xff));
 
 	return 0;
-}
-
-static void pci_axxia_program_rc_class(struct pcie_port *pp)
-{
-	u32 dbi_ro_wr_en;
-	/* program correct class for RC */
-	axxia_pcie_readl_rc(pp, 0x8bc, &dbi_ro_wr_en);
-	/* DBI_RO_WR_EN */
-	if (!(dbi_ro_wr_en & 0x1))
-		axxia_pcie_writel_rc(pp, (dbi_ro_wr_en | 0x1), 0x8bc);
-	axxia_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
-	/* DBI_RO_WR_EN */
-	if (!(dbi_ro_wr_en & 0x1))
-		axxia_pcie_writel_rc(pp, dbi_ro_wr_en, 0x8bc);
 }
 
 static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
@@ -1298,9 +1301,6 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		dev_err(pp->dev, "Failed to parse the number of lanes\n");
 		return -EINVAL;
 	}
-
-	/* program correct class for RC */
-	pci_axxia_program_rc_class(pp);
 
 	if (axxia_pcie_establish_link(pp))
 		dev_warn(pp->dev, "axxia_pcie_establish_link failed\n");
