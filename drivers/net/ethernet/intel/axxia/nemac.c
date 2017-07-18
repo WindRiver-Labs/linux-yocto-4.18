@@ -746,7 +746,7 @@ nemac_tx_cleanup(struct nemac_priv *priv)
 		struct sk_buff *skb = queue_get_skb(&priv->txq, desc);
 
 		dma_unmap_single(priv->dev, desc_get_bufptr(desc),
-				 desc_get_xferlen(desc), DMA_TO_DEVICE);
+				 skb->len, DMA_TO_DEVICE);
 		dev_kfree_skb_any(skb);
 		mb();
 		queue_inc_tail(&priv->txq);
