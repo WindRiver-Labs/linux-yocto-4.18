@@ -194,10 +194,51 @@
 
 &i2c0 {
 	status = "okay";
+
+	sysfpga@40 {
+		reg = <0x40>;
+	};
 };
 
 &i2c1 {
 	status = "okay";
+
+	pxa9555@20 {
+		compatible = "pca9555";
+		reg = <0x20>;
+	};
+
+	adt7467@2e {
+		compatible = "adt7473";
+		reg = <0x2e>;
+	};
+
+	temp@18 {
+		compatible = "jc42";
+		reg = <0x18>;
+	};
+
+	temp@1a {
+		compatible = "jc42";
+		reg = <0x1a>;
+	};
+
+	spd@50 {
+		compatible = "spd";
+		reg = <0x50>;
+	};
+
+	spd@52 {
+		compatible = "spd";
+		reg = <0x52>;
+	};
+
+	eeprom@54 {
+		compatible = "24c1024";
+		reg = <0x54>;
+		pagesize = <128>;
+	};
+
 };
 
 &i2c2 {
@@ -206,6 +247,17 @@
 
 &i2c3 {
 	status = "okay";
+
+	ltc2974@5c {
+		compatible = "ltc2974";
+		reg = <0x5c>;
+	};
+
+	ltc2974@5d {
+		compatible = "ltc2974";
+		reg = <0x5d>;
+	};
+
 };
 
 &edac_cpu {
