@@ -561,6 +561,8 @@ static int tcpci_probe(struct i2c_client *client,
 	if (IS_ERR(chip->data.regmap))
 		return PTR_ERR(chip->data.regmap);
 
+	/* Clear and disable chip interrupts */
+	tcpci_write16(tcpci, TCPC_ALERT, 0xffff);
 	/* Disable chip interrupts before requesting irq */
 	err = regmap_raw_write(chip->data.regmap, TCPC_ALERT_MASK, &val,
 			       sizeof(u16));
