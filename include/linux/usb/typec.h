@@ -25,6 +25,7 @@ enum typec_port_type {
 	TYPEC_PORT_SRC,
 	TYPEC_PORT_SNK,
 	TYPEC_PORT_DRP,
+	TYPEC_PORT_TYPE_UNKNOWN,
 };
 
 enum typec_port_data {
@@ -49,6 +50,7 @@ enum typec_data_role {
 enum typec_role {
 	TYPEC_SINK,
 	TYPEC_SOURCE,
+	TYPEC_ROLE_UNKNOWN,
 };
 
 enum typec_pwr_opmode {
@@ -266,5 +268,7 @@ void typec_set_pwr_opmode(struct typec_port *port, enum typec_pwr_opmode mode);
 int typec_set_orientation(struct typec_port *port,
 			  enum typec_orientation orientation);
 int typec_set_mode(struct typec_port *port, int mode);
+enum typec_port_type typec_get_port_type(struct device *dev);
+enum typec_role typec_get_power_role(struct device *dev);
 
 #endif /* __LINUX_USB_TYPEC_H */
