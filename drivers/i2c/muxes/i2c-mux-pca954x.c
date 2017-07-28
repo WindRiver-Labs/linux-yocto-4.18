@@ -68,6 +68,7 @@ enum pca_type {
 	pca_9847,
 	pca_9848,
 	pca_9849,
+	pca_9646,
 };
 
 struct chip_desc {
@@ -177,6 +178,10 @@ static const struct chip_desc chips[] = {
 			.part_id = 0x109,
 		},
 	},
+	[pca_9646] = {
+		.nchans = 4,
+		.muxtype = pca954x_isswi,
+	},
 };
 
 static const struct i2c_device_id pca954x_id[] = {
@@ -192,6 +197,7 @@ static const struct i2c_device_id pca954x_id[] = {
 	{ "pca9847", pca_9847 },
 	{ "pca9848", pca_9848 },
 	{ "pca9849", pca_9849 },
+	{ "pca9646", pca_9646 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, pca954x_id);
@@ -210,6 +216,7 @@ static const struct of_device_id pca954x_of_match[] = {
 	{ .compatible = "nxp,pca9847", .data = &chips[pca_9847] },
 	{ .compatible = "nxp,pca9848", .data = &chips[pca_9848] },
 	{ .compatible = "nxp,pca9849", .data = &chips[pca_9849] },
+	{ .compatible = "nxp,pca9646", .data = &chips[pca_9646] },
 	{}
 };
 MODULE_DEVICE_TABLE(of, pca954x_of_match);
