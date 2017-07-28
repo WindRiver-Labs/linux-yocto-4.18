@@ -14,6 +14,7 @@ Required Properties:
     "nxp,pca9547", "nxp,pca9847",
     "nxp,pca9548", "nxp,pca9848",
     "nxp,pca9849"
+    "nxp,pca9646"
 
   - reg: The I2C address of the device.
 
