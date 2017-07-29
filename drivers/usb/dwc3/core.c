@@ -1275,6 +1275,9 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 	dwc->tx_thr_num_pkt_prd = tx_thr_num_pkt_prd;
 	dwc->tx_max_burst_prd = tx_max_burst_prd;
 
+	/* Check if extra quirks to be added */
+	dwc3_simple_check_quirks(dwc);
+
 	dwc->imod_interval = 0;
 }
 
