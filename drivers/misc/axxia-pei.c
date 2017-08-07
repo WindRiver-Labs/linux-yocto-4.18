@@ -37,11 +37,15 @@ static int is_5500;
 static int is_5600;
 static int is_6700;
 
-static void __iomem *pcie_gpreg0;
-static void __iomem *pcie_gpreg1;
-static void __iomem *pcie_gpreg2;
 static void __iomem *pcie_rc;
 static void __iomem *syscon;
+
+struct axxia_pei {
+	unsigned long phys;
+	void __iomem *virt;
+};
+
+struct axxia_pei axxia_pei[3];
 
 static int pcie_cc_gpreg_offset = 0x8000;
 static int is_pei_control_available;
@@ -49,11 +53,9 @@ static int is_pei_control_v2;
 
 DEFINE_MUTEX(axxia_pei_mux);
 
-struct axxia_pei {
-	unsigned int	control;
-	int		control_set;
-	unsigned int	initialized;
-};
+static unsigned int control;
+static int control_set;
+static unsigned int initialized;
 
 struct pei_coefficients {
 	unsigned version;
@@ -70,7 +72,6 @@ struct pei_coefficients {
 	unsigned lane_1_vboost;
 };
 
-static struct axxia_pei axxia_pei;
 static struct pei_coefficients coefficients;
 
 enum SataMode {
@@ -95,9 +96,9 @@ enum SrioSpeed {
 };
 
 enum PCIMode {
-	PEI0,
-	PEI1,
-	PEI2
+	PEI0 = 0,
+	PEI1 = 1,
+	PEI2 = 2
 };
 enum PLLMode {
 	PLLA,
@@ -145,9 +146,9 @@ enum pipe_nphy {
 	four_phy = 0x3,
 };
 
-static int pei_trace;
-module_param(pei_trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-MODULE_PARM_DESC(pei_trace, "enable pei_trace");
+static int trace;
+module_param(trace, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(trace, "Trace PEI Accesses");
 
 /*
   ------------------------------------------------------------------------------
@@ -160,6 +161,45 @@ get_config(unsigned control)
 	return (0xf & (control >> 22));
 }
 
+static inline void
+axxia_pei_trace(void *address, int read, u32 value)
+{
+	int pei = -1;
+	unsigned long pci_gpreg;
+	unsigned int offset;
+
+	pci_gpreg = (unsigned long)address;
+	pci_gpreg &= ~0x1ffff;
+
+	if (0 != is_5600) {
+		if ((unsigned long)(axxia_pei[0].virt) ==
+		    pci_gpreg)
+			pei = 0;
+		else if ((unsigned long)(axxia_pei[1].virt) ==
+			 pci_gpreg)
+			pei = 1;
+		else if ((unsigned long)(axxia_pei[2].virt) ==
+			 pci_gpreg)
+			pei = 2;
+	} else if ((unsigned long)(axxia_pei[0].virt) == pci_gpreg) {
+		pei = 0;
+	}
+
+	if (-1 == pei)
+		pr_warn("Unknown PEI Address!\n");
+
+	offset = (unsigned int)((unsigned long)address - pci_gpreg);
+
+	if (0 == read)
+		printk("PEI%d: Wrote 0x%x to 0x%08x\n",
+		       pei, value, offset);
+	else
+		printk("PEI%d: Read 0x%x from 0x%08x\n",
+		       pei, value, offset);
+
+	return;
+}
+
 static u32
 pei_readl(void *address)
 {
@@ -167,8 +207,8 @@ pei_readl(void *address)
 
 	value = readl(address);
 
-	if (0 != pei_trace)
-		printk("PEI: Read 0x%x from 0x%px\n", value, address);
+	if (0 != trace)
+		axxia_pei_trace(address, 1, value);
 
 	return value;
 }
@@ -178,8 +218,8 @@ pei_writel(u32 value, void *address)
 {
 	writel(value, address);
 
-	if (0 != pei_trace)
-		printk("PEI: Wrote 0x%x to 0x%p\n", value, address);
+	if (0 != trace)
+		axxia_pei_trace(address, 0, value);
 
 	return;
 }
@@ -667,25 +707,33 @@ void disable_ltssm(enum PCIMode mode)
 	switch (mode) {
 	case PEI0:
 		/* LTSSM Disable for PEI0 */
-		val = pei_readl(pcie_gpreg0 + pcie_cc_gpreg_offset + 0x38);
+		val = pei_readl(axxia_pei[mode].virt +
+				pcie_cc_gpreg_offset + 0x38);
 		val &= (~(0x1));
-		pei_writel(val, pcie_gpreg0 + pcie_cc_gpreg_offset + 0x38);
+		pei_writel(val, axxia_pei[mode].virt +
+			   pcie_cc_gpreg_offset + 0x38);
 		break;
 	case PEI1:
 		/* LTSSM Disable for PEI1 */
 		if (!is_5600)
 			break;
-		val = pei_readl(pcie_gpreg1 + pcie_cc_gpreg_offset + 0x38);
+
+		val = pei_readl(axxia_pei[mode].virt +
+				pcie_cc_gpreg_offset + 0x38);
 		val &= (~(0x1));
-		pei_writel(val, pcie_gpreg1 + pcie_cc_gpreg_offset + 0x38);
+		pei_writel(val, axxia_pei[mode].virt +
+			   pcie_cc_gpreg_offset + 0x38);
 		break;
 	case PEI2:
 		/* LTSSM Disable for PEI2 */
 		if (!is_5600)
 			break;
-		val = pei_readl(pcie_gpreg2 + pcie_cc_gpreg_offset + 0x38);
+
+		val = pei_readl(axxia_pei[mode].virt +
+				pcie_cc_gpreg_offset + 0x38);
 		val &= (~(0x1));
-		pei_writel(val, pcie_gpreg2 + pcie_cc_gpreg_offset + 0x38);
+		pei_writel(val, axxia_pei[mode].virt +
+			   pcie_cc_gpreg_offset + 0x38);
 		break;
 	default:
 		pr_err("%s Unsupported PEI %d\n", __func__, mode);
@@ -1309,7 +1357,7 @@ pei_setup_56xx(unsigned int control)
 	u32 reg_val = 0;
 	int phy;
 
-	if (0 != pei_trace)
+	if (0 != trace)
 		ncr_start_trace();
 
 	pci_srio_sata_mode = (control & 0x03c00000) >> 22;
@@ -1590,7 +1638,7 @@ pei_setup_56xx(unsigned int control)
 		pr_err("pei_setup control=0x%08x pci_srio_sata_mode=%d\n",
 			control, pci_srio_sata_mode);
 
-		if (0 != pei_trace)
+		if (0 != trace)
 			ncr_stop_trace();
 
 		return -1;
@@ -1599,7 +1647,7 @@ pei_setup_56xx(unsigned int control)
 
 	update_settings();
 
-	if (0 != pei_trace)
+	if (0 != trace)
 		ncr_stop_trace();
 
 	return 0;
@@ -1720,7 +1768,7 @@ get_v2_coefficients(struct device_node *pei_control)
 	return 0;
 }
 
-int axxia_pei_setup(unsigned int control, unsigned int force)
+int axxia_pei_setup(unsigned int control_in, unsigned int force)
 {
 	int ret = 0;
 	int rv = -1;
@@ -1728,14 +1776,14 @@ int axxia_pei_setup(unsigned int control, unsigned int force)
 	mutex_lock(&axxia_pei_mux);
 
 	pr_debug("axxia_pei_setup: control=0x%08x, force = 0x%08x\n",
-			control, force);
-	axxia_pei.control = control;
-	axxia_pei.control_set = 1;
+		 control_in, force);
+	control = control_in;
+	control_set = 1;
 
 	if (1 == force)
-		axxia_pei.initialized = 0;
+		initialized = 0;
 
-	if (axxia_pei.initialized)
+	if (initialized)
 		goto cleanup;
 
 	/*
@@ -1744,7 +1792,7 @@ int axxia_pei_setup(unsigned int control, unsigned int force)
 	  assumption.
 	*/
 
-	if (0 == axxia_pei.initialized) {
+	if (0 == initialized) {
 		if (is_5600)
 			rv = pei_setup_56xx(control);
 		else if (is_6700)
@@ -1756,7 +1804,7 @@ int axxia_pei_setup(unsigned int control, unsigned int force)
 			ret = -EINVAL;
 			goto cleanup;
 		} else
-			axxia_pei.initialized = 1;
+			initialized = 1;
 
 		msleep(100);
 	}
@@ -1772,7 +1820,7 @@ unsigned int axxia_pei_get_control(void)
 	unsigned int ret;
 
 	mutex_lock(&axxia_pei_mux);
-	ret = axxia_pei.control;
+	ret = control;
 	mutex_unlock(&axxia_pei_mux);
 	return ret;
 }
@@ -1783,7 +1831,7 @@ int axxia_pei_is_control_set(void)
 	int ret;
 
 	mutex_lock(&axxia_pei_mux);
-	ret = axxia_pei.control_set;
+	ret = control_set;
 	mutex_unlock(&axxia_pei_mux);
 	return ret;
 }
@@ -2137,20 +2185,26 @@ EXPORT_SYMBOL(axxia_pei_reset);
 static int
 pei_init(void)
 {
+	memset(axxia_pei, 0, sizeof(axxia_pei));
+
 	/* Use the device tree to determine the Axxia type. */
 	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500") ||
 	    of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
 		is_5500 = 1;
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axm5616")) {
 		is_5600 = 1;
-		pcie_gpreg0 = ioremap(0xa003000000, 0x10000);
-		pcie_gpreg1 = ioremap(0xa005000000, 0x10000);
-		pcie_gpreg2 = ioremap(0xa007000000, 0x10000);
+		axxia_pei[0].phys = 0xa003000000;
+		axxia_pei[0].virt = ioremap(axxia_pei[0].phys, 0x10000);
+		axxia_pei[1].phys = 0xa005000000;
+		axxia_pei[1].virt = ioremap(axxia_pei[1].phys, 0x10000);
+		axxia_pei[2].phys = 0xa007000000;
+		axxia_pei[2].virt = ioremap(axxia_pei[2].phys, 0x10000);
 		pcie_rc = ioremap(0xa002000000, 0x1000);
 		syscon = ioremap(0x8002c00000, 0x4000);
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
 		is_6700 = 1;
-		pcie_gpreg0 = ioremap(0xa003000000, 0x10000);
+		axxia_pei[0].phys = 0xa003000000;
+		axxia_pei[0].virt = ioremap(axxia_pei[0].phys, 0x10000);
 		pcie_rc = ioremap(0xa002000000, 0x1000);
 	} else {
 		pr_err("No Valid Compatible String Found for PEI!\n");
