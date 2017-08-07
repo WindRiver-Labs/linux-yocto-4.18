@@ -146,8 +146,6 @@
 				compatible = "snps,dwc3";
 				reg = <0x90 0x00000000 0 0x100000>;
 				interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
-				snps,axxia_usb_944754_quirk;
-				snps,axxia_usb_952264_quirk;
 			};
 		};
 
@@ -162,8 +160,6 @@
 				compatible = "snps,dwc3";
 				reg = <0x98 0x00000000 0 0x100000>;
 				interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
-				snps,axxia_usb_944754_quirk;
-				snps,axxia_usb_952264_quirk;
 			};
 		};
 
