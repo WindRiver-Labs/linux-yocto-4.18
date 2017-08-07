@@ -41,6 +41,7 @@ static void __iomem *pcie_gpreg0;
 static void __iomem *pcie_gpreg1;
 static void __iomem *pcie_gpreg2;
 static void __iomem *pcie_rc;
+static void __iomem *syscon;
 
 static int pcie_cc_gpreg_offset = 0x8000;
 static int is_pei_control_available;
@@ -1465,8 +1466,13 @@ pei_setup_56xx(unsigned int control)
 		set_pipe_port_sel(pp_0_1_2_3);
 		set_pipe_nphy(four_phy);
 
-		if (pei1_mode)
+		if (pei1_mode) {
+			writel(0xab, (syscon + 0x2000));
+			writel(0x20000000, (syscon + 0x2034));
+			writel(0, (syscon + 0x2000));
 			release_reset(2);
+		}
+
 		if (pei2_mode)
 			release_reset(3);
 
@@ -1934,10 +1940,11 @@ pei_reset_56xx(enum PCIMode mode, unsigned int control)
 		ncr_write32(NCP_REGION_ID(0x115, 0), 0, ctrl0);
 		break;
 	case 4:
+	case 5:
 		/*
 		  SRIO1x2 (HSS10-ch0,1)
 		  SRIO0x2 (HSS11-ch0,1)
-		  UNUSED  (HSS12-ch0,1)
+		  UNUSED  (HSS12-ch0,1) for config 4, PEI1x2 for config 5
 		  PEI2x2  (HSS13-ch0,1)
 		*/
 
@@ -2140,6 +2147,7 @@ pei_init(void)
 		pcie_gpreg1 = ioremap(0xa005000000, 0x10000);
 		pcie_gpreg2 = ioremap(0xa007000000, 0x10000);
 		pcie_rc = ioremap(0xa002000000, 0x1000);
+		syscon = ioremap(0x8002c00000, 0x4000);
 	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
 		is_6700 = 1;
 		pcie_gpreg0 = ioremap(0xa003000000, 0x10000);
