@@ -28,9 +28,12 @@
 #include <linux/axxia-pei.h>
 #include <linux/time.h>
 #include <linux/lsi-ncr.h>
+#include <asm-generic/msi.h>
 
 #include "pcie-axxia.h"
 #include "../pci.h"
+
+#define AXXIA_GENERIC_MSI_DOMAIN_IRQ 1
 
 #define PEI_GENERAL_CORE_CTL_REG 0x38
 #define PEI_SII_PWR_MGMT_REG 0xD4
@@ -107,6 +110,17 @@
 
 #define AXI_GPREG_MSTR		0x0
 #define CFG_MSI_MODE		(0x1 << 29)
+
+#define AXI_GPREG_MSIX_CTRL0	0x28
+#define AXI_GPREG_MSIX_CTRL1	0x2c
+#define PEI_MSIX_INTR_ENABLE	0xa8
+#define PEI_MSIX_INTR_STATUS	0xa4
+#define PCIE_MSIX_INTR0_ENABLE	0xb4
+#define PCIE_MSIX_INTR0_STATUS	0xb0
+
+#define AXI_GPREG_EDG_IRQ_STAT_HI                 0x3a0
+#define AXI_GPREG_EDG_IRQ_MASK_HI                 0x3a4
+#define MSIX_ASSERTED                    (0x1 << 8)
 
 /* SYSCON */
 #define AXXIA_SYSCON_BASE             0x8002C00000
@@ -462,6 +476,221 @@ static struct pci_ops axxia_pciex_pci_ops = {
 	.write = axxia_pciex_write_config,
 };
 
+static void axxia_dw_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
+{
+	unsigned int res, bit, val;
+
+	res = (irq / 32) * 12;
+	bit = irq % 32;
+	axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, &val);
+	val &= ~(1 << bit);
+	axxia_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, val);
+}
+
+static void axxia_dw_pcie_msix_set_irq(struct pcie_port *pp, int irq, int mask)
+{
+	unsigned int res, bit, val;
+
+	res = (irq / 16) * 12;
+	bit = irq % 16;
+	axxia_axi_gpreg_readl(pp, PCIE_MSIX_INTR0_ENABLE + res, &val);
+	if (mask)
+		val |= 1 << bit;
+	else
+		val &= ~(1 << bit);
+	axxia_axi_gpreg_writel(pp, val, PCIE_MSIX_INTR0_ENABLE + res);
+	bit = irq % 32;
+	axxia_axi_gpreg_readl(pp, PEI_MSIX_INTR_ENABLE + res, &val);
+	if (mask)
+		val |= 1 << bit;
+	else
+		val &= ~(1 << bit);
+	axxia_axi_gpreg_writel(pp, val, PEI_MSIX_INTR_ENABLE + res);
+}
+
+static void axxia_dw_pcie_msi_set_irq(struct pcie_port *pp, int irq)
+{
+	unsigned int res, bit, val;
+
+	res = (irq / 32) * 12;
+	bit = irq % 32;
+	axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, &val);
+	val |= 1 << bit;
+	axxia_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, val);
+}
+
+static int axxia_check_set_msi_mode(struct pcie_port *pp, u32 is_msix)
+{
+	u32 val;
+
+	if (pp->msi_mode == AXXIA_MSI_UNCONFIGURED) {
+		if (is_msix) {
+			axxia_axi_gpreg_readl(pp, AXI_GPREG_MSTR, &val);
+			val &= ~CFG_MSI_MODE;
+			axxia_axi_gpreg_writel(pp, val, AXI_GPREG_MSTR);
+			pp->msi_mode = AXXIA_MSIX_MODE;
+		} else {
+			axxia_axi_gpreg_readl(pp, AXI_GPREG_MSTR, &val);
+			val |= CFG_MSI_MODE;
+			axxia_axi_gpreg_writel(pp, val, AXI_GPREG_MSTR);
+			pp->msi_mode = AXXIA_MSI_MODE;
+		}
+	} else {
+		if ((is_msix && (pp->msi_mode == AXXIA_MSI_MODE)) ||
+			((!is_msix) && (pp->msi_mode == AXXIA_MSIX_MODE))) {
+			dev_info(pp->dev,
+			"Axxia already in %s mode, %s not supported\n",
+			pp->msi_mode == AXXIA_MSI_MODE ? "MSI" : "MSIX",
+			pp->msi_mode == AXXIA_MSI_MODE ? "MSIX" : "MSI");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+#ifdef AXXIA_GENERIC_MSI_DOMAIN_IRQ
+static struct irq_chip axxia_msi_top_irq_chip = {
+	.name = "PCI-MSI",
+};
+
+static struct msi_domain_info axxia_msi_domain_info = {
+	.flags  = (MSI_FLAG_USE_DEF_DOM_OPS | MSI_FLAG_USE_DEF_CHIP_OPS |
+		MSI_FLAG_MULTI_PCI_MSI | MSI_FLAG_PCI_MSIX),
+	.chip   = &axxia_msi_top_irq_chip,
+};
+
+static void axxia_compose_msi_msg(struct irq_data *data, struct msi_msg *msg)
+{
+	struct pcie_port *pp = irq_data_get_irq_chip_data(data);
+	u64 msi_target = virt_to_phys((void *)pp->msi_data);
+
+	if (pp->msi_mode == AXXIA_MSIX_MODE) {
+		msi_target = msi_target + (data->hwirq * 4);
+		msg->address_lo = (u32)(msi_target & 0xffffffff);
+		msg->address_hi = (u32)(msi_target >> 32 & 0xffffffff);
+		msg->data = 0x12345678;
+	} else {
+		msg->address_lo = (u32)(msi_target & 0xffffffff);
+		msg->address_hi = (u32)(msi_target >> 32 & 0xffffffff);
+		msg->data = data->hwirq;
+	}
+
+}
+
+static int axxia_irq_set_affinity(struct irq_data *data,
+			const struct cpumask *mask, bool force)
+{
+	return -EINVAL;
+}
+
+static struct irq_chip axxia_msi_bottom_irq_chip = {
+	.name			= "MSI",
+	.irq_compose_msi_msg	= axxia_compose_msi_msg,
+	.irq_set_affinity	= axxia_irq_set_affinity,
+};
+
+static int axxia_pcie_irq_domain_alloc(struct irq_domain *domain,
+		unsigned int virq, unsigned int nr_irqs, void *args)
+{
+	struct pcie_port *pp = domain->host_data;
+	int msi_irq;
+	unsigned long i;
+	msi_alloc_info_t *va = args;
+	struct msi_desc *desc = va->desc;
+	int is_msix = 0;
+
+	if (desc) {
+		if (desc->msi_attrib.is_msix)
+			is_msix = 1;
+		else
+			is_msix = 0;
+	} else {
+		dev_err(pp->dev, "msi_desc not set.. Default to MSI\n");
+		is_msix = 0;
+	}
+
+	mutex_lock(&pp->bitmap_lock);
+
+	msi_irq = bitmap_find_next_zero_area(pp->bitmap, MAX_MSI_IRQS,
+					0, nr_irqs, 0);
+
+	if (((is_msix == 0) && (msi_irq < 32)) ||
+		(is_msix && (msi_irq < MAX_MSI_IRQS)))
+		bitmap_set(pp->bitmap, msi_irq, nr_irqs);
+	else
+		msi_irq = -ENOSPC;
+
+	mutex_unlock(&pp->bitmap_lock);
+	if (msi_irq < 0)
+		return msi_irq;
+
+	axxia_check_set_msi_mode(pp, is_msix);
+	for (i = 0; i < nr_irqs; i++) {
+		irq_domain_set_info(domain, virq + i, msi_irq + i,
+				    &axxia_msi_bottom_irq_chip,
+				    domain->host_data, handle_simple_irq, NULL,
+				    NULL);
+		if (is_msix)
+			axxia_dw_pcie_msix_set_irq(pp, msi_irq + i, 1);
+		else
+			axxia_dw_pcie_msi_set_irq(pp, msi_irq + i);
+	}
+	return 0;
+}
+
+static void axxia_pcie_irq_domain_free(struct irq_domain *domain,
+				  unsigned int virq, unsigned int nr_irqs)
+{
+	struct pcie_port *pp = domain->host_data;
+	struct irq_data *data = irq_domain_get_irq_data(domain, virq);
+	int i;
+
+	mutex_lock(&pp->bitmap_lock);
+	bitmap_clear(pp->bitmap, data->hwirq, nr_irqs);
+	mutex_unlock(&pp->bitmap_lock);
+
+	for (i = 0; i < nr_irqs; i++) {
+		if (pp->msi_mode == AXXIA_MSIX_MODE)
+			axxia_dw_pcie_msix_set_irq(pp, data->hwirq + i, 0);
+		else
+			axxia_dw_pcie_msi_clear_irq(pp, data->hwirq + i);
+	}
+	if (bitmap_empty(pp->bitmap, MAX_MSI_IRQS))
+		pp->msi_mode = AXXIA_MSI_UNCONFIGURED;
+	irq_domain_free_irqs_parent(domain, virq, nr_irqs);
+}
+
+static const struct irq_domain_ops axxia_msi_domain_ops = {
+	.alloc	= axxia_pcie_irq_domain_alloc,
+	.free	= axxia_pcie_irq_domain_free,
+};
+
+static int axxia_pcie_allocate_domains(struct pcie_port *pp)
+{
+	pp->irq_domain = irq_domain_add_linear(NULL, MAX_MSI_IRQS,
+						   &axxia_msi_domain_ops, pp);
+	if (!pp->irq_domain)
+		return -ENOMEM;
+
+	pp->msi_domain = pci_msi_create_irq_domain(NULL,
+						     &axxia_msi_domain_info,
+						     pp->irq_domain);
+
+	if (!pp->msi_domain) {
+		irq_domain_remove(pp->irq_domain);
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static void axxia_free_domains(struct pcie_port *pp)
+{
+	if (pp->msi_domain)
+		irq_domain_remove(pp->msi_domain);
+	if (pp->irq_domain)
+		irq_domain_remove(pp->irq_domain);
+}
+#else
 static struct irq_chip axxia_dw_msi_irq_chip = {
 	.name = "PCI-MSI",
 	.irq_enable = pci_msi_unmask_irq,
@@ -484,7 +713,7 @@ static const struct irq_domain_ops axxia_msi_domain_ops = {
 	.map = axxia_dw_pcie_msi_map,
 };
 
-
+#endif
 void axxia_dw_pcie_msi_init(struct pcie_port *pp)
 {
 	u64 msi_target;
@@ -500,33 +729,10 @@ void axxia_dw_pcie_msi_init(struct pcie_port *pp)
 	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4,
 			    (u32)(msi_target >> 32 & 0xffffffff));
 
-}
-
-/* MSI int handler */
-irqreturn_t axxia_dw_handle_msi_irq(struct pcie_port *pp)
-{
-	unsigned long val;
-	int i, pos, irq;
-	irqreturn_t ret = IRQ_NONE;
-
-	for (i = 0; i < MAX_MSI_CTRLS; i++) {
-		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS + i * 12, 4,
-				(u32 *)&val);
-		if (val) {
-			ret = IRQ_HANDLED;
-			pos = 0;
-			while ((pos = find_next_bit(&val, 32, pos)) != 32) {
-				irq = irq_find_mapping(pp->irq_domain,
-						i * 32 + pos);
-				axxia_pcie_wr_own_conf(pp,
-						PCIE_MSI_INTR0_STATUS + i * 12,
-						4, 1 << pos);
-				generic_handle_irq(irq);
-				pos++;
-			}
-		}
-	}
-	return ret;
+	axxia_axi_gpreg_writel(pp, (u32)(msi_target & 0xffffffff),
+			AXI_GPREG_MSIX_CTRL0);
+	axxia_axi_gpreg_writel(pp, (u32)(msi_target >> 32 & 0xffffffff),
+					 AXI_GPREG_MSIX_CTRL1);
 }
 
 static void axxia_pcie_msi_init(struct pcie_port *pp)
@@ -534,40 +740,74 @@ static void axxia_pcie_msi_init(struct pcie_port *pp)
 	axxia_dw_pcie_msi_init(pp);
 }
 
-void axxia_dw_pcie_handle_msi_irq(struct pcie_port *pp, int offset)
+/* MSI int handler */
+static int axxia_dw_pcie_handle_msi_irq(struct pcie_port *pp, u32 va)
+{
+	unsigned long val = va;
+	int i, pos, irq;
+	int ret = 0;
+
+	i = 0;
+	if (val) {
+		ret = 1;
+		pos = 0;
+		while ((pos = find_next_bit(&val, 32, pos)) != 32) {
+
+			dev_dbg(pp->dev,
+			 "msi valid i = %d, val = %lx, pos = %d\n",
+						i, val, pos);
+			irq = irq_find_mapping(pp->irq_domain,
+					i * 32 + pos);
+			axxia_pcie_wr_own_conf(pp,
+					PCIE_MSI_INTR0_STATUS + i * 12,
+					4, 1 << pos);
+			generic_handle_irq(irq);
+			pos++;
+		}
+	}
+	return ret;
+}
+
+/* MSIx int handler */
+int axxia_dw_pcie_handle_msix_irq(struct pcie_port *pp, int offset)
 {
 	unsigned long val;
 	int i, pos, irq;
+	int ret;
 
-	for (i = 0; i < MAX_MSI_CTRLS; i++) {
-		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS + i * 12, 4,
-				(u32 *)&val);
-		if (val) {
-			pos = 0;
-			while ((pos = find_next_bit(&val, 32, pos)) != 32) {
+	i = offset;
+	axxia_axi_gpreg_readl(pp,
+		 PCIE_MSIX_INTR0_STATUS + i * 12, (u32 *)&val);
 
-				dev_dbg(pp->dev,
-				 "msi valid i = %d, val = %lx, pos = %d\n",
-							i, val, pos);
-				irq = irq_find_mapping(pp->irq_domain,
-						i * 32 + pos);
-				axxia_pcie_wr_own_conf(pp,
-						PCIE_MSI_INTR0_STATUS + i * 12,
-						4, 1 << pos);
-				generic_handle_irq(irq);
-				pos++;
-			}
+	if (val) {
+		ret = 1;
+		pos = 0;
+		while ((pos = find_next_bit(&val, 16, pos))
+						 != 16) {
+			irq = irq_find_mapping(pp->irq_domain,
+					i * 16 + pos);
+			axxia_axi_gpreg_writel(pp, 1 << pos,
+				PCIE_MSIX_INTR0_STATUS + i * 12);
+			generic_handle_irq(irq);
+			pos++;
 		}
 	}
+
+	axxia_axi_gpreg_writel(pp,  1 << i, PEI_MSIX_INTR_STATUS);
+	return ret;
 }
 
-static void axxia_pcie_msi_irq_handler(unsigned int irq, struct irq_desc *desc)
+static void axxia_pcie_msi_irq_handler(struct irq_desc *desc)
 {
 	struct pcie_port *pp = irq_desc_get_handler_data(desc);
-	u32 offset = irq - pp->msi_irqs[0];
+	unsigned int irq;
+	u32 offset;
 	struct irq_chip *chip = irq_desc_get_chip(desc);
+	u32 val1;
 
-	dev_dbg(pp->dev, "%s, irq %d i %d\n", __func__, irq, offset);
+	irq = irq_desc_get_irq(desc);
+	offset = irq - pp->msi_irqs[0];
+	dev_dbg(pp->dev, "%s, irq %d of=%d\n", __func__, irq, offset);
 
 	/*
 	 * The chained irq handler installation would have replaced normal
@@ -575,7 +815,17 @@ static void axxia_pcie_msi_irq_handler(unsigned int irq, struct irq_desc *desc)
 	 * ack operation.
 	 */
 	chained_irq_enter(chip, desc);
-	axxia_dw_pcie_handle_msi_irq(pp, offset);
+	if (offset == 0) {
+		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS, 4,
+				(u32 *)&val1);
+		if (val1)
+			axxia_dw_pcie_handle_msi_irq(pp, val1);
+	}
+
+	axxia_axi_gpreg_readl(pp, PEI_MSIX_INTR_STATUS,
+					(u32 *)&val1);
+	if ((val1) & (1 << offset))
+		axxia_dw_pcie_handle_msix_irq(pp, offset);
 	chained_irq_exit(chip, desc);
 }
 
@@ -599,6 +849,11 @@ static void axxia_pcie_enable_interrupts(struct pcie_port *pp)
 			val |= MSI_ASSERTED;
 			axxia_cc_gpreg_writel(pp, val,
 				CC_GPREG_EDG_IRQ_MASK_HI);
+			axxia_axi_gpreg_readl(pp,
+				AXI_GPREG_EDG_IRQ_MASK_HI, &val);
+			val |= MSIX_ASSERTED;
+			axxia_axi_gpreg_writel(pp, val,
+				AXI_GPREG_EDG_IRQ_MASK_HI);
 		} else {
 			for (i = 0; i < pp->num_msi_irqs; i++) {
 				irq_set_chained_handler(pp->msi_irqs[i],
@@ -1039,8 +1294,10 @@ static int axxia_pcie_establish_link(struct pcie_port *pp)
 static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 {
 	struct pcie_port *pp = arg;
-	u32 val;
-	irqreturn_t ret;
+	u32 val, val1;
+	int i;
+	int ret = 0;
+	u32 offset;
 
 	axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_STAT, &val);
 	if (val & RADM_INTD_DEASSERTED)
@@ -1065,60 +1322,71 @@ static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		if (pp->num_msi_irqs == 0) {
+			offset = irq - pp->msi_irqs[0];
 			axxia_cc_gpreg_readl(pp,
 				CC_GPREG_EDG_IRQ_STAT_HI, &val);
 			if (val & MSI_ASSERTED) {
-				ret = axxia_dw_handle_msi_irq(pp);
+				axxia_pcie_rd_own_conf(pp,
+				PCIE_MSI_INTR0_STATUS, 4, (u32 *)&val1);
+				if (val1)
+					ret = axxia_dw_pcie_handle_msi_irq(pp,
+						 val1);
 				axxia_cc_gpreg_writel(pp, MSI_ASSERTED,
 					      CC_GPREG_EDG_IRQ_STAT_HI);
-				return ret;
+				if (!ret)
+					return IRQ_NONE;
+			}
+			axxia_axi_gpreg_readl(pp,
+				AXI_GPREG_EDG_IRQ_STAT_HI, &val);
+			if (val & MSIX_ASSERTED) {
+				axxia_axi_gpreg_readl(pp, PEI_MSIX_INTR_STATUS,
+								(u32 *)&val1);
+				for (i = 0 ; i < 32; i++) {
+					if ((val1) & (1 << i))
+						ret =
+						axxia_dw_pcie_handle_msix_irq(
+								pp, i);
+				}
+				axxia_axi_gpreg_writel(pp, MSIX_ASSERTED,
+					      AXI_GPREG_EDG_IRQ_STAT_HI);
+				if (!ret)
+					return IRQ_NONE;
+
 			}
 		}
 	}
 	return IRQ_HANDLED;
 }
 
-static void axxia_dw_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
-{
-	unsigned int res, bit, val;
-
-	res = (irq / 32) * 12;
-	bit = irq % 32;
-	axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, &val);
-	val &= ~(1 << bit);
-	axxia_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, val);
-}
-
+#ifndef AXXIA_GENERIC_MSI_DOMAIN_IRQ
 static void clear_irq_range(struct pcie_port *pp, unsigned int irq_base,
-			    unsigned int nvec, unsigned int pos)
+		unsigned int nvec, unsigned int pos, u32 is_msix)
 {
 	unsigned int i;
 
 	for (i = 0; i < nvec; i++) {
 		irq_set_msi_desc_off(irq_base, i, NULL);
 		/* Disable corresponding interrupt on MSI controller */
-		axxia_dw_pcie_msi_clear_irq(pp, pos + i);
+		if (is_msix)
+			axxia_dw_pcie_msix_set_irq(pp, pos + i, 0);
+		else
+			axxia_dw_pcie_msi_clear_irq(pp, pos + i);
+
 	}
 
 	bitmap_release_region(pp->msi_irq_in_use, pos, order_base_2(nvec));
-}
-
-static void axxia_dw_pcie_msi_set_irq(struct pcie_port *pp, int irq)
-{
-	unsigned int res, bit, val;
-
-	res = (irq / 32) * 12;
-	bit = irq % 32;
-	axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, &val);
-	val |= 1 << bit;
-	axxia_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, val);
+	if (bitmap_empty(pp->msi_irq_in_use, MAX_MSI_IRQS))
+		pp->msi_mode = AXXIA_MSI_UNCONFIGURED;
 }
 
 static int assign_irq(int no_irqs, struct msi_desc *desc, int *pos)
 {
 	int irq, pos0, i;
+	u32 is_msix = 0;
 	struct pcie_port *pp = (struct pcie_port *)msi_desc_to_pci_sysdata(desc);
 
+	if (desc->msi_attrib.is_msix)
+		is_msix = 1;
 	pos0 = bitmap_find_free_region(pp->msi_irq_in_use, MAX_MSI_IRQS,
 				       order_base_2(no_irqs));
 	if (pos0 < 0)
@@ -1136,14 +1404,18 @@ static int assign_irq(int no_irqs, struct msi_desc *desc, int *pos)
 	 */
 	for (i = 0; i < no_irqs; i++) {
 		if (irq_set_msi_desc_off(irq, i, desc) != 0) {
-			clear_irq_range(pp, irq, i, pos0);
+			clear_irq_range(pp, irq, i, pos0, is_msix);
 			goto no_valid_irq;
 		}
 		/*Enable corresponding interrupt in MSI interrupt controller */
-		axxia_dw_pcie_msi_set_irq(pp, pos0 + i);
+		if (is_msix)
+			axxia_dw_pcie_msix_set_irq(pp, pos0 + i, 1);
+		else
+			axxia_dw_pcie_msi_set_irq(pp, pos0 + i);
 	}
 
 	*pos = pos0;
+	dev_dbg(pp->dev, "no_irqs = %d pos = %d\n", no_irqs, pos0);
 	return irq;
 
 no_valid_irq:
@@ -1151,16 +1423,24 @@ no_valid_irq:
 	return -ENOSPC;
 }
 
-static void axxia_msi_setup_msg(struct pcie_port *pp, unsigned int irq, u32 pos)
+
+static void axxia_msi_setup_msg(struct pcie_port *pp, unsigned int irq,
+					u32 pos, u32 is_msix)
 {
 	struct msi_msg msg;
 	u64 msi_target;
 
 	msi_target = virt_to_phys((void *)pp->msi_data);
-	msg.address_lo = (u32)(msi_target & 0xffffffff);
-	msg.address_hi = (u32)(msi_target >> 32 & 0xffffffff);
-	msg.data = pos;
-
+	if (is_msix) {
+		msi_target = msi_target + (pos * 4);
+		msg.address_lo = (u32)(msi_target & 0xffffffff);
+		msg.address_hi = (u32)(msi_target >> 32 & 0xffffffff);
+		msg.data = 0x12345678;
+	} else {
+		msg.address_lo = (u32)(msi_target & 0xffffffff);
+		msg.address_hi = (u32)(msi_target >> 32 & 0xffffffff);
+		msg.data = pos;
+	}
 	pci_write_msi_msg(irq, &msg);
 }
 
@@ -1170,15 +1450,19 @@ static int axxia_dw_msi_setup_irq(struct msi_controller *chip,
 {
 	int irq, pos;
 	struct pcie_port *pp = pdev->bus->sysdata;
+	u32 is_msix = 0;
+	int rc;
 
 	if (desc->msi_attrib.is_msix)
-		return -EINVAL;
-
+		is_msix = 1;
+	rc = axxia_check_set_msi_mode(pp, is_msix);
+	if (rc)
+		return rc;
 	irq = assign_irq(1, desc, &pos);
 	if (irq < 0)
 		return irq;
 
-	axxia_msi_setup_msg(pp, irq, pos);
+	axxia_msi_setup_msg(pp, irq, pos, is_msix);
 	return 0;
 }
 
@@ -1188,22 +1472,25 @@ static void axxia_dw_msi_teardown_irq(struct msi_controller *chip,
 	struct irq_data *data = irq_get_irq_data(irq);
 	struct msi_desc *msi = irq_data_get_msi_desc(data);
 	struct pcie_port *pp = (struct pcie_port *)msi_desc_to_pci_sysdata(msi);
+	u32 is_msix = 0;
 
-	clear_irq_range(pp, irq, 1, data->hwirq);
+	if (msi->msi_attrib.is_msix)
+		is_msix = 1;
+	clear_irq_range(pp, irq, 1, data->hwirq, is_msix);
 }
 
 static struct msi_controller axxia_dw_pcie_msi_chip = {
 	.setup_irq = axxia_dw_msi_setup_irq,
 	.teardown_irq = axxia_dw_msi_teardown_irq,
 };
-
+#endif
 int axxia_pcie_host_init(struct pcie_port *pp)
 {
 	struct device_node *np = pp->dev->of_node;
 	struct platform_device *pdev = to_platform_device(pp->dev);
 	struct of_pci_range range;
 	struct of_pci_range_parser parser;
-	u32 val, na, ns;
+	u32 na, ns;
 	int ret;
 	struct pci_bus *bus;
 	unsigned long mem_offset;
@@ -1327,6 +1614,23 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		dev_err(pp->dev, "failed to request irq\n");
 		return ret;
 	}
+#ifdef AXXIA_GENERIC_MSI_DOMAIN_IRQ
+	ret = BITS_TO_LONGS(MAX_MSI_IRQS) * sizeof(long);
+	pp->bitmap = kzalloc(ret, GFP_KERNEL);
+	if (!pp->bitmap) {
+		dev_err(pp->dev, "PCIE: Error allocating MSI bitmap\n");
+		return -ENOMEM;
+	}
+
+	mutex_init(&pp->bitmap_lock);
+
+
+	ret = axxia_pcie_allocate_domains(pp);
+	if (ret) {
+		pr_err("PCIE: Failed to create MSI IRQ domain\n");
+		return ret;
+	}
+#else
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		pp->irq_domain = irq_domain_add_linear(pp->dev->of_node,
@@ -1340,18 +1644,20 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		for (i = 0; i < MAX_MSI_IRQS; i++)
 			irq_create_mapping(pp->irq_domain, i);
 	}
-
+#endif
 	axxia_pcie_enable_interrupts(pp);
 
 	bus = pci_create_root_bus(&pdev->dev, pp->root_bus_nr,
 				  &axxia_pciex_pci_ops, pp, &res);
 	if (!bus)
-		return 1;
+		goto fail_ret;
 #ifdef CONFIG_PCI_MSI
-	axxia_axi_gpreg_readl(pp, AXI_GPREG_MSTR, &val);
-	val |= CFG_MSI_MODE;
-	axxia_axi_gpreg_writel(pp, val, AXI_GPREG_MSTR);
+	pp->msi_mode = AXXIA_MSI_UNCONFIGURED;
+#ifdef AXXIA_GENERIC_MSI_DOMAIN_IRQ
+	dev_set_msi_domain(&bus->dev, pp->msi_domain);
+#else
 	bus->msi = &axxia_dw_pcie_msi_chip;
+#endif
 #endif
 
 	pci_scan_child_bus(bus);
@@ -1359,6 +1665,11 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 	pci_bus_add_devices(bus);
 
 	return 0;
+fail_ret:
+#ifdef AXXIA_GENERIC_MSI_DOMAIN_IRQ
+	axxia_free_domains(pp);
+#endif
+	return 1;
 }
 
 static int axxia_pcie_probe(struct platform_device *pdev)
