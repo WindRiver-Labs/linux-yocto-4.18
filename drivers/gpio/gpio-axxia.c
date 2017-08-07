@@ -190,7 +190,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
 	return 0;
 }
 
-static void pl061_irq_handler(unsigned irq, struct irq_desc *desc)
+static void pl061_irq_handler(struct irq_desc *desc)
 {
 	unsigned long pending;
 	int offset;
@@ -283,7 +283,6 @@ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
 	chip->gc.set = pl061_set_value;
 	chip->gc.ngpio = PL061_GPIO_NR;
 	chip->gc.label = dev_name(dev);
-	chip->gc.dev = dev;
 	chip->gc.owner = THIS_MODULE;
 
 	ret = gpiochip_add(&chip->gc);
