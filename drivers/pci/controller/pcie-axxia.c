@@ -441,12 +441,19 @@ static const struct irq_domain_ops axxia_msi_domain_ops = {
 
 void axxia_dw_pcie_msi_init(struct pcie_port *pp)
 {
+	u64 msi_target;
 	pp->msi_data = __get_free_pages(GFP_KERNEL, 0);
 
+	msi_target = virt_to_phys((void *)pp->msi_data);
+	dev_info(pp->dev,
+		"%s: MSI addr virt: %lx, phys: %llx\n",
+		__func__, pp->msi_data, msi_target);
 	/* program the msi_data */
 	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_LO, 4,
-			       virt_to_phys((void *)pp->msi_data));
-	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4, 0);
+			    (u32)(msi_target & 0xffffffff));
+	axxia_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4,
+			    (u32)(msi_target >> 32 & 0xffffffff));
+
 }
 
 /* MSI int handler */
@@ -481,9 +488,55 @@ static void axxia_pcie_msi_init(struct pcie_port *pp)
 	axxia_dw_pcie_msi_init(pp);
 }
 
+void axxia_dw_pcie_handle_msi_irq(struct pcie_port *pp, int offset)
+{
+	unsigned long val;
+	int i, pos, irq;
+
+	for (i = 0; i < MAX_MSI_CTRLS; i++) {
+		axxia_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_STATUS + i * 12, 4,
+				(u32 *)&val);
+		if (val) {
+			pos = 0;
+			while ((pos = find_next_bit(&val, 32, pos)) != 32) {
+
+				dev_dbg(pp->dev,
+				 "msi valid i = %d, val = %lx, pos = %d\n",
+							i, val, pos);
+				irq = irq_find_mapping(pp->irq_domain,
+						i * 32 + pos);
+				axxia_pcie_wr_own_conf(pp,
+						PCIE_MSI_INTR0_STATUS + i * 12,
+						4, 1 << pos);
+				generic_handle_irq(irq);
+				pos++;
+			}
+		}
+	}
+}
+
+static void axxia_pcie_msi_irq_handler(unsigned int irq, struct irq_desc *desc)
+{
+	struct pcie_port *pp = irq_desc_get_handler_data(desc);
+	u32 offset = irq - pp->msi_irqs[0];
+	struct irq_chip *chip = irq_desc_get_chip(desc);
+
+	dev_dbg(pp->dev, "%s, irq %d i %d\n", __func__, irq, offset);
+
+	/*
+	 * The chained irq handler installation would have replaced normal
+	 * interrupt driver handler so we need to take care of mask/unmask and
+	 * ack operation.
+	 */
+	chained_irq_enter(chip, desc);
+	axxia_dw_pcie_handle_msi_irq(pp, offset);
+	chained_irq_exit(chip, desc);
+}
+
 static void axxia_pcie_enable_interrupts(struct pcie_port *pp)
 {
 	u32 val;
+	int i;
 
 	/* Unmask */
 	axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_MASK, &val);
@@ -494,9 +547,19 @@ static void axxia_pcie_enable_interrupts(struct pcie_port *pp)
 	axxia_cc_gpreg_writel(pp, val, CC_GPREG_EDG_IRQ_MASK);
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		/* unmask MSI */
-		axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_MASK_HI, &val);
-		val |= MSI_ASSERTED;
-		axxia_cc_gpreg_writel(pp, val, CC_GPREG_EDG_IRQ_MASK_HI);
+		if (pp->num_msi_irqs == 0) {
+			axxia_cc_gpreg_readl(pp,
+				CC_GPREG_EDG_IRQ_MASK_HI, &val);
+			val |= MSI_ASSERTED;
+			axxia_cc_gpreg_writel(pp, val,
+				CC_GPREG_EDG_IRQ_MASK_HI);
+		} else {
+			for (i = 0; i < pp->num_msi_irqs; i++) {
+				irq_set_chained_handler(pp->msi_irqs[i],
+					axxia_pcie_msi_irq_handler);
+				irq_set_handler_data(pp->msi_irqs[i], pp);
+			}
+		}
 		axxia_pcie_msi_init(pp);
 	}
 }
@@ -651,12 +714,15 @@ static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 			      CC_GPREG_EDG_IRQ_STAT);
 
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
-		axxia_cc_gpreg_readl(pp, CC_GPREG_EDG_IRQ_STAT_HI, &val);
-		if (val & MSI_ASSERTED) {
-			ret = axxia_dw_handle_msi_irq(pp);
-			axxia_cc_gpreg_writel(pp, MSI_ASSERTED,
+		if (pp->num_msi_irqs == 0) {
+			axxia_cc_gpreg_readl(pp,
+				CC_GPREG_EDG_IRQ_STAT_HI, &val);
+			if (val & MSI_ASSERTED) {
+				ret = axxia_dw_handle_msi_irq(pp);
+				axxia_cc_gpreg_writel(pp, MSI_ASSERTED,
 					      CC_GPREG_EDG_IRQ_STAT_HI);
-			return ret;
+				return ret;
+			}
 		}
 	}
 	return IRQ_HANDLED;
@@ -673,7 +739,6 @@ static void axxia_dw_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
 	axxia_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + res, 4, val);
 }
 
-
 static void clear_irq_range(struct pcie_port *pp, unsigned int irq_base,
 			    unsigned int nvec, unsigned int pos)
 {
@@ -682,12 +747,7 @@ static void clear_irq_range(struct pcie_port *pp, unsigned int irq_base,
 	for (i = 0; i < nvec; i++) {
 		irq_set_msi_desc_off(irq_base, i, NULL);
 		/* Disable corresponding interrupt on MSI controller */
-		if (!pp->ops)
-			dev_err(pp->dev, "ops not set for pcie_port\n");
-		if (pp->ops && pp->ops->msi_clear_irq)
-			pp->ops->msi_clear_irq(pp, pos + i);
-		else
-			axxia_dw_pcie_msi_clear_irq(pp, pos + i);
+		axxia_dw_pcie_msi_clear_irq(pp, pos + i);
 	}
 
 	bitmap_release_region(pp->msi_irq_in_use, pos, order_base_2(nvec));
@@ -741,24 +801,34 @@ no_valid_irq:
 	return -ENOSPC;
 }
 
+static void axxia_msi_setup_msg(struct pcie_port *pp, unsigned int irq, u32 pos)
+{
+	struct msi_msg msg;
+	u64 msi_target;
+
+	msi_target = virt_to_phys((void *)pp->msi_data);
+	msg.address_lo = (u32)(msi_target & 0xffffffff);
+	msg.address_hi = (u32)(msi_target >> 32 & 0xffffffff);
+	msg.data = pos;
+
+	pci_write_msi_msg(irq, &msg);
+}
+
 static int axxia_dw_msi_setup_irq(struct msi_controller *chip,
 				  struct pci_dev *pdev,
 				  struct msi_desc *desc)
 {
 	int irq, pos;
-	struct msi_msg msg;
 	struct pcie_port *pp = pdev->bus->sysdata;
+
+	if (desc->msi_attrib.is_msix)
+		return -EINVAL;
 
 	irq = assign_irq(1, desc, &pos);
 	if (irq < 0)
 		return irq;
 
-	msg.address_lo = virt_to_phys((void *)pp->msi_data);
-	msg.address_hi = 0x0;
-	msg.data = pos;
-
-	pci_write_msi_msg(irq, &msg);
-
+	axxia_msi_setup_msg(pp, irq, pos);
 	return 0;
 }
 
@@ -894,6 +964,16 @@ int axxia_pcie_host_init(struct pcie_port *pp)
 		dev_err(pp->dev, "failed to get irq\n");
 		return -ENODEV;
 	}
+	pp->num_msi_irqs = 0;
+	for (i = 0; i < AXXIA_MSI_IRQL; i++) {
+		pp->msi_irqs[i] = platform_get_irq(pdev, i+2);
+		if (pp->msi_irqs[i] <= 0)
+			break;
+		pp->num_msi_irqs++;
+	}
+	dev_info(pp->dev, "num_msi = %d, irq = %d\n",
+			pp->num_msi_irqs, pp->irqs);
+
 	ret = devm_request_irq(pp->dev, pp->irqs, axxia_pcie_irq_handler,
 			       IRQF_SHARED | IRQF_NO_THREAD, "axxia-pcie", pp);
 	if (ret) {
