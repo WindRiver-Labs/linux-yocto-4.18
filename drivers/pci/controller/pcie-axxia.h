@@ -21,6 +21,7 @@
  */
 #define MAX_MSI_IRQS			64
 #define MAX_MSI_CTRLS			(MAX_MSI_IRQS / 32)
+#define AXXIA_MSI_IRQL			32
 
 struct pcie_port {
 	struct device		*dev;
@@ -52,6 +53,8 @@ struct pcie_port {
 	struct pcie_host_ops	*ops;
 	int			irqs; /* removed 34 not sure why it's there
 					 [34]; */
+	int			msi_irqs[AXXIA_MSI_IRQL];
+	int			num_msi_irqs;
 	unsigned long		msi_data;
 	struct irq_domain	*irq_domain;
 	struct msi_controller chip;
