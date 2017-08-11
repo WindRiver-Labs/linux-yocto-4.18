@@ -538,6 +538,20 @@ static int dwc3_gadget_start_config(struct dwc3_ep *dep)
 	return 0;
 }
 
+static void dwc3_stop_active_transfer(struct dwc3_ep *dep, bool force);
+static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep);
+static void stream_timeout_function(struct timer_list *t)
+{
+	struct dwc3_ep *dep = from_timer(dep, t, stream_timeout_timer);
+	struct dwc3		*dwc = dep->dwc;
+	unsigned long		flags;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	dwc3_stop_active_transfer(dep, true);
+	__dwc3_gadget_kick_transfer(dep);
+	spin_unlock_irqrestore(&dwc->lock, flags);
+}
+
 static int dwc3_gadget_set_ep_config(struct dwc3_ep *dep, unsigned int action)
 {
 	const struct usb_ss_ep_comp_descriptor *comp_desc;
@@ -574,6 +588,8 @@ static int dwc3_gadget_set_ep_config(struct dwc3_ep *dep, unsigned int action)
 			| DWC3_DEPCFG_STREAM_EVENT_EN
 			| DWC3_DEPCFG_XFER_COMPLETE_EN;
 		dep->stream_capable = true;
+		timer_setup(&dep->stream_timeout_timer,
+			    stream_timeout_function, 0);
 	}
 
 	if (!usb_endpoint_xfer_control(desc))
@@ -729,6 +745,9 @@ int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
 	u32			reg;
 
 	trace_dwc3_gadget_ep_disable(dep);
+
+	if (dep->stream_capable)
+		del_timer(&dep->stream_timeout_timer);
 
 	dwc3_remove_requests(dwc, dep);
 
@@ -1256,6 +1275,14 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep)
 			memset(req->trb, 0, sizeof(struct dwc3_trb));
 		dwc3_gadget_del_and_unmap_request(dep, req, ret);
 		return ret;
+	}
+
+	if (starting) {
+		if (dep->stream_capable) {
+			dep->stream_timeout_timer.expires = jiffies +
+					msecs_to_jiffies(STREAM_TIMEOUT);
+			add_timer(&dep->stream_timeout_timer);
+		}
 	}
 
 	return 0;
@@ -2486,6 +2513,18 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
 		break;
 	case DWC3_DEPEVT_XFERNOTREADY:
 		dwc3_gadget_endpoint_transfer_not_ready(dep, event);
+
+		switch (event->status) {
+		case DEPEVT_STREAMEVT_FOUND:
+			del_timer(&dep->stream_timeout_timer);
+			dev_dbg(dwc->dev, "Stream %d found and started",
+				event->parameters);
+			break;
+		case DEPEVT_STREAMEVT_NOTFOUND:
+			/* FALLTHROUGH */
+		default:
+			dev_err(dwc->dev, "unable to find suitable stream");
+		}
 		break;
 	case DWC3_DEPEVT_EPCMDCMPLT:
 		cmd = DEPEVT_PARAMETER_CMD(event->parameters);
