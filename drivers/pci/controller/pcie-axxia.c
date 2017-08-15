@@ -1135,9 +1135,13 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 			break;
 		}
 
+		/*
+		 * Give up if there is no link after 1 second.
+		 */
+
 		do_gettimeofday(&now);
 
-		if ((2 * 1000 * 1000) <
+		if ((1000 * 1000) <
 		    (((now.tv_sec * 1000 * 1000) + now.tv_usec) -
 		     ((start.tv_sec * 1000 * 1000) + start.tv_usec))) {
 			rc = -1;
