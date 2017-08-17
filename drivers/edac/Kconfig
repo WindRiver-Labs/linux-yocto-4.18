@@ -372,6 +372,20 @@ config EDAC_AXXIA_SYSMEM_5600
 	  the System Memory error detection. System Memory error
 	  detection is interrupt driven.
 
+config EDAC_AXXIA_L3_5500
+	tristate "AXXIA EDAC L3 Controller for 5500"
+	help
+	  Support for the eight L3 caches error detection
+	  on the AXXIA AXM55xx devices. This enables the
+	  L3 cache error detection. L3 cache error detection
+	  uses polling mechanism.
+
+config EDAC_AXXIA_L3_5600
+	tristate "AXXIA EDAC L3 Controller for 5600"
+	help
+	  Support for the eight L3 caches error detection
+	  on the AXXIA AXM55xx devices. This enables the
+
 config EDAC_AXXIA_SYSMEM_5500
 	bool "AXXIA EDAC SysMem Controller for 5500"
 	depends on ARCH_AXXIA

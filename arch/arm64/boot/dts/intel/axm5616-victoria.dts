@@ -215,6 +215,11 @@
 &edac_l2 {
 	status = "okay";
 };
+
+&edac_l3 {
+	status = "okay";
+};
+
 &mtc {
 	status = "okay";
 };
