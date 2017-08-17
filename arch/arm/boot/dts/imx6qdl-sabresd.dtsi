@@ -2,6 +2,7 @@
 //
 // Copyright 2012-2016 Freescale Semiconductor, Inc.
 // Copyright 2011 Linaro Ltd.
+// Copyright 2017 NXP.
 
 #include <dt-bindings/clock/imx6qdl-clock.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -550,6 +551,7 @@
 			sw4_reg: sw4 {
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
 			};
 
 			swbst_reg: swbst {
