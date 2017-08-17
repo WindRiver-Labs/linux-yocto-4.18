@@ -2,6 +2,7 @@
 //
 // Copyright 2012-2015 Freescale Semiconductor, Inc.
 // Copyright 2011 Linaro Ltd.
+// Copyright 2017 NXP.
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
@@ -550,6 +551,7 @@
 			sw4_reg: sw4 {
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
 			};
 
 			swbst_reg: swbst {
