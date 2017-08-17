@@ -85,6 +85,8 @@
 			   ARM_SMCCC_SMC_32,				\
 			   0, 0x7fff)
 
+#define ARM_SMCCC_UNKNOWN		0xffffffff
+
 #ifndef __ASSEMBLY__
 
 #include <linux/linkage.h>

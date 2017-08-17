@@ -40,6 +40,7 @@
 		gpdma1	  = &gpdma1;
 		edac_cpu  = &edac_cpu;
 		edac_l2  = &edac_l2;
+		edac_l3  = &edac_l3;
 		sm0       = &sm0;
 		sm1       = &sm1;
 		cm0	  = &cm0;
@@ -107,6 +108,14 @@
 
 		edac_l2: edac_l2 {
 			compatible = "intel,cortex-a57-l2-cache";
+			syscon = <&syscon>;
+			status = "disabled";
+		};
+
+		edac_l3: edac_l3 {
+			compatible = "intel,ccn504-l3-cache";
+			reg = <0x80 0x00000000 0 0x1000000>;
+			interrupts = <0 256 4>;
 			syscon = <&syscon>;
 			status = "disabled";
 		};

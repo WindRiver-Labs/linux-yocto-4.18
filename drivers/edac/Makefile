@@ -20,7 +20,8 @@ endif
 obj-$(CONFIG_EDAC_AXXIA_SYSMEM_5500)	+= axxia_edac-mc.o
 obj-$(CONFIG_EDAC_AXXIA_SYSMEM_5600)	+= axxia_edac-mc_56xx.o
 obj-$(CONFIG_EDAC_AXXIA_CMEM_5600)	+= axxia_edac-cmc_56xx.o
-obj-$(CONFIG_EDAC_AXXIA_L3)		+= axxia_edac-l3.o
+obj-$(CONFIG_EDAC_AXXIA_L3_5500)	+= axxia_edac-l3.o
+obj-$(CONFIG_EDAC_AXXIA_L3_5600)	+= axxia_edac-l3_56xx.o
 obj-$(CONFIG_EDAC_AXXIA_L2_CPU_5500)	+= axxia_edac-l2_cpu.o
 obj-$(CONFIG_EDAC_AXXIA_L2_CPU_5600)	+= axxia_edac-l2_cpu_56xx.o
 obj-$(CONFIG_EDAC_GHES)			+= ghes_edac.o
