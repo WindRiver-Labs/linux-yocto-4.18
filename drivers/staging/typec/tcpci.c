@@ -15,6 +15,7 @@
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <linux/of_gpio.h>
+#include <linux/extcon.h>
 
 #include "tcpci.h"
 
@@ -22,6 +23,7 @@
 
 struct tcpci {
 	struct device *dev;
+	struct extcon_dev *edev;
 
 	struct tcpm_port *port;
 
@@ -38,6 +40,11 @@ struct tcpci {
 struct tcpci_chip {
 	struct tcpci *tcpci;
 	struct tcpci_data data;
+};
+
+static const unsigned int tcpci_extcon_cable[] = {
+	EXTCON_USB_HOST,
+	EXTCON_NONE,
 };
 
 static inline struct tcpci *tcpc_to_tcpci(struct tcpc_dev *tcpc)
@@ -318,6 +325,11 @@ static int tcpci_set_roles(struct tcpc_dev *tcpc, bool attached,
 	ret = regmap_write(tcpci->regmap, TCPC_MSG_HDR_INFO, reg);
 	if (ret < 0)
 		return ret;
+
+	if (data == TYPEC_HOST)
+		extcon_set_state_sync(tcpci->edev, EXTCON_USB_HOST, true);
+	else
+		extcon_set_state_sync(tcpci->edev, EXTCON_USB_HOST, false);
 
 	return 0;
 }
@@ -719,6 +731,27 @@ snk_setting_wrong:
 	return ret;
 }
 
+static int tcpci_ss_mux_control_init(struct tcpci *tcpci)
+{
+	struct device *dev = tcpci->dev;
+	int retval = 0;
+
+	tcpci->ss_sel_gpio = of_get_named_gpio(dev->of_node,
+						"ss-sel-gpios", 0);
+	if (!gpio_is_valid(tcpci->ss_sel_gpio)) {
+		/* Super speed signal mux conrol gpio is optional */
+		dev_dbg(dev, "no Super Speed mux gpio pin available");
+	} else {
+		retval = devm_gpio_request_one(dev, tcpci->ss_sel_gpio,
+				GPIOF_OUT_INIT_LOW, "typec_ss_sel");
+		if (retval < 0)
+			dev_err(dev, "Unable to request super speed mux gpio %d\n",
+									retval);
+	}
+
+	return retval;
+}
+
 struct tcpci *tcpci_register_port(struct device *dev, struct tcpci_data *data)
 {
 	struct tcpci *tcpci;
@@ -750,6 +783,20 @@ struct tcpci *tcpci_register_port(struct device *dev, struct tcpci_data *data)
 	tcpci->tcpc.set_roles = tcpci_set_roles;
 	tcpci->tcpc.pd_transmit = tcpci_pd_transmit;
 
+	/* Allocate extcon device */
+	tcpci->edev = devm_extcon_dev_allocate(&client->dev,
+					tcpci_extcon_cable);
+	if (IS_ERR(tcpci->edev)) {
+		dev_err(&client->dev, "failed to allocate extcon dev.\n");
+		return -ENOMEM;
+	}
+
+	err = devm_extcon_dev_register(&client->dev, tcpci->edev);
+	if (err) {
+		dev_err(&client->dev, "failed to register extcon dev.\n");
+		return err;
+	}
+
 	err = tcpci_parse_config(tcpci);
 	if (err < 0)
 		return ERR_PTR(err);
@@ -771,27 +818,6 @@ void tcpci_unregister_port(struct tcpci *tcpci)
 	tcpm_unregister_port(tcpci->port);
 }
 EXPORT_SYMBOL_GPL(tcpci_unregister_port);
-
-static int tcpci_ss_mux_control_init(struct tcpci *tcpci)
-{
-	struct device *dev = tcpci->dev;
-	int retval = 0;
-
-	tcpci->ss_sel_gpio = of_get_named_gpio(dev->of_node,
-						"ss-sel-gpios", 0);
-	if (!gpio_is_valid(tcpci->ss_sel_gpio)) {
-		/* Super speed signal mux conrol gpio is optional */
-		dev_dbg(dev, "no Super Speed mux gpio pin available");
-	} else {
-		retval = devm_gpio_request_one(dev, tcpci->ss_sel_gpio,
-				GPIOF_OUT_INIT_LOW, "typec_ss_sel");
-		if (retval < 0)
-			dev_err(dev, "Unable to request super speed mux gpio %d\n",
-									retval);
-	}
-
-	return retval;
-}
 
 static int tcpci_probe(struct i2c_client *client,
 		       const struct i2c_device_id *i2c_id)
