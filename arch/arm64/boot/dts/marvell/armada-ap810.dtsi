@@ -293,6 +293,21 @@
 				eip_access = <&AP810_LABEL(crypto)>;
 				status = "okay";
 			};
+
+			AP810_LABEL(agnic): agnic-plat {
+				compatible = "marvell,armada-giu-nic";
+				reg = <0x6F00A0 0x8>;
+				/*msi-parent = <&AP810_LABEL(gic_its) 0x80>; no support for MSI for now */
+				dma-coherent;
+				status = "okay";
+			};
+			AP810_LABEL(uio_agnic): uio_agnic_0 {
+				compatible = "marvell,armada-giu-nic-uio";
+				reg = <0x6F0000 0x1000
+				       0x280000 0x1000>;
+				reg-names = "agnic_regs", "msi_regs";
+				status = "okay";
+			};
 		};
 	};
 };

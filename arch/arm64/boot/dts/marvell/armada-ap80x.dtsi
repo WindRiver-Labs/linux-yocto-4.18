@@ -438,6 +438,21 @@
 				compatible = "marvell,ap806-rev-info";
 				reg = <0x610fcc 0x4>;
 			};
+
+			agnic-plat {
+				compatible = "marvell,armada-giu-nic";
+				reg = <0x6F00A0 0x8>;
+				msi-parent = <&gic_v2m0>;
+				dma-coherent;
+				status = "okay";
+			};
+			uio_agnic_0 {
+				compatible = "marvell,armada-giu-nic-uio";
+				reg = <0x6F0000 0x1000
+				       0x280000 0x1000>;
+				reg-names = "agnic_regs", "msi_regs";
+				status = "okay";
+			};
 		};
 	};
 

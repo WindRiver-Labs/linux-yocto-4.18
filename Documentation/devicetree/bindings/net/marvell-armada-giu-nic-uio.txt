@@ -1,0 +1,26 @@
+* Marvell Armada GIU NIC UIO
+
+This entry is used by the generic platform uio driver (uio_pdrv_genirq) for:
+1) mapping the gnic configuration registers to user-space.
+2) mapping the msi registers to user-space.
+
+required properties:
+=========================
+- compatible: should be "marvell,armada-giu-nic-uio"
+- reg: addresses and length of the register set for the device (must be at the same range as configured for
+  "marvell,armada-giu-nic" entry).
+  This is a set of two registers used by the management application to pass the base address of the configuration memory
+  space.
+  it also contains the msi registers space (which is used by the user-space to generate interrupts to host side).
+- reg-names: the namespace for each one of the mappings, specified in 'reg' property.
+
+Example:
+
+uio_agnic_0 {
+	compatible = "marvell,armada-giu-nic-uio";
+	reg = <0x6F0000 0x1000
+	       0x280000 0x1000>;
+	reg-names = "agnic_regs", "msi_regs";
+	dma-coherent;
+	status = "okay";
+};

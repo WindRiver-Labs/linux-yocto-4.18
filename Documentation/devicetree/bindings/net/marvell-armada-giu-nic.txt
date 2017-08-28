@@ -1,0 +1,20 @@
+* Marvell Armada GIU NIC (agnic)
+
+This entry is used by the loadable agnic driver (maintained out of the Linux tree)
+
+required properties:
+=========================
+- compatible: should be "marvell,armada-giu-nic"
+- reg: addresses and length of the register set for the device.
+  This is a set of two registers used by the management application to pass the base address of the configuration memory
+  space.
+
+Example:
+
+agnic-plat {
+	compatible = "marvell,armada-giu-nic";
+	reg = <0x6F00A0 0x8>;
+	msi-parent = <&gic_v2m0>;
+	dma-coherent;
+	status = "okay";
+};
