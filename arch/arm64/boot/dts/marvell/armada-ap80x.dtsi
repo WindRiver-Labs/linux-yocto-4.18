@@ -451,6 +451,7 @@
 				dma-coherent;
 				status = "okay";
 			};
+
 			uio_agnic_0 {
 				compatible = "marvell,armada-giu-nic-uio";
 				reg = <0x6F0000 0x1000
