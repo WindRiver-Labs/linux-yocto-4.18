@@ -254,11 +254,30 @@ static int ar0132_s_register(struct v4l2_subdev *sd,
 }
 #endif
 
+static int ar0132_isr(struct v4l2_subdev *sd, u32 status, bool *handled)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+#if 1
+	u16 frame_count = 0;
+	/* read frame counter from sensor */
+	reg16_read16(client, 0x303a, &frame_count);
+#else
+	static int frame_count = 0;
+	/* get cached frame counter */
+	frame_count++;
+#endif
+	/* odd frame -> Mode A, even frame -> Mode B */
+	reg16_write16(client, 0x30b0, frame_count & 1 ? 0x2 : 0x2002);
+
+	return 0;
+};
+
 static struct v4l2_subdev_core_ops ar0132_core_ops = {
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.g_register = ar0132_g_register,
 	.s_register = ar0132_s_register,
 #endif
+	.interrupt_service_routine = ar0132_isr,
 };
 
 static int ar0132_s_ctrl(struct v4l2_ctrl *ctrl)
