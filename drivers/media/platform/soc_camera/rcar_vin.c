@@ -1395,13 +1395,24 @@ static const struct vb2_ops rcar_vin_vb2_ops = {
 	.wait_finish	= vb2_ops_wait_finish,
 };
 
+static irqreturn_t rcar_vin_threaded_irq(int irq, void *data)
+{
+	struct rcar_vin_priv *priv = data;
+	struct soc_camera_device *icd = priv->ici.icd;
+	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
+
+	v4l2_subdev_call(sd, core, interrupt_service_routine, 0, NULL);
+
+	return IRQ_HANDLED;
+};
+
 static irqreturn_t rcar_vin_irq(int irq, void *data)
 {
 	struct rcar_vin_priv *priv = data;
 	u32 int_status;
 	bool can_run = false, hw_stopped;
 	int slot;
-	unsigned int handled = 0;
+	unsigned int handled = IRQ_NONE;
 	int vin_ovr_cnt = 0;
 
 	spin_lock(&priv->lock);
@@ -1412,7 +1423,7 @@ static irqreturn_t rcar_vin_irq(int irq, void *data)
 
 	/* ack interrupts */
 	iowrite32(int_status, priv->base + VNINTS_REG);
-	handled = 1;
+	handled = IRQ_HANDLED;
 
 	/* overflow occurs */
 	if (vin_debug && (int_status & VNINTS_FOS)) {
@@ -1445,6 +1456,8 @@ static irqreturn_t rcar_vin_irq(int irq, void *data)
 			priv->queue_buf[slot] = NULL;
 
 			can_run = rcar_vin_fill_hw_slot(priv);
+
+			handled = IRQ_WAKE_THREAD;
 		}
 
 		if (is_continuous_transfer(priv)) {
@@ -1473,7 +1486,7 @@ static irqreturn_t rcar_vin_irq(int irq, void *data)
 done:
 	spin_unlock(&priv->lock);
 
-	return IRQ_RETVAL(handled);
+	return handled;
 }
 
 static struct v4l2_subdev *find_csi2(struct rcar_vin_priv *pcdev)
@@ -3043,8 +3056,8 @@ static int rcar_vin_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
-	ret = devm_request_irq(&pdev->dev, irq, rcar_vin_irq, IRQF_SHARED,
-			       dev_name(&pdev->dev), priv);
+	ret = devm_request_threaded_irq(&pdev->dev, irq, rcar_vin_irq, rcar_vin_threaded_irq,
+					IRQF_SHARED, dev_name(&pdev->dev), priv);
 	if (ret)
 		return ret;
 
