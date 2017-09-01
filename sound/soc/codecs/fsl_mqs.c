@@ -13,6 +13,7 @@
 #include <linux/moduleparam.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
+#include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/pm.h>
 #include <linux/slab.h>
@@ -277,6 +278,7 @@ static int fsl_mqs_probe(struct platform_device *pdev)
 	}
 
 	dev_set_drvdata(&pdev->dev, mqs_priv);
+	pm_runtime_enable(&pdev->dev);
 
 	return devm_snd_soc_register_component(&pdev->dev, &soc_component_fsl_mqs,
 			&fsl_mqs_dai, 1);
