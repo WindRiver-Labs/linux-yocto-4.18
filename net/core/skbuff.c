@@ -815,7 +815,7 @@ EXPORT_SYMBOL(skb_recycle);
 	BUILD_BUG_ON(offsetof(struct sk_buff, field) >		\
 		     offsetof(struct sk_buff, headers_end));	\
 
-static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
+void copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
 {
 	new->tstamp		= old->tstamp;
 	/* We do not copy old->sk */
@@ -864,6 +864,7 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
 #endif
 
 }
+EXPORT_SYMBOL(copy_skb_header);
 
 /*
  * You should not add any new code to this function.  Add it to
@@ -875,7 +876,7 @@ static struct sk_buff *__skb_clone(struct sk_buff *n, struct sk_buff *skb)
 
 	n->next = n->prev = NULL;
 	n->sk = NULL;
-	__copy_skb_header(n, skb);
+	copy_skb_header(n, skb);
 
 	C(len);
 	C(data_len);
@@ -1331,7 +1332,7 @@ static void skb_headers_offset_update(struct sk_buff *skb, int off)
 
 void skb_copy_header(struct sk_buff *new, const struct sk_buff *old)
 {
-	__copy_skb_header(new, old);
+	copy_skb_header(new, old);
 
 	skb_shinfo(new)->gso_size = skb_shinfo(old)->gso_size;
 	skb_shinfo(new)->gso_segs = skb_shinfo(old)->gso_segs;
@@ -3684,7 +3685,7 @@ normal:
 			segs = nskb;
 		tail = nskb;
 
-		__copy_skb_header(nskb, head_skb);
+		copy_skb_header(nskb, head_skb);
 
 		skb_headers_offset_update(nskb, skb_headroom(nskb) - headroom);
 		skb_reset_mac_len(nskb);
