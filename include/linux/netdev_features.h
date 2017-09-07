@@ -81,6 +81,7 @@ enum {
 	NETIF_F_HW_TLS_TX_BIT,		/* Hardware TLS TX offload */
 
 	NETIF_F_GRO_HW_BIT,		/* Hardware Generic receive offload */
+	NETIF_F_HW_ACCEL_MQ_BIT,	/* Hardware-accelerated multiqueue */
 	NETIF_F_HW_TLS_RECORD_BIT,	/* Offload TLS record */
 
 	/*
@@ -148,6 +149,7 @@ enum {
 #define NETIF_F_HW_ESP		__NETIF_F(HW_ESP)
 #define NETIF_F_HW_ESP_TX_CSUM	__NETIF_F(HW_ESP_TX_CSUM)
 #define	NETIF_F_RX_UDP_TUNNEL_PORT  __NETIF_F(RX_UDP_TUNNEL_PORT)
+#define NETIF_F_HW_ACCEL_MQ	__NETIF_F(HW_ACCEL_MQ)
 #define NETIF_F_HW_TLS_RECORD	__NETIF_F(HW_TLS_RECORD)
 #define NETIF_F_GSO_UDP_L4	__NETIF_F(GSO_UDP_L4)
 #define NETIF_F_HW_TLS_TX	__NETIF_F(HW_TLS_TX)
