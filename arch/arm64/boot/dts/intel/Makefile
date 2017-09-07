@@ -4,7 +4,7 @@ dtb-$(CONFIG_ARCH_AXXIA) += \
 	axm5616-victoria.dtb \
 	axc6704-sim.dtb axc6716-sim.dtb axc6732-sim.dtb \
 	axc6704-emu.dtb axc6712-emu.dtb \
-	axc6732-waco.dtb
+	axc6704-waco.dtb axc6732-waco.dtb
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)
