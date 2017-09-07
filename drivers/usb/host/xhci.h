@@ -1838,6 +1838,7 @@ struct xhci_hcd {
 #define XHCI_NO_64BIT_SUPPORT	BIT_ULL(23)
 #define XHCI_MISSING_CAS	BIT_ULL(24)
 #define XHCI_REVERSE_IN_OUT     BIT(32)
+#define XHCI_STOP_TRANSFER_IN_BLOCK   BIT(33)
 /* For controller with a broken Port Disable implementation */
 #define XHCI_BROKEN_PORT_PED	BIT_ULL(25)
 #define XHCI_LIMIT_ENDPOINT_INTERVAL_7	BIT_ULL(26)
