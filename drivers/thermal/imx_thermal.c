@@ -53,6 +53,8 @@
 
 #define OCOTP_MEM0			0x0480
 #define OCOTP_ANA1			0x04e0
+#define IMX7_OCOTP_ANA1			0x04f0
+#define IMX7_OCOTP_TESTER3		0x0440
 
 /* Below TEMPSENSE2 is only for TEMPMON_IMX6SX */
 #define IMX6_TEMPSENSE2				0x0290
@@ -611,6 +613,7 @@ static int imx_init_from_tempmon_data(struct platform_device *pdev)
 	struct regmap *map;
 	int ret;
 	u32 val;
+	struct imx_thermal_data *data = dev_get_drvdata(&pdev->dev);
 
 	map = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					      "fsl,tempmon-data");
@@ -620,7 +623,11 @@ static int imx_init_from_tempmon_data(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = regmap_read(map, OCOTP_ANA1, &val);
+	if (data->socdata->version == TEMPMON_IMX7D)
+		ret = regmap_read(map, IMX7_OCOTP_ANA1, &val);
+	else
+		ret = regmap_read(map, OCOTP_ANA1, &val);
+
 	if (ret) {
 		dev_err(&pdev->dev, "failed to read sensor data: %d\n", ret);
 		return ret;
@@ -629,7 +636,11 @@ static int imx_init_from_tempmon_data(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = regmap_read(map, OCOTP_MEM0, &val);
+	if (data->socdata->version == TEMPMON_IMX7D)
+		ret = regmap_read(map, IMX7_OCOTP_TESTER3, &val);
+	else
+		ret = regmap_read(map, OCOTP_MEM0, &val);
+
 	if (ret) {
 		dev_err(&pdev->dev, "failed to read sensor data: %d\n", ret);
 		return ret;
@@ -980,7 +991,7 @@ static int imx_thermal_suspend(struct device *dev)
 	 * Save the temp sensor registers of i.MX7D as the tempmon
 	 * will lost power in LPSR mode
 	 */
-	if (data->socdata->version == TEMPMON_IMX7) {
+	if (data->socdata->version == TEMPMON_IMX7D) {
 		regmap_read(map, data->socdata->sensor_ctrl, &imx7_lpsr_save[0]);
 		regmap_read(map, data->socdata->high_alarm_ctrl, &imx7_lpsr_save[1]);
 	}
@@ -1005,7 +1016,7 @@ static int imx_thermal_resume(struct device *dev)
 	 * restore the temp sensor registers of i.MX7D as the tempmon
 	 * will lost power in LPSR mode
 	 */
-	if (data->socdata->version == TEMPMON_IMX7) {
+	if (data->socdata->version == TEMPMON_IMX7D) {
 		regmap_write(map, data->socdata->sensor_ctrl, imx7_lpsr_save[0]);
 		regmap_write(map, data->socdata->high_alarm_ctrl, imx7_lpsr_save[1]);
 	}
