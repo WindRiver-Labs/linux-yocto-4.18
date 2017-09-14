@@ -194,13 +194,13 @@ static int fsl_dcu_drm_pm_suspend(struct device *dev)
 	if (!fsl_dev)
 		return 0;
 
-	disable_irq(fsl_dev->irq);
-
 	ret = drm_mode_config_helper_suspend(fsl_dev->drm);
 	if (ret) {
 		enable_irq(fsl_dev->irq);
 		return ret;
 	}
+
+	disable_irq(fsl_dev->irq);
 
 	clk_disable_unprepare(fsl_dev->clk);
 
