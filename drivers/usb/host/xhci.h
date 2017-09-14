@@ -1801,7 +1801,7 @@ struct xhci_hcd {
 #define XHCI_STATE_DYING	(1 << 0)
 #define XHCI_STATE_HALTED	(1 << 1)
 #define XHCI_STATE_REMOVING	(1 << 2)
-	unsigned long long	quirks;
+	u64		quirks;
 #define	XHCI_LINK_TRB_QUIRK	BIT_ULL(0)
 #define XHCI_RESET_EP_QUIRK	BIT_ULL(1)
 #define XHCI_NEC_HOST		BIT_ULL(2)
@@ -1837,6 +1837,7 @@ struct xhci_hcd {
 #define XHCI_SSIC_PORT_UNUSED	BIT_ULL(22)
 #define XHCI_NO_64BIT_SUPPORT	BIT_ULL(23)
 #define XHCI_MISSING_CAS	BIT_ULL(24)
+#define XHCI_REVERSE_IN_OUT     BIT(32)
 /* For controller with a broken Port Disable implementation */
 #define XHCI_BROKEN_PORT_PED	BIT_ULL(25)
 #define XHCI_LIMIT_ENDPOINT_INTERVAL_7	BIT_ULL(26)
