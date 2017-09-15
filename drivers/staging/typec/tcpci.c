@@ -797,15 +797,19 @@ struct tcpci *tcpci_register_port(struct device *dev, struct tcpci_data *data)
 	if (err < 0)
 		return ERR_PTR(err);
 
-	err = tcpci_ss_mux_control_init(tcpci);
-	if (err)
-		return err;
-
 	tcpci->port = tcpm_register_port(tcpci->dev, &tcpci->tcpc);
 	if (PTR_ERR_OR_ZERO(tcpci->port))
 		return ERR_CAST(tcpci->port);
 
+	err = tcpci_ss_mux_control_init(tcpci);
+	if (err)
+		goto err1;
+
 	return tcpci;
+
+err1:
+	tcpm_unregister_port(tcpci->port);
+	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tcpci_register_port);
 
@@ -838,16 +842,16 @@ static int tcpci_probe(struct i2c_client *client,
 	if (err < 0)
 		return err;
 
+	chip->tcpci = tcpci_register_port(&client->dev, &chip->data);
+	if (PTR_ERR_OR_ZERO(chip->tcpci))
+		return PTR_ERR(chip->tcpci);
+
 	err = devm_request_threaded_irq(&client->dev, client->irq, NULL,
 					_tcpci_irq,
 					IRQF_ONESHOT | IRQF_TRIGGER_LOW,
 					dev_name(&client->dev), chip);
 	if (err < 0)
 		return err;
-
-	chip->tcpci = tcpci_register_port(&client->dev, &chip->data);
-	if (PTR_ERR_OR_ZERO(chip->tcpci))
-		return PTR_ERR(chip->tcpci);
 
 	i2c_set_clientdata(client, chip);
 	return 0;
