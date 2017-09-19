@@ -201,6 +201,7 @@ static int m25p_probe(struct spi_mem *spimem)
 	nor->dev = &spimem->spi->dev;
 	spi_nor_set_flash_node(nor, spi->dev.of_node);
 	nor->priv = flash;
+	nor->spi = spi;
 
 	spi_mem_set_drvdata(spimem, flash);
 	flash->spimem = spimem;
