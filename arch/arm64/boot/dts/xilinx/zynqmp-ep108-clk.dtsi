@@ -6,10 +6,7 @@
  *
  * Michal Simek <michal.simek@xilinx.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 / {
@@ -17,6 +14,7 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <25000000>;
+		u-boot,dm-pre-reloc;
 	};
 
 	i2c_clk: i2c_clk {
@@ -31,6 +29,13 @@
 		clock-frequency = <75000000>;
 	};
 
+	dp_aclk: clock0 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <50000000>;
+		clock-accuracy = <100>;
+	};
+
 	clk100: clk100 {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -41,6 +46,13 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <600000000>;
+	};
+
+	dp_aud_clk: clock1 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <22579200>;
+		clock-accuracy = <100>;
 	};
 };
 
@@ -100,6 +112,14 @@
 	clocks = <&i2c_clk>;
 };
 
+&nand0 {
+	clocks = <&misc_clk &misc_clk>;
+};
+
+&qspi {
+	clocks = <&misc_clk &misc_clk>;
+};
+
 &sata {
 	clocks = <&sata_clk>;
 };
@@ -134,4 +154,20 @@
 
 &watchdog0 {
 	clocks= <&misc_clk>;
+};
+
+&xilinx_drm {
+	clocks = <&misc_clk>;
+};
+
+&xlnx_dp {
+	clocks = <&dp_aclk>, <&dp_aud_clk>;
+};
+
+&xlnx_dp_snd_codec0 {
+	clocks = <&dp_aud_clk>;
+};
+
+&xlnx_dpdma {
+	clocks = <&misc_clk>;
 };
