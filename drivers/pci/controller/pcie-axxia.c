@@ -33,7 +33,9 @@
 #include "pcie-axxia.h"
 #include "../pci.h"
 
+#ifdef CONFIG_PCI_MSI
 #define AXXIA_GENERIC_MSI_DOMAIN_IRQ 1
+#endif	/* CONFIG_PCI_MSI */
 
 #define PEI_GENERAL_CORE_CTL_REG 0x38
 #define PEI_SII_PWR_MGMT_REG 0xD4
