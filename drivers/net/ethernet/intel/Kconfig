@@ -19,6 +19,7 @@ config AXXIA_NEMAC
 	tristate "Axxia GigE NEMAC support"
 	default y
 	depends on ARCH_AXXIA && ARM64
+	select AXXIA_MDIO
 	select MII
 	---help---
 	  This driver supports the Axxia NEMAC gigabit Ethernet controller
