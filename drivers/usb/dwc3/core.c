@@ -710,8 +710,6 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 
 static void dwc3_core_exit(struct dwc3 *dwc)
 {
-	dwc3_event_buffers_cleanup(dwc);
-
 	usb_phy_shutdown(dwc->usb2_phy);
 	usb_phy_shutdown(dwc->usb3_phy);
 	phy_exit(dwc->usb2_generic_phy);
@@ -1512,6 +1510,7 @@ static int dwc3_remove(struct platform_device *pdev)
 	dwc3_debugfs_exit(dwc);
 	dwc3_core_exit_mode(dwc);
 
+	dwc3_event_buffers_cleanup(dwc);
 	dwc3_core_exit(dwc);
 	dwc3_ulpi_exit(dwc);
 
@@ -1569,10 +1568,18 @@ static int dwc3_suspend_common(struct dwc3 *dwc, pm_message_t msg)
 		spin_lock_irqsave(&dwc->lock, flags);
 		dwc3_gadget_suspend(dwc);
 		spin_unlock_irqrestore(&dwc->lock, flags);
+		dwc3_event_buffers_cleanup(dwc);
+
+		/* Put the core into D3 state */
+		dwc3_set_usb_core_power(dwc, false);
 		dwc3_core_exit(dwc);
 		break;
 	case DWC3_GCTL_PRTCAP_HOST:
 		if (!PMSG_IS_AUTO(msg)) {
+			dwc3_event_buffers_cleanup(dwc);
+
+			/* Put the core into D3 state */
+			dwc3_set_usb_core_power(dwc, false);
 			dwc3_core_exit(dwc);
 			break;
 		}
@@ -1604,6 +1611,10 @@ static int dwc3_suspend_common(struct dwc3 *dwc, pm_message_t msg)
 		}
 
 		dwc3_otg_exit(dwc);
+		dwc3_event_buffers_cleanup(dwc);
+
+		/* Put the core into D3 state */
+		dwc3_set_usb_core_power(dwc, false);
 		dwc3_core_exit(dwc);
 		break;
 	default:
@@ -1622,6 +1633,8 @@ static int dwc3_resume_common(struct dwc3 *dwc, pm_message_t msg)
 
 	switch (dwc->current_dr_role) {
 	case DWC3_GCTL_PRTCAP_DEVICE:
+		/* Bring core to D0 state */
+		dwc3_set_usb_core_power(dwc, true);
 		ret = dwc3_core_init_for_resume(dwc);
 		if (ret)
 			return ret;
@@ -1633,6 +1646,9 @@ static int dwc3_resume_common(struct dwc3 *dwc, pm_message_t msg)
 		break;
 	case DWC3_GCTL_PRTCAP_HOST:
 		if (!PMSG_IS_AUTO(msg)) {
+			/* Bring core to D0 state */
+			dwc3_set_usb_core_power(dwc, true);
+
 			ret = dwc3_core_init_for_resume(dwc);
 			if (ret)
 				return ret;
@@ -1656,6 +1672,9 @@ static int dwc3_resume_common(struct dwc3 *dwc, pm_message_t msg)
 		/* nothing to do on runtime_resume */
 		if (PMSG_IS_AUTO(msg))
 			break;
+
+		/* Bring core to D0 state */
+		dwc3_set_usb_core_power(dwc, true);
 
 		ret = dwc3_core_init(dwc);
 		if (ret)
