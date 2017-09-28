@@ -92,68 +92,68 @@
 #define ALIVE_NOTIFICATION_PERIOD (90*1000)
 
 static int log = 1;
-module_param(log, int, S_IRUGO|S_IWUSR);
+module_param(log, int, 0644);
 MODULE_PARM_DESC(log, "Log each error to kernel log.");
 
 static int force_restart = 1;
-module_param(force_restart, int, S_IRUGO|S_IWUSR);
+module_param(force_restart, int, 0644);
 MODULE_PARM_DESC(force_restart, "Machine restart on fatal error.");
 
 static atomic64_t mc_counter = ATOMIC_INIT(0);
 /*
- Bit [34] = Logical OR of all lower bits.
- Bit [33] = A CRC error occurred on the write data bus.
- Bit [32] = The software-initiated control word write has completed.
- Bit [31] = The user-initiated DLL resync has completed.
- Bit [30] = A state change has been detected on the
-	dfi_init_complete signal after initialization.
- Bit [29] = The assertion of the INHIBIT_DRAM_CMD parameter has
-	successfully inhibited the command queue.
- Bit [28] = The register interface-initiated mode register write has
-	completed and another mode register write may be issued.
- Bit [27] = A Low Power Interface (LPI) timeout error has occurred.
- Bit [26] = MPR read command, initiated with a software MPR_READ request,
-	 is complete.
- Bit [25] = Error received from the PHY on the DFI bus.
- Bit [24] = RESERVED
- Bit [23] = RESERVED
- Bit [22] = A parity error has been detected on the address/control bus
-	on a registered DIMM.
- Bit [21] = The leveling operation has completed.
- Bit [20] = A read leveling gate training operation has been requested.
- Bit [19] = A read leveling operation has been requested.
- Bit [18] = A write leveling operation has been requested.
- Bit [17] = A DFI update error has occurred. Error information can be
-	found in the UPDATE_ERROR_STATUS parameter.
- Bit [16] = A write leveling error has occurred. Error information can
-	be found in the WRLVL_ERROR_STATUS parameter.
- Bit [15] = A read leveling gate training error has occurred. Error
-	information can be found in the RDLVL_ERROR_STATUS parameter.
- Bit [14] = A read leveling error has occurred. Error information can be
-	found in the RDLVL_ERROR_STATUS parameter.
- Bit [13] = The user has programmed an invalid setting associated with
-	user words per burst.
-	Examples: Setting param_reduc when burst length = 2. A 1:2
-	MC:PHY clock ratio with burst length = 2.
- Bit [12] = A wrap cycle crossing a DRAM page has been detected. This
-	is unsupported & may result in memory data corruption.
- Bit [11] = A write was attempted to a writeprotected region.
- Bit [10] = The BIST operation has been completed.
- Bit [9] = The low power operation has been completed.
- Bit [8] = The MC initialization has been completed.
- Bit [7] = An error occurred on the port command channel.
- Bit [6] = Multiple uncorrectable ECC events have been detected.
- Bit [5] = An uncorrectable ECC event has been detected.
- Bit [4] = Multiple correctable ECC events have been detected.
- Bit [3] = A correctable ECC event has been detected.
- Bit [2] = Multiple accesses outside the defined PHYSICAL memory space
-	have occurred.
- Bit [1] = A memory access outside the defined PHYSICAL memory space
-	has occurred.
- Bit [0] = The memory reset is valid on the DFI bus.
-
- Of these 1, 2, 3, 4, 5, 6, 7, 12, 22 and 26 are of interest.
-*/
+ * Bit [34] = Logical OR of all lower bits.
+ * Bit [33] = A CRC error occurred on the write data bus.
+ * Bit [32] = The software-initiated control word write has completed.
+ * Bit [31] = The user-initiated DLL resync has completed.
+ * Bit [30] = A state change has been detected on the
+ *        dfi_init_complete signal after initialization.
+ * Bit [29] = The assertion of the INHIBIT_DRAM_CMD parameter has
+ *        successfully inhibited the command queue.
+ * Bit [28] = The register interface-initiated mode register write has
+ *        completed and another mode register write may be issued.
+ * Bit [27] = A Low Power Interface (LPI) timeout error has occurred.
+ * Bit [26] = MPR read command, initiated with a software MPR_READ request,
+ *         is complete.
+ * Bit [25] = Error received from the PHY on the DFI bus.
+ * Bit [24] = RESERVED
+ * Bit [23] = RESERVED
+ * Bit [22] = A parity error has been detected on the address/control bus
+ *        on a registered DIMM.
+ * Bit [21] = The leveling operation has completed.
+ * Bit [20] = A read leveling gate training operation has been requested.
+ * Bit [19] = A read leveling operation has been requested.
+ * Bit [18] = A write leveling operation has been requested.
+ * Bit [17] = A DFI update error has occurred. Error information can be
+ *        found in the UPDATE_ERROR_STATUS parameter.
+ * Bit [16] = A write leveling error has occurred. Error information can
+ *        be found in the WRLVL_ERROR_STATUS parameter.
+ * Bit [15] = A read leveling gate training error has occurred. Error
+ *        information can be found in the RDLVL_ERROR_STATUS parameter.
+ * Bit [14] = A read leveling error has occurred. Error information can be
+ *        found in the RDLVL_ERROR_STATUS parameter.
+ * Bit [13] = The user has programmed an invalid setting associated with
+ *        user words per burst.
+ *        Examples: Setting param_reduc when burst length = 2. A 1:2
+ *        MC:PHY clock ratio with burst length = 2.
+ * Bit [12] = A wrap cycle crossing a DRAM page has been detected. This
+ *        is unsupported & may result in memory data corruption.
+ * Bit [11] = A write was attempted to a writeprotected region.
+ * Bit [10] = The BIST operation has been completed.
+ * Bit [9] = The low power operation has been completed.
+ * Bit [8] = The MC initialization has been completed.
+ * Bit [7] = An error occurred on the port command channel.
+ * Bit [6] = Multiple uncorrectable ECC events have been detected.
+ * Bit [5] = An uncorrectable ECC event has been detected.
+ * Bit [4] = Multiple correctable ECC events have been detected.
+ * Bit [3] = A correctable ECC event has been detected.
+ * Bit [2] = Multiple accesses outside the defined PHYSICAL memory space
+ *        have occurred.
+ * Bit [1] = A memory access outside the defined PHYSICAL memory space
+ *        has occurred.
+ * Bit [0] = The memory reset is valid on the DFI bus.
+ *
+ * Of these 1, 2, 3, 4, 5, 6, 7, 12, 22 and 26 are of interest.
+ */
 
 /*
  *   MPR dump processing - overview.
@@ -162,7 +162,7 @@ static atomic64_t mc_counter = ATOMIC_INIT(0);
  * one need to collect dumps for all available cs. Below given example
  * for two cs0/cs1.
  *
- *   SMEM MC           smmon_isr           smmon_wq
+ *   SMEM MC           smmon_isr_sw           smmon_wq
  *     |                   |                   |
  *     |                   |                   |
  *     |ALERT_N - int_status bit [33]          |
@@ -612,6 +612,10 @@ struct intel_edac_dev_info {
 	char *blk_name;
 	struct work_struct offload_alerts;
 	struct work_struct offload_events;
+	struct workqueue_struct *wq_alerts;
+	struct workqueue_struct *wq_events;
+	int finish_alerts;
+	int finish_events;
 	int is_ddr4;
 	int edac_idx;
 	u32 sm_region;
@@ -725,7 +729,7 @@ static struct edac_dev_sysfs_attribute device_block_attr[] = {
 	{
 		.attr = {
 			.name = "mpr_page1",
-			.mode = (S_IRUGO | S_IWUSR)
+			.mode = (0644)
 		},
 		.show = mpr1_dump_show,
 		.store = NULL},
@@ -904,7 +908,13 @@ error_read:
 }
 
 static irqreturn_t
-smmon_isr(int interrupt, void *device)
+smmon_isr_hw(int interrupt, void *device)
+{
+	return IRQ_WAKE_THREAD;
+}
+
+static irqreturn_t
+smmon_isr_sw(int interrupt, void *device)
 {
 	struct intel_edac_dev_info *dev_info = device;
 	struct sm_56xx_denali_ctl_366 denali_ctl_366;
@@ -990,10 +1000,13 @@ static void intel_sm_alerts_error_check(struct edac_device_ctl_info *edac_dev)
 
 start:
 	/* keep hung up monitor happy 90 sec's */
-	if (0 == wait_event_timeout(dev_info->data->dump_wq,
+	if (wait_event_timeout(dev_info->data->dump_wq,
 		atomic_read(&dev_info->data->dump_in_progress),
-		msecs_to_jiffies(ALIVE_NOTIFICATION_PERIOD)))
+		msecs_to_jiffies(ALIVE_NOTIFICATION_PERIOD)) == 0)
 		goto start;
+
+	if (dev_info->finish_alerts)
+		goto finish;
 
 		/* the only one running workqueue */
 	for (i = 0; i < dev_info->data->cs_count; ++i) {
@@ -1020,6 +1033,9 @@ start:
 		/* wait */
 		wait_event(dev_info->data->dump_wq,
 			   atomic_read(&dev_info->data->dump_ready));
+
+		if (dev_info->finish_alerts)
+			goto finish;
 
 		atomic_set(&dev_info->data->dump_ready, 0);
 		/* collect data */
@@ -1054,6 +1070,10 @@ error_write:
 	printk_ratelimited("Could not collect MPR dump.\n");
 	atomic_set(&dev_info->data->dump_in_progress, 0);
 	goto start;
+
+finish:
+	atomic_set(&dev_info->data->dump_ready, 0);
+	atomic_set(&dev_info->data->dump_in_progress, 0);
 }
 
 static void intel_sm_events_error_check(struct edac_device_ctl_info *edac_dev)
@@ -1065,12 +1085,15 @@ static void intel_sm_events_error_check(struct edac_device_ctl_info *edac_dev)
 	u32 counter;
 
 	while (1) {
-		if (0 == wait_event_timeout(dev_info->data->event_wq,
+		if (wait_event_timeout(dev_info->data->event_wq,
 			atomic_read(&dev_info->data->event_ready),
-			msecs_to_jiffies(ALIVE_NOTIFICATION_PERIOD)))
+			msecs_to_jiffies(ALIVE_NOTIFICATION_PERIOD)) == 0)
 			continue;
 
 		atomic_set(&dev_info->data->event_ready, 0);
+
+		if (dev_info->finish_events)
+			break;
 
 		mutex_lock(&dev_info->data->edac_sysfs_data_lock);
 		for (i = 0; i < NR_EVENTS; ++i) {
@@ -1160,6 +1183,22 @@ static int get_active_dram(struct intel_edac_dev_info *dev_info)
 	return dram;
 }
 
+static void finish_workqueues(struct intel_edac_dev_info *dev_info)
+{
+	if (dev_info->is_ddr4) {
+		dev_info->finish_alerts = 1;
+		atomic_inc(&dev_info->data->dump_in_progress);
+		atomic_set(&dev_info->data->dump_ready, 1);
+		wake_up(&dev_info->data->dump_wq);
+		cancel_work_sync(&dev_info->offload_alerts);
+	}
+
+	dev_info->finish_events = 1;
+	atomic_set(&dev_info->data->event_ready, 1);
+	wake_up(&dev_info->data->event_wq);
+	cancel_work_sync(&dev_info->offload_events);
+}
+
 static int intel_edac_mc_probe(struct platform_device *pdev)
 {
 	struct edac_device_instance *instance;
@@ -1184,16 +1223,32 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	if (!dev_info)
 		goto err_nomem;
 
+	dev_info->ctl_name =
+		devm_kzalloc(&pdev->dev, 32*sizeof(char), GFP_KERNEL);
+	if (!dev_info->ctl_name)
+		goto err_nomem;
+
+	dev_info->blk_name =
+		devm_kzalloc(&pdev->dev, 32*sizeof(char), GFP_KERNEL);
+	if (!dev_info->blk_name)
+		goto err_nomem;
+
 	dev_info->data =
 		devm_kzalloc(&pdev->dev, sizeof(*dev_info->data), GFP_KERNEL);
 	if (!dev_info->data)
-		goto err_noctlinfo;
+		goto err_nomem;
 
 	init_waitqueue_head(&dev_info->data->dump_wq);
 	init_waitqueue_head(&dev_info->data->event_wq);
 
 	raw_spin_lock_init(&dev_info->data->mpr_data_lock);
 	mutex_init(&dev_info->data->edac_sysfs_data_lock);
+
+	strncpy(dev_info->ctl_name, np->name, 32);
+	dev_info->ctl_name[31] = '\0';
+
+	strncpy(dev_info->blk_name, "ECC", 32);
+	dev_info->ctl_name[31] = '\0';
 
 	dev_info->ctl_name = kstrdup(np->name, GFP_KERNEL);
 	dev_info->blk_name = "ECC";
@@ -1268,8 +1323,10 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	dev_info->edac_dev =
 		edac_device_alloc_ctl_info(0, dev_info->ctl_name,
 					 1, dev_info->blk_name,
-					 NR_EVENTS +
-					 cs_count * dram_count * MPR_ERRORS,
+					 NR_EVENTS + (dev_info->is_ddr4 ?
+					 cs_count * dram_count * MPR_ERRORS
+					 :
+					 0),
 					 0, NULL, 0, dev_info->edac_idx);
 
 	if (!dev_info->edac_dev) {
@@ -1329,20 +1386,34 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	if (edac_device_add_device(dev_info->edac_dev) != 0) {
 		pr_info("Unable to add edac device for %s\n",
 			dev_info->ctl_name);
-		goto err_nosysfs;
+		goto err_noctlinfo;
 	}
 
 	snprintf(&dev_info->data->irq_name[0], IRQ_NAME_LEN,
 			"%s-mon", dev_info->ctl_name);
 
+	dev_info->wq_events =
+		alloc_workqueue("%s-events", WQ_MEM_RECLAIM, 1,
+				   (dev_info->ctl_name));
+	if (!dev_info->wq_events)
+		goto err_nosysfs;
+
+	if (dev_info->is_ddr4) {
+		dev_info->wq_alerts =
+		  alloc_workqueue("%s-alerts", WQ_MEM_RECLAIM, 1,
+				   (dev_info->ctl_name));
+
+		if (!dev_info->wq_alerts)
+			goto err_noevents;
+	}
 	if (dev_info->is_ddr4)
 		INIT_WORK(&dev_info->offload_alerts, axxia_alerts_work);
 
 	INIT_WORK(&dev_info->offload_events, axxia_events_work);
 
 	if (dev_info->is_ddr4)
-		schedule_work(&dev_info->offload_alerts);
-	schedule_work(&dev_info->offload_events);
+		queue_work(dev_info->wq_alerts, &dev_info->offload_alerts);
+	queue_work(dev_info->wq_events, &dev_info->offload_events);
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
@@ -1382,8 +1453,8 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	}
 
 	dev_info->data->irq = irq;
-	rc = devm_request_irq(&pdev->dev, irq,
-			smmon_isr, IRQF_ONESHOT,
+	rc = devm_request_threaded_irq(&pdev->dev, irq,
+			smmon_isr_hw, smmon_isr_sw, IRQF_ONESHOT,
 			&dev_info->data->irq_name[0], dev_info);
 
 	if (rc) {
@@ -1411,18 +1482,23 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	return 0;
 
 err_noirq:
-	if (dev_info->is_ddr4)
-		cancel_work_sync(&dev_info->offload_alerts);
-	cancel_work_sync(&dev_info->offload_events);
-
+	finish_workqueues(dev_info);
 	edac_device_del_device(&dev_info->pdev->dev);
+
+	if (dev_info->is_ddr4)
+		destroy_workqueue(dev_info->wq_alerts);
+
+err_noevents:
+	destroy_workqueue(dev_info->wq_events);
 
 err_nosysfs:
 	edac_device_free_ctl_info(dev_info->edac_dev);
+
 err_noctlinfo:
 	mutex_destroy(&dev_info->data->edac_sysfs_data_lock);
 	atomic64_dec(&mc_counter);
 	return 1;
+
 err_nomem:
 	atomic64_dec(&mc_counter);
 	return -ENOMEM;
@@ -1444,9 +1520,11 @@ static int intel_edac_mc_remove(struct platform_device *pdev)
 
 			dev_info->data->irq = 0;
 
+			finish_workqueues(dev_info);
+
 			if (dev_info->is_ddr4)
-				cancel_work_sync(&dev_info->offload_alerts);
-			cancel_work_sync(&dev_info->offload_events);
+				destroy_workqueue(dev_info->wq_alerts);
+			destroy_workqueue(dev_info->wq_events);
 		}
 
 		if (dev_info->edac_dev != NULL) {
