@@ -13,6 +13,7 @@
 
 #include "axc67xx.dtsi"
 #include "axc6704-cpus.dtsi"
+#include "axc6704-coresight.dtsi"
 
 / {
 	model = "Lionfish";

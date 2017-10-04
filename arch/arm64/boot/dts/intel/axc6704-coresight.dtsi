@@ -1,0 +1,314 @@
+/*
+ * arch/arm64/boot/dts/intel/axc6704-coresight.dtsi
+ *
+ * Copyright (C) 2015 Intel Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+/ {
+	mainfunnel@8008007000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		reg = <0x80 0x08007000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				main_funnel_out_port: endpoint {
+					remote-endpoint = <&main_etf_in_port>;
+				};
+			};
+
+			port@1 {
+				reg = <0>;
+				main_funnel_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&mid_funnel0_out_port>;
+				};
+			};
+/*
+
+			port@2 {
+				reg = <1>;
+				main_funnel_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&mid_funnel1_out_port>;
+				};
+			};
+
+			port@3 {
+				reg = <2>;
+				main_funnel_in_port2: endpoint {
+					slave-mode;
+					remote-endpoint = <&mid_funnel2_out_port>;
+				};
+			};
+
+
+			port@4 {
+				reg = <3>;
+				main_funnel_in_port3: endpoint {
+					slave-mode;
+					remote-endpoint = <&mid_funnel3_out_port>;
+				};
+
+			};
+
+			port@5 {
+				reg = <4>;
+				main_funnel_in_port4: endpoint {
+					slave_mode;
+					remote-endpoint = <&mid_funnel4_out_port>;
+				};
+			};
+*/
+		};
+	};
+
+
+	etr@8008046000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		reg = <0x80 0x08046000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		port {
+			etr_in_port: endpoint {
+				slave-mode;
+				remote-endpoint = <&main_etf_out_port>;
+			};
+		};
+	};
+
+	etm0: etm@8008C40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		reg = <0x80 0x08C40000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		cpu = <&CPU0>;
+		port {
+			cluster0_etm0_out_port: endpoint {
+				remote-endpoint = <&cluster0_funnel_in_port0>;
+			};
+		};
+	};
+
+
+	etm1: etm@8008D40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		reg = <0x80 0x08D40000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		cpu = <&CPU1>;
+		port {
+			cluster0_etm1_out_port: endpoint {
+				remote-endpoint = <&cluster0_funnel_in_port1>;
+			};
+		};
+	};
+
+	etm2: etm@8008E40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		reg = <0x80 0x08E40000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		cpu = <&CPU2>;
+		port {
+			cluster0_etm2_out_port: endpoint {
+				remote-endpoint = <&cluster0_funnel_in_port2>;
+			};
+		};
+	};
+
+
+	etm3: etm@8008F40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		reg = <0x80 0x08F40000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		cpu = <&CPU3>;
+		port {
+			cluster0_etm3_out_port: endpoint {
+				remote-endpoint = <&cluster0_funnel_in_port3>;
+			};
+		};
+	};
+
+
+	etf@8008009000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		reg = <0x80 0x08009000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* input port */
+			port@0 {
+				reg = <0>;
+				cluster0_etf_in_port: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_funnel_out_port>;
+				};
+			};
+
+			/* output port */
+			port@1 {
+				reg = <0>;
+				cluster0_etf_out_port: endpoint {
+					remote-endpoint = <&mid_funnel0_in_port0>;
+				};
+			};
+		};
+	};
+
+
+	funnel@8008810000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		reg = <0x80 0x08810000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				cluster0_funnel_out_port: endpoint {
+					remote-endpoint = <&cluster0_etf_in_port>;
+				};
+			};
+
+			port@1 {
+				reg = <0>;
+				cluster0_funnel_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_etm0_out_port>;
+				};
+			};
+
+			port@2 {
+				reg = <1>;
+				cluster0_funnel_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_etm1_out_port>;
+				};
+			};
+
+			port@3 {
+				reg = <2>;
+				cluster0_funnel_in_port2: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_etm2_out_port>;
+				};
+			};
+
+			port@4 {
+				reg = <3>;
+				cluster0_funnel_in_port3: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_etm3_out_port>;
+				};
+			};
+		};
+	};
+
+
+	mainetf@8008045000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		reg = <0x80 0x08045000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* input port */
+			port@0 {
+				reg = <0>;
+				main_etf_in_port: endpoint {
+					slave-mode;
+					remote-endpoint = <&main_funnel_out_port>;
+				};
+			};
+
+			/* output port */
+			port@1 {
+				reg = <0>;
+				main_etf_out_port: endpoint {
+					remote-endpoint = <&etr_in_port>;
+				};
+			};
+		};
+	};
+
+
+	funnel@8008002000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		reg = <0x80 0x08002000 0 0x1000>;
+
+		clocks = <&clk_per 0>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				mid_funnel0_out_port: endpoint {
+					remote-endpoint = <&main_funnel_in_port0>;
+				};
+			};
+
+			port@1 {
+				reg = <0>;
+				mid_funnel0_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster0_etf_out_port>;
+				};
+			};
+/*
+			port@2 {
+				reg = <1>;
+				mid_funnel0_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster1_etf_out_port>;
+				};
+			};
+
+			port@3 {
+				reg = <2>;
+				mid_funnel0_in_port2: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster2_etf_out_port>;
+				};
+			};
+
+			port@4 {
+				reg = <3>;
+				mid_funnel0_in_port3: endpoint {
+					slave-mode;
+					remote-endpoint = <&cluster3_etf_out_port>;
+				};
+			};
+*/
+		};
+	};
+
+};
