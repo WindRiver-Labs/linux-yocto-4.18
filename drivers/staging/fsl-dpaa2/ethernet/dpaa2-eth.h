@@ -383,8 +383,8 @@ struct dpaa2_eth_priv {
 	u16 bpid;
 	u16 tx_qdid;
 	struct iommu_domain *iommu_domain;
-	u32 max_bufs_per_ch;
-	u32 refill_thresh;
+	int max_bufs_per_ch;
+	int refill_thresh;
 	bool has_xdp_prog;
 
 	void *cscn_mem;	/* Tx congestion notifications are written here */
