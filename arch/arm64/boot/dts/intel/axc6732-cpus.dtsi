@@ -14,56 +14,56 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		CPU0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0>;
 			enable-method = "psci";
 		};
 
-		cpu@1 {
+		CPU1: cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <1>;
 			enable-method = "psci";
 		};
 
-		cpu@2 {
+		CPU2: cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <2>;
 			enable-method = "psci";
 		};
 
-		cpu@3 {
+		CPU3: cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <3>;
 			enable-method = "psci";
 		};
 
-		cpu@4 {
+		CPU4: cpu@4 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x100>;
 			enable-method = "psci";
 		};
 
-		cpu@5 {
+		CPU5: cpu@5 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x101>;
 			enable-method = "psci";
 		};
 
-		cpu@6 {
+		CPU6: cpu@6 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x102>;
 			enable-method = "psci";
 		};
 
-		cpu@7 {
+		CPU7: cpu@7 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x103>;
@@ -71,56 +71,56 @@
 
 		};
 
-		cpu@8 {
+		CPU8: cpu@8 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x200>;
 			enable-method = "psci";
 		};
 
-		cpu@9 {
+		CPU9: cpu@9 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x201>;
 			enable-method = "psci";
 		};
 
-		cpu@10 {
+		CPU10: cpu@10 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x202>;
 			enable-method = "psci";
 		};
 
-		cpu@11 {
+		CPU11: cpu@11 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x203>;
 			enable-method = "psci";
 		};
 
-		cpu@12 {
+		CPU12: cpu@12 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x300>;
 			enable-method = "psci";
 		};
 
-		cpu@13 {
+		CPU13: cpu@13 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x301>;
 			enable-method = "psci";
 		};
 
-		cpu@14 {
+		CPU14: cpu@14 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x302>;
 			enable-method = "psci";
 		};
 
-		cpu@15 {
+		CPU15: cpu@15 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x303>;
@@ -128,7 +128,7 @@
 
 		};
 
-		cpu@16 {
+		CPU16: cpu@16 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x400>;
@@ -136,7 +136,7 @@
 
 		};
 
-		cpu@17 {
+		CPU17: cpu@17 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x401>;
@@ -144,7 +144,7 @@
 
 		};
 
-		cpu@18 {
+		CPU18: cpu@18 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x402>;
@@ -152,7 +152,7 @@
 
 		};
 
-		cpu@19 {
+		CPU19: cpu@19 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x403>;
@@ -160,7 +160,7 @@
 
 		};
 
-		cpu@20 {
+		CPU20: cpu@20 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x500>;
@@ -168,7 +168,7 @@
 
 		};
 
-		cpu@21 {
+		CPU21: cpu@21 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x501>;
@@ -176,7 +176,7 @@
 
 		};
 
-		cpu@22 {
+		CPU22: cpu@22 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x502>;
@@ -184,7 +184,7 @@
 
 		};
 
-		cpu@23 {
+		CPU23: cpu@23 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x503>;
@@ -192,7 +192,7 @@
 
 		};
 
-		cpu@24 {
+		CPU24: cpu@24 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x600>;
@@ -200,7 +200,7 @@
 
 		};
 
-		cpu@25 {
+		CPU25: cpu@25 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x601>;
@@ -208,7 +208,7 @@
 
 		};
 
-		cpu@26 {
+		CPU26: cpu@26 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x602>;
@@ -216,7 +216,7 @@
 
 		};
 
-		cpu@27 {
+		CPU27: cpu@27 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x603>;
@@ -224,7 +224,7 @@
 
 		};
 
-		cpu@28 {
+		CPU28: cpu@28 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x700>;
@@ -232,7 +232,7 @@
 
 		};
 
-		cpu@29 {
+		CPU29: cpu@29 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x701>;
@@ -240,7 +240,7 @@
 
 		};
 
-		cpu@30 {
+		CPU30: cpu@30 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x702>;
@@ -248,7 +248,7 @@
 
 		};
 
-		cpu@31 {
+		CPU31: cpu@31 {
 			device_type = "cpu";
 			compatible = "arm,armv8";
 			reg = <0x703>;
