@@ -121,6 +121,10 @@
  */
 #define DPAA2_ETH_SWA_SIZE		64
 
+/* Hardware annotation area in RX / TX  buffers */
+#define DPAA2_ETH_RX_HWA_SIZE		64
+#define DPAA2_ETH_TX_HWA_SIZE		128
+ 
 /* Must keep this struct smaller than DPAA2_ETH_SWA_SIZE */
 struct dpaa2_eth_swa {
 	struct sk_buff *skb;
