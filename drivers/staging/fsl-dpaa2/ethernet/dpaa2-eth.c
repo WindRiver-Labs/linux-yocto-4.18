@@ -369,6 +369,18 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 					ch->buf_count--;
 				}
 				return;
+			case XDP_REDIRECT:
+				dma_unmap_single(dev, addr,
+						 DPAA2_ETH_RX_BUF_SIZE,
+						 DMA_BIDIRECTIONAL);
+				ch->buf_count--;
+				ch->flush = true;
+				/* Mark the actual start of the data buffer */
+				xdp.data_hard_start = vaddr;
+				if (xdp_do_redirect(priv->net_dev,
+						    &xdp, xdp_prog))
+					free_rx_fd(priv, fd, vaddr);
+				return;
 			}
 		}
 		dma_unmap_single(dev, addr, DPAA2_ETH_RX_BUF_SIZE,
@@ -516,10 +528,20 @@ static bool consume_frames(struct dpaa2_eth_channel *ch, int *rx_cleaned,
 	/* All frames brought in store by a volatile dequeue
 	 * come from the same queue
 	 */
-	if (fq->type == DPAA2_TX_CONF_FQ)
+	if (fq->type == DPAA2_TX_CONF_FQ) {
 		*tx_conf_cleaned += cleaned;
-	else
+	} else {
 		*rx_cleaned += cleaned;
+		/* If we processed XDP_REDIRECT frames, flush them now */
+		/* FIXME: Since we don't actually do anything inside
+		 * ndo_xdp_flush, we call it here simply for compliance
+		 * reasons
+		 */
+		if (ch->flush) {
+			xdp_do_flush_map();
+			ch->flush = false;
+		}
+	}
 
 	fq->stats.frames += cleaned;
 	ch->stats.frames += cleaned;
@@ -710,7 +732,7 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	dma_addr_t fd_addr;
-	struct sk_buff *skb;
+	struct sk_buff *skb = NULL;
 	unsigned char *buffer_start;
 	struct dpaa2_eth_swa *swa;
 	u8 fd_format = dpaa2_fd_get_format(fd);
@@ -722,13 +744,20 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 	swa = (struct dpaa2_eth_swa *)buffer_start;
 
 	if (fd_format == dpaa2_fd_single) {
-		skb = swa->single.skb;
-		/* Accessing the skb buffer is safe before dma unmap, because
-		 * we didn't map the actual skb shell.
-		 */
-		dma_unmap_single(dev, fd_addr,
-				 skb_tail_pointer(skb) - buffer_start,
-				 DMA_BIDIRECTIONAL);
+		if (swa->type == DPAA2_ETH_SWA_SINGLE) {
+			skb = swa->single.skb;
+			/* Accessing the skb buffer is safe before dma unmap,
+			 * because we didn't map the actual skb shell.
+			 */
+			dma_unmap_single(dev, fd_addr,
+					 skb_tail_pointer(skb) - buffer_start,
+					 DMA_BIDIRECTIONAL);
+		} else {
+			WARN_ONCE(swa->type != DPAA2_ETH_SWA_XDP,
+				  "Wrong SWA type");
+			dma_unmap_single(dev, fd_addr, swa->xdp.dma_size,
+					 DMA_BIDIRECTIONAL);
+		}
 	} else if (fd_format == dpaa2_fd_sg) {
 		skb = swa->sg.skb;
 		scl = swa->sg.scl;
@@ -744,6 +773,18 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 				 DMA_BIDIRECTIONAL);
 	} else {
 		netdev_dbg(priv->net_dev, "Invalid FD format\n");
+		return;
+	}
+
+	/* Read the status from the Frame Annotation after we unmap the first
+	 * buffer but before we free it. The caller function is responsible
+	 * for checking the status value.
+	 */
+	if (status)
+		*status = le32_to_cpu(fas->status);
+
+	if (swa->type == DPAA2_ETH_SWA_XDP) {
+		page_frag_free(buffer_start);
 		return;
 	}
 
@@ -1677,6 +1718,92 @@ static int dpaa2_eth_xdp(struct net_device *dev, struct netdev_xdp *xdp)
 	}
 }
 
+static int dpaa2_eth_xdp_xmit(struct net_device *net_dev, struct xdp_buff *xdp)
+{
+	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct device *dev = net_dev->dev.parent;
+	struct rtnl_link_stats64 *percpu_stats;
+	struct dpaa2_eth_drv_stats *percpu_extras;
+	struct dpaa2_eth_swa *swa;
+	struct dpaa2_fas *fas;
+	struct dpaa2_eth_fq *fq;
+	struct dpaa2_fd fd;
+	void *buffer_start;
+	dma_addr_t addr;
+	int err, i;
+
+	if (!netif_running(net_dev))
+		return -ENETDOWN;
+
+	/* We require a minimum headroom to be able to transmit the frame.
+	 * Otherwise return an error and let the original net_device handle it
+	 */
+	/* TODO: Do we update i/f counters here or just on the Rx device? */
+	if (xdp->data < xdp->data_hard_start ||
+	    xdp->data - xdp->data_hard_start < net_dev->needed_headroom) {
+		percpu_stats->tx_dropped++;
+		return -EINVAL;
+	}
+
+	percpu_stats = this_cpu_ptr(priv->percpu_stats);
+	percpu_extras = this_cpu_ptr(priv->percpu_extras);
+
+	/* Setup the FD fields */
+	memset(&fd, 0, sizeof(fd));
+
+	buffer_start = PTR_ALIGN(xdp->data - net_dev->needed_headroom,
+				 DPAA2_ETH_TX_BUF_ALIGN);
+
+	fas = dpaa2_get_fas(buffer_start);
+	memset(fas, 0, DPAA2_FAS_SIZE);
+
+	swa = (struct dpaa2_eth_swa *)buffer_start;
+	/* fill in necessary fields here */
+	swa->type = DPAA2_ETH_SWA_XDP;
+	swa->xdp.dma_size = xdp->data_end - buffer_start;
+
+	addr = dma_map_single(dev, buffer_start,
+			      xdp->data_end - buffer_start,
+			      DMA_BIDIRECTIONAL);
+	if (unlikely(dma_mapping_error(dev, addr))) {
+		percpu_stats->tx_dropped++;
+		return -ENOMEM;
+	}
+
+	dpaa2_fd_set_addr(&fd, addr);
+	dpaa2_fd_set_offset(&fd, xdp->data - buffer_start);
+	dpaa2_fd_set_len(&fd, xdp->data_end - xdp->data);
+	dpaa2_fd_set_format(&fd, dpaa2_fd_single);
+	dpaa2_fd_set_ctrl(&fd, DPAA2_FD_CTRL_ASAL | DPAA2_FD_CTRL_PTA |
+			  DPAA2_FD_CTRL_PTV1);
+
+	fq = &priv->fq[smp_processor_id()];
+	for (i = 0; i < DPAA2_ETH_ENQUEUE_RETRIES; i++) {
+		err = dpaa2_io_service_enqueue_qd(NULL, priv->tx_qdid, 0,
+						  fq->tx_qdbin, &fd);
+		if (err != -EBUSY)
+			break;
+	}
+	percpu_extras->tx_portal_busy += i;
+	if (unlikely(err < 0)) {
+		percpu_stats->tx_errors++;
+		/* let the Rx device handle the cleanup */
+		return err;
+	}
+
+	percpu_stats->tx_packets++;
+	percpu_stats->tx_bytes += dpaa2_fd_get_len(&fd);
+
+	return 0;
+}
+
+static void dpaa2_eth_xdp_flush(struct net_device *net_dev)
+{
+	/* We don't have hardware support for Tx batching,
+	 * so we do the actual frame enqueue in ndo_xdp_xmit
+	 */
+}
+
 static const struct net_device_ops dpaa2_eth_ops = {
 	.ndo_open = dpaa2_eth_open,
 	.ndo_start_xmit = dpaa2_eth_tx,
@@ -1689,6 +1816,8 @@ static const struct net_device_ops dpaa2_eth_ops = {
 	.ndo_set_features = dpaa2_eth_set_features,
 	.ndo_do_ioctl = dpaa2_eth_ioctl,
 	.ndo_xdp = dpaa2_eth_xdp,
+	.ndo_xdp_xmit = dpaa2_eth_xdp_xmit,
+	.ndo_xdp_flush = dpaa2_eth_xdp_flush,
 };
 
 static void cdan_cb(struct dpaa2_io_notification_ctx *ctx)
