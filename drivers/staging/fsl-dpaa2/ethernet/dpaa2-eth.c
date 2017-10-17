@@ -618,10 +618,11 @@ static int build_sg_fd(struct dpaa2_eth_priv *priv,
 	 * all of them on Tx Conf.
 	 */
 	swa = (struct dpaa2_eth_swa *)sgt_buf;
-	swa->skb = skb;
-	swa->scl = scl;
-	swa->num_sg = num_sg;
-	swa->sgt_size = sgt_buf_size;
+	swa->type = DPAA2_ETH_SWA_SG;
+	swa->sg.skb = skb;
+	swa->sg.scl = scl;
+	swa->sg.num_sg = num_sg;
+	swa->sg.num_dma_bufs = num_dma_bufs;
 
 	/* Separately map the SGT buffer */
 	addr = dma_map_single(dev, sgt_buf, sgt_buf_size, DMA_BIDIRECTIONAL);
@@ -656,7 +657,7 @@ static int build_single_fd(struct dpaa2_eth_priv *priv,
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	u8 *buffer_start, *aligned_start;
-	struct sk_buff **skbh;
+	struct dpaa2_eth_swa *swa;
 	dma_addr_t addr;
 
 	buffer_start = skb->data - dpaa2_eth_needed_headroom(priv, skb);
@@ -673,8 +674,9 @@ static int build_single_fd(struct dpaa2_eth_priv *priv,
 	 * (in the private data area) such that we can release it
 	 * on Tx confirm
 	 */
-	skbh = (struct sk_buff **)buffer_start;
-	*skbh = skb;
+	swa = (struct dpaa2_eth_swa *)buffer_start;
+	swa->type = DPAA2_ETH_SWA_SINGLE;
+	swa->single.skb = skb;
 
 	addr = dma_map_single(dev, buffer_start,
 			      skb_tail_pointer(skb) - buffer_start,
@@ -708,17 +710,19 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	dma_addr_t fd_addr;
-	struct sk_buff **skbh, *skb;
+	struct sk_buff *skb;
 	unsigned char *buffer_start;
 	struct dpaa2_eth_swa *swa;
 	u8 fd_format = dpaa2_fd_get_format(fd);
 
 	fd_addr = dpaa2_fd_get_addr(fd);
-	skbh = dpaa2_iova_to_virt(priv->iommu_domain, fd_addr);
+	buffer_start = dpaa2_iova_to_virt(priv->iommu_domain, fd_addr);
+	fas = dpaa2_get_fas(buffer_start);
+ 	prefetch(fas);
+	swa = (struct dpaa2_eth_swa *)buffer_start;
 
 	if (fd_format == dpaa2_fd_single) {
-		skb = *skbh;
-		buffer_start = (unsigned char *)skbh;
+		skb = swa->single.skb;
 		/* Accessing the skb buffer is safe before dma unmap, because
 		 * we didn't map the actual skb shell.
 		 */
@@ -726,8 +730,10 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 				 skb_tail_pointer(skb) - buffer_start,
 				 DMA_BIDIRECTIONAL);
 	} else if (fd_format == dpaa2_fd_sg) {
-		swa = (struct dpaa2_eth_swa *)skbh;
-		skb = swa->skb;
+		skb = swa->sg.skb;
+		scl = swa->sg.scl;
+		num_sg = swa->sg.num_sg;
+		num_dma_bufs = swa->sg.num_dma_bufs;
 
 		/* Unmap the scatterlist */
 		dma_unmap_sg(dev, swa->scl, swa->num_sg, DMA_BIDIRECTIONAL);
@@ -749,14 +755,15 @@ static void free_tx_fd(struct dpaa2_eth_priv *priv,
 
 		memset(&shhwtstamps, 0, sizeof(shhwtstamps));
 
-		ns = DPAA2_PTP_CLK_PERIOD_NS * le64_to_cpup(ts);
+		ns = dpaa2_get_ts(buffer_start);
+ 		*ns = DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS * le64_to_cpup(ns);
 		shhwtstamps.hwtstamp = ns_to_ktime(ns);
 		skb_tstamp_tx(skb, &shhwtstamps);
 	}
 
 	/* Free SGT buffer allocated on tx */
 	if (fd_format != dpaa2_fd_single)
-		skb_free_frag(skbh);
+		kfree(buffer_start);
 
 	/* Move on with skb release */
 	dev_kfree_skb(skb);
