@@ -167,6 +167,18 @@
 		};
 	};
 
+	kim {
+		compatible = "kim";
+		nshutdown_gpio = <117>; /* Bank3, pin21 */
+		dev_name = "/dev/ttyS1";
+		flow_cntrl = <1>;
+		baud_rate = <3000000>;
+	};
+
+	btwilink {
+		compatible = "btwilink";
+	};
+
 	panel {
 		compatible = "ti,tilcdc,panel";
 		pinctrl-names = "default", "sleep";
@@ -303,6 +315,24 @@
 		pinctrl-single,pins = <
 			AM33XX_IOPAD(0x970, PIN_INPUT_PULLUP | MUX_MODE0)	/* uart0_rxd.uart0_rxd */
 			AM33XX_IOPAD(0x974, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* uart0_txd.uart0_txd */
+		>;
+	};
+
+	uart1_pins_default: pinmux_uart1_pins_default {
+		pinctrl-single,pins = <
+			0x178 (PIN_OUTPUT | MUX_MODE0)	/* uart1_ctsn.uart1_ctsn */
+			0x17C (PIN_INPUT | MUX_MODE0)	/* uart1_rtsn.uart1_rtsn */
+			0x180 (PIN_INPUT_PULLUP | MUX_MODE0)	/* uart1_rxd.uart1_rxd */
+			0x184 (PIN_OUTPUT_PULLDOWN | MUX_MODE0) /* uart1_txd.uart1_txd */
+		>;
+	};
+
+	uart1_pins_sleep: pinmux_uart1_pins_sleep {
+		pinctrl-single,pins = <
+			0x178 (PIN_INPUT_PULLDOWN | MUX_MODE7)
+			0x17C (PIN_INPUT_PULLDOWN | MUX_MODE7)
+			0x180 (PIN_INPUT_PULLDOWN | MUX_MODE7)
+			0x184 (PIN_INPUT_PULLDOWN | MUX_MODE7)
 		>;
 	};
 
@@ -452,6 +482,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_pins>;
 
+	status = "okay";
+};
+
+&uart1 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&uart1_pins_default>;
+	pinctrl-1 = <&uart1_pins_sleep>;
 	status = "okay";
 };
 
