@@ -52,6 +52,7 @@
 #include <linux/spinlock.h>
 
 #include <linux/amba/bus.h>
+#include "../staging/fsl-mc/include/mc.h"
 
 #include "io-pgtable.h"
 #include "arm-smmu-regs.h"
@@ -1465,6 +1466,8 @@ static struct iommu_group *arm_smmu_device_group(struct device *dev)
 
 	if (dev_is_pci(dev))
 		group = pci_device_group(dev);
+	else if (dev_is_fsl_mc(dev))
+		group = fsl_mc_device_group(dev);
 	else
 		group = generic_device_group(dev);
 
@@ -2042,6 +2045,10 @@ static void arm_smmu_bus_init(void)
 		pci_request_acs();
 		bus_set_iommu(&pci_bus_type, &arm_smmu_ops);
 	}
+#endif
+#ifdef CONFIG_FSL_MC_BUS
+	if (!iommu_present(&fsl_mc_bus_type))
+		bus_set_iommu(&fsl_mc_bus_type, &arm_smmu_ops);
 #endif
 }
 
