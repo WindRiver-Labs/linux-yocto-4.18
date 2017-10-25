@@ -22,6 +22,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/ahci_platform.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/mfd/syscon.h>
@@ -780,7 +782,8 @@ static void ahci_imx_error_handler(struct ata_port *ap)
 
 	ahci_error_handler(ap);
 
-	if (!(imxpriv->first_time) || ahci_imx_hotplug)
+	if (!(imxpriv->first_time) || ahci_imx_hotplug
+			|| (imxpriv->type == AHCI_IMX8QM))
 		return;
 
 	imxpriv->first_time = false;
