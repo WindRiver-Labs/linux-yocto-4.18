@@ -1435,3 +1435,8 @@
 
 
 
+/* enable CN47: SD on SDHI3 */
+#include "ulcb-kf-sd3.dtsi"
+
+
+
