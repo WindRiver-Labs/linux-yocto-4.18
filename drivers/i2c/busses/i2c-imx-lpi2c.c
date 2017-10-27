@@ -601,42 +601,26 @@ static int lpi2c_imx_probe(struct platform_device *pdev)
 	i2c_set_adapdata(&lpi2c_imx->adapter, lpi2c_imx);
 	platform_set_drvdata(pdev, lpi2c_imx);
 
-	ret = clk_prepare_enable(lpi2c_imx->clk_per);
-	if (ret) {
-		dev_err(&pdev->dev, "clk prepare enable failed %d\n", ret);
-		return ret;
-	}
-
-	ret = clk_prepare(lpi2c_imx->clk_ipg);
-	if (ret) {
-		clk_disable_unprepare(lpi2c_imx->clk_per);
-		dev_err(&pdev->dev, "clk prepare failed %d\n", ret);
-		return ret;
-	}
-
 	pm_runtime_set_autosuspend_delay(&pdev->dev, I2C_PM_TIMEOUT);
 	pm_runtime_use_autosuspend(&pdev->dev);
-	pm_runtime_get_noresume(&pdev->dev);
-	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	pm_runtime_get_sync(&pdev->dev);
 	temp = readl(lpi2c_imx->base + LPI2C_PARAM);
 	lpi2c_imx->txfifosize = 1 << (temp & 0x0f);
 	lpi2c_imx->rxfifosize = 1 << ((temp >> 8) & 0x0f);
 
+	pm_runtime_put(&pdev->dev);
+
 	ret = i2c_add_adapter(&lpi2c_imx->adapter);
 	if (ret)
 		goto rpm_disable;
-
-	pm_runtime_mark_last_busy(&pdev->dev);
-	pm_runtime_put_autosuspend(&pdev->dev);
 
 	dev_info(&lpi2c_imx->adapter.dev, "LPI2C adapter registered\n");
 
 	return 0;
 
 rpm_disable:
-	pm_runtime_put(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_dont_use_autosuspend(&pdev->dev);
 
@@ -663,7 +647,7 @@ static int lpi2c_runtime_suspend(struct device *dev)
 	devm_free_irq(dev, lpi2c_imx->irq, lpi2c_imx);
 	clk_disable_unprepare(lpi2c_imx->clk_ipg);
 	clk_disable_unprepare(lpi2c_imx->clk_per);
-	pinctrl_pm_select_sleep_state(dev);
+	pinctrl_pm_select_idle_state(dev);
 
 	return 0;
 }
@@ -686,19 +670,38 @@ static int lpi2c_runtime_resume(struct device *dev)
 		dev_err(dev, "can't enable I2C ipg clock, ret=%d\n", ret);
 	}
 
-	ret = devm_request_irq(dev, lpi2c_imx->irq, lpi2c_imx_isr, 0,
-                               dev_name(dev), lpi2c_imx);
+	ret = devm_request_irq(dev, lpi2c_imx->irq, lpi2c_imx_isr,
+			       IRQF_NO_SUSPEND,
+			       dev_name(dev), lpi2c_imx);
 	if (ret) {
 		dev_err(dev, "can't claim irq %d\n", lpi2c_imx->irq);
 		return ret;
 	}
 
+	return ret;
+}
+
+static int lpi2c_suspend_noirq(struct device *dev)
+{
+	int ret;
+
+	ret = pm_runtime_force_suspend(dev);
+	if (ret)
+		return ret;
+
+	pinctrl_pm_select_sleep_state(dev);
+
 	return 0;
 }
 
+static int lpi2c_resume_noirq(struct device *dev)
+{
+	return pm_runtime_force_resume(dev);
+}
+
 static const struct dev_pm_ops lpi2c_pm_ops = {
-	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				      pm_runtime_force_resume)
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(lpi2c_suspend_noirq,
+				     lpi2c_resume_noirq)
 	SET_RUNTIME_PM_OPS(lpi2c_runtime_suspend,
 			   lpi2c_runtime_resume, NULL)
 };
