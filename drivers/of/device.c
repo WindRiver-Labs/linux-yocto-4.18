@@ -14,6 +14,7 @@
 
 #include <asm/errno.h>
 #include "of_private.h"
+#include "../staging/fsl-mc/include/mc.h"
 
 /**
  * of_match_device - Tell if a struct device matches an of_device_id list
@@ -152,7 +153,10 @@ int of_dma_configure(struct device *dev, struct device_node *np, bool force_dma)
 	dev->coherent_dma_mask &= mask;
 	*dev->dma_mask &= mask;
 
-	coherent = of_dma_is_coherent(np);
+	if (dev_is_fsl_mc(dev))
+		coherent = fsl_mc_is_dev_coherent(dev);
+	else
+		coherent = of_dma_is_coherent(np);
 	dev_dbg(dev, "device is%sdma coherent\n",
 		coherent ? " " : " not ");
 
