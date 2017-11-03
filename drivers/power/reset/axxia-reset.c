@@ -54,7 +54,7 @@ initiate_retention_reset(void)
 		return;
 
 	/* set retention reset bit in pscratch */
-	regmap_write(syscon, SC_PSCRATCH, 1);
+	regmap_update_bits(syscon, SC_PSCRATCH, 1, 1);
 
 	/* trap into secure monitor to do the reset */
 #ifdef CONFIG_POWER_RESET_AXXIA_DDR_RETENTION
