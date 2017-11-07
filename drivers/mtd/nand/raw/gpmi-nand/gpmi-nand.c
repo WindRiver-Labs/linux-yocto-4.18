@@ -28,6 +28,7 @@
 #include <linux/of_device.h>
 #include <linux/busfreq-imx.h>
 #include <linux/pm_runtime.h>
+#include <linux/pinctrl/consumer.h>
 #include "gpmi-nand.h"
 #include "bch-regs.h"
 
@@ -802,7 +803,7 @@ static int acquire_dma_channels(struct gpmi_nand_data *this)
 	struct dma_chan *dma_chan;
 	struct device_node *np = pdev->dev.of_node;
 
-	of_dma_configure(&pdev->dev, np);
+	of_dma_configure(&pdev->dev, np, true);
 
 	/* request dma channel */
 	dma_chan = dma_request_slave_channel(&pdev->dev, "rx-tx");
@@ -873,10 +874,6 @@ static int acquire_resources(struct gpmi_nand_data *this)
 		goto exit_regs;
 
 	ret = acquire_bch_irq(this, bch_irq);
-	if (ret)
-		goto exit_regs;
-
-	ret = acquire_dma_channels(this);
 	if (ret)
 		goto exit_regs;
 
@@ -2357,11 +2354,12 @@ static int gpmi_nand_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int gpmi_pm_suspend(struct device *dev)
 {
-	struct gpmi_nand_data *this = dev_get_drvdata(dev);
+	int ret;
 
-	release_dma_channels(this);
 	pinctrl_pm_select_sleep_state(dev);
-	return 0;
+	ret = pm_runtime_force_suspend(dev);
+
+	return ret;
 }
 
 static int gpmi_pm_resume(struct device *dev)
@@ -2369,11 +2367,14 @@ static int gpmi_pm_resume(struct device *dev)
 	struct gpmi_nand_data *this = dev_get_drvdata(dev);
 	int ret;
 
-	pinctrl_pm_select_default_state(dev);
-
-	ret = acquire_dma_channels(this);
-	if (ret < 0)
+	/* enable clock, acquire dma */
+	ret = pm_runtime_force_resume(dev);
+	if (ret) {
+		dev_err(this->dev, "Error in resume: %d\n", ret);
 		return ret;
+	}
+
+	pinctrl_pm_select_default_state(dev);
 
 	/* re-init the GPMI registers */
 	ret = gpmi_init(this);
@@ -2402,6 +2403,8 @@ int gpmi_runtime_suspend(struct device *dev)
 
 	gpmi_disable_clk(this);
 	release_bus_freq(BUS_FREQ_HIGH);
+	release_dma_channels(this);
+
 	return 0;
 }
 
@@ -2415,6 +2418,11 @@ int gpmi_runtime_resume(struct device *dev)
 		return ret;
 
 	request_bus_freq(BUS_FREQ_HIGH);
+
+	ret = acquire_dma_channels(this);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
