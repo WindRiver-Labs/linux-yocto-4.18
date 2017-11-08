@@ -102,10 +102,6 @@
 #define DPAA2_ETH_SKB_SIZE \
 	(DPAA2_ETH_RX_BUF_SIZE + SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
 
-/* Hardware annotation area in RX/TX buffers */
-#define DPAA2_ETH_RX_HWA_SIZE		64
-#define DPAA2_ETH_TX_HWA_SIZE		128
-
 /* PTP nominal frequency 1GHz */
 #define DPAA2_PTP_CLK_PERIOD_NS		1
 
@@ -123,7 +119,6 @@
 
 /* Hardware annotation area in RX / TX  buffers */
 #define DPAA2_ETH_RX_HWA_SIZE		64
-#define DPAA2_ETH_TX_HWA_SIZE		128
 
 /* We store different information in the software annotation area of a Tx frame
  * based on what type of frame it is

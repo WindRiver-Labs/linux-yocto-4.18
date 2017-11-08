@@ -861,10 +861,10 @@ static netdev_tx_t dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	percpu_extras = this_cpu_ptr(priv->percpu_extras);
 
 	needed_headroom = dpaa2_eth_needed_headroom(priv, skb);
-	if (skb_headroom(skb) < needed_headroom) {
+	if (unlikely(skb_headroom(skb) < dpaa2_eth_needed_headroom(priv))) {
 		struct sk_buff *ns;
 
-		ns = skb_realloc_headroom(skb, needed_headroom);
+		ns = skb_realloc_headroom(skb, dpaa2_eth_needed_headroom(priv));
 		if (unlikely(!ns)) {
 			percpu_stats->tx_dropped++;
 			goto err_alloc_headroom;
@@ -2340,6 +2340,37 @@ static int set_buffer_layout(struct dpaa2_eth_priv *priv)
 	buf_layout.private_data_size = 0;
 	buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 			     DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+			     DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
+			     DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
+			     DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
+	err = dpni_set_buffer_layout(priv->mc_io, 0, priv->mc_token,
+				     DPNI_QUEUE_RX, &buf_layout);
+	if (err) {
+		dev_err(dev, "dpni_set_buffer_layout(RX) failed\n");
+		return err;
+	}
+
+	/* Now that we've set our tx buffer layout, retrieve the minimum
+	 * required tx data offset.
+	 */
+	err = dpni_get_tx_data_offset(priv->mc_io, 0, priv->mc_token,
+				      &priv->tx_data_offset);
+	if (err) {
+		dev_err(dev, "dpni_get_tx_data_offset() failed\n");
+		return err;
+	}
+
+	if ((priv->tx_data_offset % 64) != 0)
+		dev_warn(dev, "Tx data offset (%d) not a multiple of 64B\n",
+			 priv->tx_data_offset);
+
+	/* rx buffer */
+	buf_layout.pass_parser_result = true;
+	buf_layout.data_align = priv->rx_buf_align;
+	buf_layout.data_head_room = dpaa2_eth_rx_head_room(priv);
+	buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
+			     DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+			     DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
 			     DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
 			     DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
 			     DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
