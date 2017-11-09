@@ -39,7 +39,13 @@
 #define MPR_HDR2	"Lp.    dram0      dram1"
 #define MPR_HDR4	"      dram2      dram3"
 
-#define INTEL_EDAC_MOD_STR	"axxia56xx_edac"
+#if defined(CONFIG_EDAC_AXXIA_CMEM_5600)
+#define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_CMEM_6700)
+#define INTEL_EDAC_MOD_STR     "axxia67xx_edac"
+#endif
 
 #define AXI2_SER3_PHY_ADDR	0x008002c00000ULL
 #define AXI2_SER3_PHY_SIZE	PAGE_SIZE
@@ -286,6 +292,31 @@ struct __packed cm_56xx_denali_ctl_34
 #endif
 };
 
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
+
+#define CM_56XX_DENALI_CTL_62 0xf8
+
+struct __packed cm_56xx_denali_ctl_62
+{
+#ifdef CPU_BIG_ENDIAN
+	unsigned	reserved0				: 2;
+	unsigned	xor_check_bits				: 14;
+	unsigned	reserved1				: 7;
+	unsigned	fwc					: 1;
+	unsigned	reserved2				: 7;
+	unsigned	ecc_en					: 1;
+#else	/* Little Endian */
+	unsigned	ecc_en					: 1;
+	unsigned	reserved2				: 7;
+	unsigned	fwc					: 1;
+	unsigned	reserved1				: 7;
+	unsigned	xor_check_bits				: 14;
+	unsigned	reserved0				: 2;
+#endif
+};
+
+#endif
+
 struct __packed cm_56xx_denali_ctl_74
 {
 #ifdef CPU_BIG_ENDIAN
@@ -455,7 +486,7 @@ struct intel_edac_dev_info {
 	char *ctl_name;
 	char *blk_name;
 	char *proc_name;
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
 	struct proc_dir_entry *dir_entry;
 #endif
 	struct mutex state_machine_lock;
@@ -475,7 +506,48 @@ struct intel_edac_dev_info {
 	void (*check)(struct edac_device_ctl_info *edac_dev);
 };
 
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
+static int setup_fault_injection(struct intel_edac_dev_info *dev_info,
+					int fault, int enable)
+{
+	struct cm_56xx_denali_ctl_62 denali_ctl_62;
+
+	if (ncr_read(dev_info->cm_region,
+		CM_56XX_DENALI_CTL_62,
+		4, &denali_ctl_62))
+		goto error_read;
+
+	denali_ctl_62.xor_check_bits = fault;
+
+	if (ncr_write(dev_info->cm_region,
+		CM_56XX_DENALI_CTL_62,
+		4, (u32 *) &denali_ctl_62))
+		goto error_write;
+
+	if (ncr_read(dev_info->cm_region,
+		CM_56XX_DENALI_CTL_62,
+		4, &denali_ctl_62))
+		goto error_read;
+
+	denali_ctl_62.fwc = (enable > 0 ? 0x1 : 0x0);
+
+	if (ncr_write(dev_info->cm_region,
+		CM_56XX_DENALI_CTL_62,
+		4, (u32 *) &denali_ctl_62))
+		goto error_write;
+	return 0;
+
+error_read:
+	printk_ratelimited("%s: Error reading denali_ctl_62\n",
+		       dev_name(&dev_info->pdev->dev));
+	return 1;
+
+error_write:
+	printk_ratelimited("%s: Error writing denali_ctl_62\n",
+		       dev_name(&dev_info->pdev->dev));
+	return 1;
+}
+
 static ssize_t mpr1_dump_show(struct edac_device_ctl_info
 				 *edac_dev, char *data)
 {
@@ -832,7 +904,7 @@ static void intel_cm_alerts_error_check(struct edac_device_ctl_info *edac_dev)
 	struct event_counter (*alerts)[MAX_DQ][MPR_ERRORS] =
 			dev_info->data->alerts;
 	struct cm_56xx_denali_ctl_34 denali_ctl_34;
-	int i, j, k, l, ret;
+	int i, j, k, ret;
 	u32 counter;
 
 start:
@@ -894,10 +966,10 @@ start:
 				 */
 				counter = atomic_xchg(&alerts[i][j][k].counter,
 							0);
-				for (l = 0; l < counter; ++l)
-					edac_device_handle_ce(edac_dev, 0,
+				if (counter)
+					edac_device_handle_multi_ce(edac_dev, 0,
 						alerts[i][j][k].edac_block_idx,
-						edac_dev->ctl_name);
+						counter, edac_dev->ctl_name);
 			}
 		}
 	}
@@ -927,7 +999,7 @@ static void intel_cm_events_error_check(struct edac_device_ctl_info *edac_dev)
 	struct intel_edac_dev_info *dev_info =
 			(struct intel_edac_dev_info *) edac_dev->pvt_info;
 	struct event_counter *events = dev_info->data->events;
-	int i, j;
+	int i;
 	u32 counter;
 
 	while (1) {
@@ -944,7 +1016,7 @@ static void intel_cm_events_error_check(struct edac_device_ctl_info *edac_dev)
 		mutex_lock(&dev_info->data->edac_sysfs_data_lock);
 		for (i = 0; i < NR_EVENTS; ++i) {
 			counter = atomic_xchg(&events[i].counter, 0);
-			for (j = 0; j < counter; ++j) {
+			if (counter)
 				switch (i) {
 				/*
 				 * TODO - How can one determine event type?
@@ -954,22 +1026,23 @@ static void intel_cm_events_error_check(struct edac_device_ctl_info *edac_dev)
 				case EV_MULT_ILLEGAL:
 				case EV_UNCORR_ECC:
 				case EV_MULT_UNCORR_ECC:
-					edac_device_handle_ue(edac_dev, 0, i,
-							edac_dev->ctl_name);
+					edac_device_handle_multi_ue(edac_dev,
+						0, i, counter,
+						edac_dev->ctl_name);
 					break;
 				case EV_CORR_ECC:
 				case EV_MULT_CORR_ECC:
 				case EV_PORT_ERROR:
 				case EV_WRAP_ERROR:
 				case EV_PARITY_ERROR:
-					edac_device_handle_ce(edac_dev, 0, i,
-							edac_dev->ctl_name);
+					edac_device_handle_multi_ce(edac_dev,
+						0, i, counter,
+						edac_dev->ctl_name);
 					break;
 				default:
 					printk_ratelimited(
 						"ERROR EVENT MISSING.\n");
 				}
-			}
 		}
 		mutex_unlock(&dev_info->data->edac_sysfs_data_lock);
 	}
@@ -1209,7 +1282,7 @@ static int initialize(struct intel_edac_dev_info *dev_info)
 	dev_info->edac_dev->dev_name = dev_name(&dev_info->pdev->dev);
 	dev_info->edac_dev->edac_check = NULL;
 
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
 	if (dev_info->is_ddr4)
 		axxia_mc_sysfs_attributes(dev_info->edac_dev);
 #endif
@@ -1311,7 +1384,7 @@ static int enable_driver_irq(struct intel_edac_dev_info *dev_info)
 }
 
 
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
 static ssize_t
 axxia_cmem_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
@@ -1323,7 +1396,7 @@ axxia_cmem_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 	if (*offset > 0)
 		return 0;
 
-	buf = kmalloc(PAGE_SIZE, __GFP_WAIT);
+	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (buf == NULL)
 		goto no_mem_buffer;
 
@@ -1335,7 +1408,15 @@ axxia_cmem_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 	 */
 	len = snprintf(buf, PAGE_SIZE-1, "Node: 0x%x\n"
 		"Command available:\n"
-		"          dump - triggers mpr_page1 dump.\n",
+		"          dump - triggers mpr_page1 dump.\n"
+		"          cerror - enable correctable error injection.\n"
+		"          uerror - enable uncorrectable error injection.\n"
+		"          disable - disable errors injection\n"
+		" When error is enabled run a sequence:\n"
+		"  ncpWrite -w 32 0x%x.0x0.0x4 0x11223344\n"
+		"  ncpRead 0x%x.0x0.0x4\n",
+		(int) dev_info->cm_region >> 16,
+		(int) dev_info->cm_region >> 16,
 		(int) dev_info->cm_region >> 16);
 
 	mutex_unlock(&dev_info->state_machine_lock);
@@ -1361,7 +1442,7 @@ axxia_cmem_write(struct file *file, const char __user *buffer,
 	struct intel_edac_dev_info *dev_info =
 		(struct intel_edac_dev_info *) file->private_data;
 
-	buf = kmalloc(count + 1, __GFP_WAIT);
+	buf = kmalloc(count + 1, GFP_KERNEL);
 	if (buf == NULL)
 		goto no_mem_buffer;
 
@@ -1375,6 +1456,18 @@ axxia_cmem_write(struct file *file, const char __user *buffer,
 	if (!strncmp(buf, "dump", 4)) {
 		atomic_inc(&dev_info->data->dump_in_progress);
 		wake_up(&dev_info->data->dump_wq);
+	}
+	if (!strncmp(buf, "cerror", 6)) {
+		/* 0x75 0x75 */
+		setup_fault_injection(dev_info, 0x3af5, 1);
+	}
+	if (!strncmp(buf, "uerror", 6)) {
+		/* 0x3 0x3 */
+		setup_fault_injection(dev_info, 0x183, 1);
+	}
+	if (!strncmp(buf, "disable", 7)) {
+		/* disable injection */
+		setup_fault_injection(dev_info, 0x0, 0);
 	}
 
 	kfree(buf);
@@ -1548,7 +1641,7 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 			dev_name(&dev_info->pdev->dev));
 	}
 
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
 	/* in this case create procfs file to be used by rte */
 	dev_info->proc_name =
 		devm_kzalloc(&pdev->dev, 32*sizeof(char),
@@ -1599,7 +1692,7 @@ static int intel_edac_mc_remove(struct platform_device *pdev)
 		(struct intel_edac_dev_info *) &pdev->dev;
 
 	if (dev_info) {
-#ifdef CONFIG_DEBUG_CMEM
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_CMEM
 		remove_procfs_entry(dev_info);
 #endif
 

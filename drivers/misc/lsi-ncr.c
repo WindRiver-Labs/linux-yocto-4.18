@@ -172,8 +172,8 @@ ncr_register_write(const unsigned int value, unsigned int *address)
 
 	if (0 == nca_big_endian)
 		__raw_writel(value, address);
-
-	__raw_writel(cpu_to_be32(value), address);
+	else
+		__raw_writel(cpu_to_be32(value), address);
 }
 
 /*

@@ -9,6 +9,8 @@
  * GNU General Public License.
  */
 
+#define CREATE_TRACE_POINTS
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -22,12 +24,20 @@
 #include <linux/reboot.h>
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
+#include <trace/events/edac.h>
 #include "edac_core.h"
 #include "edac_module.h"
 #include "axxia_l2_56xx.h"
 
 
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_5600)
 #define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_6700)
+#define INTEL_EDAC_MOD_STR     "axxia67xx_edac"
+#endif
+
 #define CORES_PER_CLUSTER 4
 
 #define SYSCON_PERSIST_SCRATCH 0xdc
@@ -50,30 +60,14 @@ void log_cpumerrsr(void *edac)
 	struct edac_device_ctl_info *edac_dev = edac;
 	u64 val, clear_val;
 	u32 count0, count1;
-	int i;
 	struct intel_edac_dev_info *dev_info;
 
 	dev_info = edac_dev->pvt_info;
 
 	/* Read S3_1_c15_c2_2 for CPUMERRSR_EL1 counts */
 	val = read_cpumerrsr();
-	if (val & 0x80000000) {
-		int cpu = get_cpu();
+	trace_edac_l1cache_syndrome(val);
 
-		count0 = ((val) & 0x000000ff00000000) >> 31;
-		count1 = ((val) & 0x0000ff0000000000) >> 39;
-
-		/* increment correctable error counts */
-		for (i = 0; i < count0+count1; i++) {
-			edac_device_handle_ce(edac_dev, 0,
-				cpu, edac_dev->ctl_name);
-		}
-
-		/* Clear the valid bit */
-		clear_val = 0x80000000;
-		write_cpumerrsr(clear_val);
-		put_cpu();
-	}
 	if (val & 0x8000000000000000) {
 		regmap_update_bits(dev_info->syscon,
 				   SYSCON_PERSIST_SCRATCH,
@@ -81,6 +75,25 @@ void log_cpumerrsr(void *edac)
 				   CPU_PERSIST_SCRATCH_BIT);
 		pr_emerg("CPU uncorrectable error\n");
 		machine_restart(NULL);
+	}
+
+	if (val & 0x80000000) {
+		int cpu = get_cpu();
+
+		count0 = ((val) & 0x000000ff00000000) >> 32;
+		count1 = ((val) & 0x0000ff0000000000) >> 40;
+
+		/* increment correctable error counts */
+		trace_edac_l1cache_counter(count0 + count1);
+
+		if (count0 || count1)
+			edac_device_handle_multi_ce(edac_dev, 0, cpu,
+				count0 + count1, edac_dev->ctl_name);
+
+		/* Clear the valid bit */
+		clear_val = 0x80000000;
+		write_cpumerrsr(clear_val);
+		put_cpu();
 	}
 }
 
@@ -101,30 +114,12 @@ void log_l2merrsr(void *edac)
 	struct edac_device_ctl_info *edac_dev = edac;
 	u64 val, clear_val;
 	u32 count0, count1;
-	int i;
 	struct intel_edac_dev_info *dev_info;
 
 	dev_info = edac_dev->pvt_info;
 
 	val = read_l2merrsr();
-	if (val & 0x80000000) {
-		int cpu = get_cpu();
-
-		count0 = ((val) & 0x000000ff00000000) >> 31;
-		count1 = ((val) & 0x0000ff0000000000) >> 39;
-
-		/* increment correctable error counts */
-		for (i = 0; i < count0+count1; i++) {
-			edac_device_handle_ce(edac_dev, 0,
-				cpu/CORES_PER_CLUSTER,
-				edac_dev->ctl_name);
-		}
-
-		/* Clear the valid bit */
-		clear_val = 0x80000000;
-		write_l2merrsr(clear_val);
-		put_cpu();
-	}
+	trace_edac_l2cache_syndrome(val);
 	if (val & 0x8000000000000000) {
 		regmap_update_bits(dev_info->syscon,
 				   SYSCON_PERSIST_SCRATCH,
@@ -132,6 +127,24 @@ void log_l2merrsr(void *edac)
 				   L2_PERSIST_SCRATCH_BIT);
 		pr_emerg("L2 uncorrectable error\n");
 		machine_restart(NULL);
+	}
+	if (val & 0x80000000) {
+		int cpu = get_cpu();
+
+		count0 = ((val) & 0x000000ff00000000) >> 32;
+		count1 = ((val) & 0x0000ff0000000000) >> 40;
+
+		/* increment correctable error counts */
+		trace_edac_l2cache_counter(count0 + count1);
+		if (count0 || count1)
+			edac_device_handle_multi_ce(edac_dev, 0,
+				cpu/CORES_PER_CLUSTER,
+				count0 + count1, edac_dev->ctl_name);
+
+		/* Clear the valid bit */
+		clear_val = 0x80000000;
+		write_l2merrsr(clear_val);
+		put_cpu();
 	}
 }
 
@@ -262,9 +275,22 @@ static int intel_edac_l2_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id intel_edac_l2_match[] = {
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_5600)
+
 	{
 	.compatible = "intel,cortex-a57-l2-cache",
 	},
+
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_6700)
+
+	{
+	.compatible = "intel,cortex-a53-l2-cache",
+	},
+
+#endif
+
 	{},
 };
 
@@ -277,9 +303,21 @@ static struct platform_driver intel_edac_l2_driver = {
 	}
 };
 static const struct of_device_id intel_edac_cpu_match[] = {
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_5600)
+
 	{
 	.compatible = "intel,cortex-a57-cpu",
 	},
+
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_6700)
+
+	{
+	.compatible = "intel,cortex-a53-cpu",
+	},
+
+#endif
 	{},
 };
 
