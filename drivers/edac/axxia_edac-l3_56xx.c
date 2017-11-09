@@ -2,12 +2,14 @@
  * drivers/edac/axxia_edac-l3_56xx.c
  *
  * EDAC Driver for Intel's Axxia 5600 L3 (DICKENS)
+ * EDAC Driver for Intel's Axxia 6700 L3 (SHELLEY)
  *
  * Copyright (C) 2017 Intel Inc.
  *
  * This file may be distributed under the terms of the
  * GNU General Public License.
  */
+#define CREATE_TRACE_POINTS
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -24,10 +26,21 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <linux/arm-smccc.h>
+#include <trace/events/edacl3.h>
 #include "edac_core.h"
 #include "edac_module.h"
 
+#if defined(CONFIG_EDAC_AXXIA_L3_5600)
 #define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
+#define CCN_XP_NODES			11
+#define	CCN_HNI_NODES			1
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_L3_6700)
+#define INTEL_EDAC_MOD_STR     "axxia67xx_edac"
+#define CCN_XP_NODES			18
+#define	CCN_HNI_NODES			2
+#endif
 
 #define SYSCON_PERSIST_SCRATCH 0xdc
 #define L3_PERSIST_SCRATCH_BIT (0x1 << 4)
@@ -55,7 +68,6 @@
 
 #define CCN_HNI_NODE_BIT		8
 #define CCN_HNF_NODES			8
-#define CCN_XP_NODES			11
 #define CCN_DT_NODE_BASE_ADDR		(1 * CCN_REGION_SIZE)
 #define CCN_HNI_NODE_BASE_ADDR(i)	(0x80000 + (i) * CCN_REGION_SIZE)
 #define CCN_HNF_NODE_BASE_ADDR(i)	(0x200000 + (i) * CCN_REGION_SIZE)
@@ -151,7 +163,7 @@ struct intel_edac_dev_info {
 	int irq_used;
 	struct event_data data[CCN_HNF_NODES];
 	struct event_data data_xp[CCN_XP_NODES];
-	struct event_data data_hni;
+	struct event_data data_hni[CCN_HNI_NODES];
 	struct regmap *syscon;
 	void __iomem *dickens_L3;
 	struct edac_device_ctl_info *edac_dev;
@@ -198,7 +210,7 @@ static irqreturn_t ccn_irq_thread(int irq, void *device)
 	union dickens_hnf_err_syndrome_reg1 err_syndrome_reg1;
 	struct arm_smccc_res r;
 	unsigned int count = 0;
-	int i, j;
+	int i;
 
 	/* only HNF nodes are of our interest */
 	for (i = 0; i < CCN_HNF_NODES; ++i) {
@@ -222,16 +234,18 @@ static irqreturn_t ccn_irq_thread(int irq, void *device)
 				machine_restart(NULL);
 			}
 			count = err_syndrome_reg0.reg0.err_count;
-			for (j = 0; j < count; j++)
-				edac_device_handle_ce(edac_dev, 0,
+			if (count)
+				edac_device_handle_multi_ce(edac_dev, 0,
 					dev_info->data[i].idx,
-					edac_dev->ctl_name);
+					count, edac_dev->ctl_name);
 		}
 	}
 
 	/* Interrupt deasserted */
 	arm_smccc_smc(0xc4000027, CCN_MN_ERRINT_STATUS__INTREQ__DESSERT,
 			0, 0, 0, 0, 0, 0, &r);
+
+	trace_edacl3_smc_results(&r);
 
 	return IRQ_HANDLED;
 }
@@ -262,24 +276,37 @@ static irqreturn_t ccn_irq_handler(int irq, void *device)
 		err_or |= err_sig_val[i];
 	}
 
-	err_type_value[i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE);
-	err_type_value[i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x8);
-	err_type_value[i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x10);
-	err_type_value[i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x20);
+	trace_edacl3_sig_vals(err_sig_val[0], err_sig_val[1],
+				err_sig_val[2]);
+
+	i = 0;
+	err_type_value[i]   = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE);
+	err_type_value[++i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x8);
+	err_type_value[++i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x10);
+	err_type_value[++i] = readq(ccn_base + CCN_MN_ERROR_TYPE_VALUE + 0x20);
+
+	trace_edacl3_error_types(err_type_value[0], err_type_value[1],
+					err_type_value[2], err_type_value[3]);
 
 	/* check hni node */
-	if ((0x1 << CCN_HNI_NODE_BIT) & err_sig_val[0]) {
-		err_synd_reg0 = readq(ccn_base + CCN_HNI_NODE_BASE_ADDR(0) +
+	for (i = 0; i < CCN_HNI_NODES; ++i) {
+		if ((0x1 << (CCN_HNI_NODE_BIT + i)) & err_sig_val[0]) {
+			err_synd_reg0 = readq(ccn_base +
+					CCN_HNI_NODE_BASE_ADDR(i) +
 					CCN_NODE_ERR_SYND_REG0);
-		err_synd_reg1 = readq(ccn_base + CCN_HNI_NODE_BASE_ADDR(0) +
+			err_synd_reg1 = readq(ccn_base +
+					CCN_HNI_NODE_BASE_ADDR(i) +
 					CCN_NODE_ERR_SYND_REG1);
 
-		dev_info->data_hni.err_synd_reg0 = err_synd_reg0;
-		dev_info->data_hni.err_synd_reg1 = err_synd_reg1;
-		dev_info->data_hni.idx = 0;
+			trace_edacl3_syndromes(err_synd_reg0,
+							err_synd_reg1);
+			dev_info->data_hni[i].err_synd_reg0 = err_synd_reg0;
+			dev_info->data_hni[i].err_synd_reg1 = err_synd_reg1;
+			dev_info->data_hni[i].idx = 0;
 
-		clear_node_error(ccn_base + CCN_HNI_NODE_BASE_ADDR(0) +
-					CCN_NODE_ERR_SYND_CLR);
+			clear_node_error(ccn_base + CCN_HNI_NODE_BASE_ADDR(i) +
+						CCN_NODE_ERR_SYND_CLR);
+		}
 	}
 
 	/* go through all hnf nodes */
@@ -292,6 +319,9 @@ static irqreturn_t ccn_irq_handler(int irq, void *device)
 			err_synd_reg1 = readq(ccn_base +
 						CCN_HNF_NODE_BASE_ADDR(i) +
 						CCN_NODE_ERR_SYND_REG1);
+
+			trace_edacl3_syndromes(err_synd_reg0,
+							err_synd_reg1);
 
 			dev_info->data[i].err_synd_reg0 = err_synd_reg0;
 			dev_info->data[i].err_synd_reg1 = err_synd_reg1;
@@ -312,6 +342,9 @@ static irqreturn_t ccn_irq_handler(int irq, void *device)
 
 			dev_info->data_xp[i].err_synd_reg0 = err_synd_reg0;
 			dev_info->data_xp[i].err_synd_reg1 = 0;
+
+			trace_edacl3_syndromes(err_synd_reg0,
+						err_synd_reg1);
 
 			clear_node_error(ccn_base + CCN_XP_NODE_BASE_ADDR(i) +
 				CCN_NODE_ERR_SYND_CLR);
@@ -335,7 +368,7 @@ static void intel_l3_error_check(struct edac_device_ctl_info *edac_dev)
 	union dickens_hnf_err_syndrome_reg0 err_syndrome_reg0;
 	union dickens_hnf_err_syndrome_clr err_syndrome_clr;
 	unsigned int count = 0;
-	int i, instance;
+	int instance;
 	struct intel_edac_dev_info *dev_info;
 
 	err_syndrome_clr.value = 0x0;
@@ -351,6 +384,9 @@ static void intel_l3_error_check(struct edac_device_ctl_info *edac_dev)
 
 		err_syndrome_reg0.value =
 			readq(addr + CCN_NODE_ERR_SYND_REG0);
+
+		trace_edacl3_syndromes(err_syndrome_reg0.value,
+						(u64) 0);
 		/* First error valid */
 		if (err_syndrome_reg0.reg0.first_err_vld) {
 			if (err_syndrome_reg0.reg0.err_class & 0x3) {
@@ -363,9 +399,9 @@ static void intel_l3_error_check(struct edac_device_ctl_info *edac_dev)
 				machine_restart(NULL);
 			}
 			count = err_syndrome_reg0.reg0.err_count;
-			for (i = 0; i < count; i++)
-				edac_device_handle_ce(edac_dev, 0,
-					instance, edac_dev->ctl_name);
+			if (count)
+				edac_device_handle_multi_ce(edac_dev, 0,
+					instance, count, edac_dev->ctl_name);
 
 			/* clear the valid bit */
 			clear_node_error(addr + CCN_NODE_ERR_SYND_CLR);
@@ -413,7 +449,7 @@ static int intel_edac_l3_probe(struct platform_device *pdev)
 	dev_info->edac_dev =
 		edac_device_alloc_ctl_info(0, dev_info->ctl_name,
 					   1, dev_info->blk_name,
-					   8, 0, NULL, 0,
+					   CCN_HNI_NODES, 0, NULL, 0,
 					   dev_info->edac_idx);
 	if (!dev_info->edac_dev) {
 		pr_info("No memory for edac device\n");
@@ -478,9 +514,21 @@ static int intel_edac_l3_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id intel_edac_l3_match[] = {
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_5600)
+
 	{
 	.compatible = "intel,ccn504-l3-cache",
 	},
+
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_L2_CPU_6700)
+
+	{
+	.compatible = "intel,ccn512-l3-cache",
+	},
+
+#endif
 	{},
 };
 

@@ -136,7 +136,7 @@ struct edac_device_ctl_info *edac_device_alloc_ctl_info(
 	dev_ctl->log_ue = 1;
 
 	/* Name of this edac device */
-	snprintf(dev_ctl->name,sizeof(dev_ctl->name),"%s",edac_device_name);
+	snprintf(dev_ctl->name, sizeof(dev_ctl->name), "%s", edac_device_name);
 
 	edac_dbg(4, "edac_dev=%p next after end=%p\n",
 		 dev_ctl, pvt + sz_private);
@@ -597,6 +597,56 @@ void edac_device_handle_ce(struct edac_device_ctl_info *edac_dev,
 }
 EXPORT_SYMBOL_GPL(edac_device_handle_ce);
 
+/*
+ * edac_device_handle_multi_ce
+ *	perform a common output and handling of an 'edac_dev' CE multiple events
+ */
+void edac_device_handle_multi_ce(struct edac_device_ctl_info *edac_dev,
+			int inst_nr, int block_nr, int events, const char *msg)
+{
+	struct edac_device_instance *instance;
+	struct edac_device_block *block = NULL;
+
+	if ((inst_nr >= edac_dev->nr_instances) || (inst_nr < 0)) {
+		edac_device_printk(edac_dev, KERN_ERR,
+				"INTERNAL ERROR: 'instance' out of range "
+				"(%d >= %d)\n", inst_nr,
+				edac_dev->nr_instances);
+		return;
+	}
+
+	instance = edac_dev->instances + inst_nr;
+
+	if ((block_nr >= instance->nr_blocks) || (block_nr < 0)) {
+		edac_device_printk(edac_dev, KERN_ERR,
+				"INTERNAL ERROR: instance %d 'block' "
+				"out of range (%d >= %d)\n",
+				inst_nr, block_nr,
+				instance->nr_blocks);
+		return;
+	}
+
+	if (instance->nr_blocks > 0) {
+		block = instance->blocks + block_nr;
+		block->counters.ce_count += events;
+	}
+
+	/* Propagate the count up the 'totals' tree */
+	instance->counters.ce_count += events;
+	edac_dev->counters.ce_count += events;
+
+	if (edac_device_get_log_ce(edac_dev))
+		edac_device_printk(edac_dev, KERN_WARNING,
+			"CE: %s instance: %s block: %s events: %d '%s'\n",
+			edac_dev->ctl_name, instance->name,
+			block ? block->name : "N/A", events, msg);
+}
+EXPORT_SYMBOL_GPL(edac_device_handle_multi_ce);
+
+/*
+  * edac_device_handle_ue
+  *	perform a common output and handling of an 'edac_dev' UE event
+  */
 void edac_device_handle_ue(struct edac_device_ctl_info *edac_dev,
 			int inst_nr, int block_nr, const char *msg)
 {
@@ -643,3 +693,54 @@ void edac_device_handle_ue(struct edac_device_ctl_info *edac_dev,
 			block ? block->name : "N/A", msg);
 }
 EXPORT_SYMBOL_GPL(edac_device_handle_ue);
+
+/*
+ * edac_device_handle_multi_ue
+ *	perform a common output and handling of an 'edac_dev' UE event
+ */
+void edac_device_handle_multi_ue(struct edac_device_ctl_info *edac_dev,
+			int inst_nr, int block_nr, int events, const char *msg)
+{
+	struct edac_device_instance *instance;
+	struct edac_device_block *block = NULL;
+
+	if ((inst_nr >= edac_dev->nr_instances) || (inst_nr < 0)) {
+		edac_device_printk(edac_dev, KERN_ERR,
+				"INTERNAL ERROR: 'instance' out of range "
+				"(%d >= %d)\n", inst_nr,
+				edac_dev->nr_instances);
+		return;
+	}
+
+	instance = edac_dev->instances + inst_nr;
+
+	if ((block_nr >= instance->nr_blocks) || (block_nr < 0)) {
+		edac_device_printk(edac_dev, KERN_ERR,
+				"INTERNAL ERROR: instance %d 'block' "
+				"out of range (%d >= %d)\n",
+				inst_nr, block_nr,
+				instance->nr_blocks);
+		return;
+	}
+
+	if (instance->nr_blocks > 0) {
+		block = instance->blocks + block_nr;
+		block->counters.ue_count += events;
+	}
+
+	/* Propagate the count up the 'totals' tree */
+	instance->counters.ue_count += events;
+	edac_dev->counters.ue_count += events;
+
+	if (edac_device_get_log_ue(edac_dev))
+		edac_device_printk(edac_dev, KERN_EMERG,
+			"UE: %s instance: %s block: %s events: %d '%s'\n",
+			edac_dev->ctl_name, instance->name,
+			block ? block->name : "N/A", events, msg);
+
+	if (edac_device_get_panic_on_ue(edac_dev))
+		panic("EDAC %s: UE instance: %s block %s events: %d '%s'\n",
+			edac_dev->ctl_name, instance->name,
+			block ? block->name : "N/A", events, msg);
+}
+EXPORT_SYMBOL_GPL(edac_device_handle_multi_ue);

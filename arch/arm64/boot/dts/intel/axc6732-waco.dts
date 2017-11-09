@@ -251,10 +251,42 @@
 	status = "okay";
 };
 
+&edac_cpu {
+	status = "okay";
+};
+
+&edac_l2 {
+	status = "okay";
+};
+
+&edac_l3 {
+	status = "okay";
+};
+
 &mtc {
 	status = "okay";
 };
 
 &trng {
+	status = "okay";
+};
+
+&sm0 {
+	status = "okay";
+};
+
+&sm1 {
+	status = "okay";
+};
+
+&sm2 {
+	status = "okay";
+};
+
+&sm3 {
+	status = "okay";
+};
+
+&cm0 {
 	status = "okay";
 };

@@ -2,7 +2,8 @@ Axxia Error Detection & Correction [EDAC]
 The EDAC accesses a range of registers in the dickens l3 controller
 
 Required properties:
-- compatible : should contain "intel,ccn504-l3-cache"
+- compatible 	: should contain "intel,ccn504-l3-cache"
+		: should contain "intel,ccn512-l3-cache"
 - reg : should contain address of ccn first node; its range shall contain
 	all ccn nodes registers ( 0x1000000 ).
 - interrupts : if given driver uses interrupts, if not poll mechanism applies
@@ -12,6 +13,14 @@ Example:
 		compatible = "intel,ccn504-l3-cache";
 		reg = <0x80 0x00000000 0 0x1000000>;
 		interrupts = <0 256 4>;
+		syscon = <&syscon>;
+		status = "disabled";
+	};
+
+	edac_l3: edac_l3 {
+		compatible = "intel,ccn512-l3-cache";
+		reg = <0x40 0x00000000 0 0x1000000>;
+		interrupts = <0 432 4>;
 		syscon = <&syscon>;
 		status = "disabled";
 	};

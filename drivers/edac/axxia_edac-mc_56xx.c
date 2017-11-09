@@ -43,7 +43,13 @@
 #define MPR_HDR18	"      dram9     dram10     dram11     dram12"\
 		"     dram13     dram14     dram15     dram16     dram17"
 
-#define INTEL_EDAC_MOD_STR	"axxia56xx_edac"
+#if defined(CONFIG_EDAC_AXXIA_SYSMEM_5600)
+#define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
+#endif
+
+#if defined(CONFIG_EDAC_AXXIA_SYSMEM_6700)
+#define INTEL_EDAC_MOD_STR     "axxia67xx_edac"
+#endif
 
 #define AXI2_SER3_PHY_ADDR	0x008002c00000ULL
 #define AXI2_SER3_PHY_SIZE	PAGE_SIZE
@@ -995,7 +1001,7 @@ static void intel_sm_alerts_error_check(struct edac_device_ctl_info *edac_dev)
 	struct event_counter (*alerts)[MAX_DQ][MPR_ERRORS] =
 			dev_info->data->alerts;
 	struct sm_56xx_denali_ctl_57 denali_ctl_57;
-	int i, j, k, l;
+	int i, j, k;
 	u32 counter;
 
 start:
@@ -1052,12 +1058,12 @@ start:
 				 * TODO - How can one determine event type?
 				 *	recoverable/unrecoverable
 				 */
-				counter = atomic_xchg(&alerts[i][j][k].counter,
-							0);
-				for (l = 0; l < counter; ++l)
-					edac_device_handle_ce(edac_dev, 0,
+				counter = atomic_xchg(
+						&alerts[i][j][k].counter, 0);
+				if (counter)
+					edac_device_handle_multi_ce(edac_dev, 0,
 						alerts[i][j][k].edac_block_idx,
-						edac_dev->ctl_name);
+						counter, edac_dev->ctl_name);
 			}
 		}
 	}
@@ -1081,7 +1087,7 @@ static void intel_sm_events_error_check(struct edac_device_ctl_info *edac_dev)
 	struct intel_edac_dev_info *dev_info =
 			(struct intel_edac_dev_info *) edac_dev->pvt_info;
 	struct event_counter *events = dev_info->data->events;
-	int i, j;
+	int i;
 	u32 counter;
 
 	while (1) {
@@ -1098,7 +1104,7 @@ static void intel_sm_events_error_check(struct edac_device_ctl_info *edac_dev)
 		mutex_lock(&dev_info->data->edac_sysfs_data_lock);
 		for (i = 0; i < NR_EVENTS; ++i) {
 			counter = atomic_xchg(&events[i].counter, 0);
-			for (j = 0; j < counter; ++j) {
+			if (counter)
 				switch (i) {
 				/*
 				 * TODO - How can one determine event type?
@@ -1108,22 +1114,23 @@ static void intel_sm_events_error_check(struct edac_device_ctl_info *edac_dev)
 				case EV_MULT_ILLEGAL:
 				case EV_UNCORR_ECC:
 				case EV_MULT_UNCORR_ECC:
-					edac_device_handle_ue(edac_dev, 0, i,
-							edac_dev->ctl_name);
+					edac_device_handle_multi_ue(edac_dev,
+						0, i, counter,
+						edac_dev->ctl_name);
 					break;
 				case EV_CORR_ECC:
 				case EV_MULT_CORR_ECC:
 				case EV_PORT_ERROR:
 				case EV_WRAP_ERROR:
 				case EV_PARITY_ERROR:
-					edac_device_handle_ce(edac_dev, 0, i,
-							edac_dev->ctl_name);
+					edac_device_handle_multi_ce(edac_dev,
+						0, i, counter,
+						edac_dev->ctl_name);
 					break;
 				default:
 					printk_ratelimited(
 						"ERROR EVENT MISSING.\n");
 				}
-			}
 		}
 		mutex_unlock(&dev_info->data->edac_sysfs_data_lock);
 	}

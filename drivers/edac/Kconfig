@@ -393,6 +393,15 @@ config EDAC_AXXIA_SYSMEM_5500
 	  Support for System Memory Denali controller error
 	  detection on the AXXIA AXM55xx devices. This enables
 
+config EDAC_AXXIA_SYSMEM_6700
+	depends on ARCH_AXXIA
+	bool "AXXIA EDAC SysMem Controller for 6700"
+	help
+	  Support for System Memory Denali controller error
+	  detection on the AXXIA AXM67xx devices. This enables
+	  the System Memory error detection. System Memory error
+	  detection is interrupt driven.
+
 config EDAC_AXXIA_CMEM_5600
 	depends on ARCH_AXXIA
 	bool "AXXIA EDAC CMem Controller for 5600"
