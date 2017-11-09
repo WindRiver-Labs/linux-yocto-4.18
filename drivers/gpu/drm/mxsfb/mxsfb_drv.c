@@ -26,6 +26,7 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/pm_runtime.h>
 #include <linux/reservation.h>
+#include <linux/version.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
@@ -219,10 +220,21 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 		goto err_vblank;
 	}
 
-	ret = drm_panel_attach(mxsfb->panel, &mxsfb->connector);
-	if (ret) {
-		dev_err(drm->dev, "Cannot connect panel\n");
-		goto err_vblank;
+	/* Attach panel only if there is one */
+	if (mxsfb->panel) {
+		ret = drm_panel_attach(mxsfb->panel, &mxsfb->connector);
+		if (ret) {
+			dev_err(drm->dev, "Cannot connect panel\n");
+			goto err_vblank;
+		}
+	} else if (mxsfb->bridge) {
+		ret = drm_simple_display_pipe_attach_bridge(&mxsfb->pipe,
+				mxsfb->bridge);
+		if (ret) {
+			dev_err(drm->dev, "Cannot connect bridge\n");
+			goto err_vblank;
+		}
+
 	}
 
 	drm->mode_config.min_width	= MXSFB_MIN_XRES;
@@ -419,7 +431,7 @@ static struct platform_driver mxsfb_platform_driver = {
 	.remove		= mxsfb_remove,
 	.id_table	= mxsfb_devtype,
 	.driver	= {
-		.name		= "mxsfb",
+		.name		= "mxsfb_drm",
 		.of_match_table	= mxsfb_dt_ids,
 	},
 };
