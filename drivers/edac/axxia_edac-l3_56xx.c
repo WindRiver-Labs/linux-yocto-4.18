@@ -456,6 +456,8 @@ static int intel_edac_l3_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
+	dev_info->edac_dev->log_ce = 0;
+
 	r = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!r)
 		return -EINVAL;

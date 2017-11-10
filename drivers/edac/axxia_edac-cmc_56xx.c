@@ -1236,6 +1236,8 @@ static int initialize(struct intel_edac_dev_info *dev_info)
 		return ERR_STAGE_1;
 	}
 
+	dev_info->edac_dev->log_ce = 0;
+
 	instance = &dev_info->edac_dev->instances[0];
 
 	/* It just gives more descriptive name. */

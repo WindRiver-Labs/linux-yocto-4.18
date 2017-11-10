@@ -227,6 +227,7 @@ static void intel_add_edac_devices(struct platform_device *pdev,
 		goto err1;
 	}
 
+	dev_info->edac_dev->log_ce = 0;
 	dev_info->edac_dev->pvt_info = dev_info;
 	dev_info->edac_dev->dev = &dev_info->pdev->dev;
 	dev_info->edac_dev->ctl_name = dev_info->ctl_name;

@@ -1341,6 +1341,8 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 		goto err_noctlinfo;
 	}
 
+	dev_info->edac_dev->log_ce = 0;
+
 	instance = &dev_info->edac_dev->instances[0];
 
 	/* It just gives more descriptive name. */
