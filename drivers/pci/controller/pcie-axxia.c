@@ -906,10 +906,10 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 	int max_target;
 	unsigned int lane0_dig_asic_rx_asic_in_0;
 	unsigned int lane0_dig_asic_rx_asic_out_0;
-	unsigned int lane0_idg_asic_rx_ovrd_in_0;
+	unsigned int lane0_dig_asic_rx_ovrd_in_0;
 	unsigned int lane1_dig_asic_rx_asic_in_0;
 	unsigned int lane1_dig_asic_rx_asic_out_0;
-	unsigned int lane1_idg_asic_rx_ovrd_in_0;
+	unsigned int lane1_dig_asic_rx_ovrd_in_0;
 
 	if (0 == axxia_pei_is_control_set())
 		return -1;
@@ -1060,18 +1060,18 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 		max_target = 4;
 		lane0_dig_asic_rx_asic_in_0 = 0x2022;
 		lane0_dig_asic_rx_asic_out_0 = 0x202e;
-		lane0_idg_asic_rx_ovrd_in_0 = 0x200a;
+		lane0_dig_asic_rx_ovrd_in_0 = 0x200a;
 		lane1_dig_asic_rx_asic_in_0 = 0x2222;
 		lane1_dig_asic_rx_asic_out_0 = 0x222e;
-		lane1_idg_asic_rx_ovrd_in_0 = 0x220a;
+		lane1_dig_asic_rx_ovrd_in_0 = 0x220a;
 	} else {
 		max_target = 1;
 		lane0_dig_asic_rx_asic_in_0 = 0x4044;
 		lane0_dig_asic_rx_asic_out_0 = 0x405c;
-		lane0_idg_asic_rx_ovrd_in_0 = 0x4014;
+		lane0_dig_asic_rx_ovrd_in_0 = 0x4014;
 		lane1_dig_asic_rx_asic_in_0 = 0x4444;
 		lane1_dig_asic_rx_asic_out_0 = 0x445c;
-		lane1_idg_asic_rx_ovrd_in_0 = 0x4414;
+		lane1_dig_asic_rx_ovrd_in_0 = 0x4414;
 	}
 
 	do_gettimeofday(&start);
@@ -1079,6 +1079,7 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 	for (;;) {
 		int i;
 		unsigned short temp;
+		unsigned int region;
 
 		/*
 		   In all cases (see the initialization of lane_mask
@@ -1090,41 +1091,41 @@ axxia_pcie_los_wa(struct pcie_port *pp, unsigned int max_width)
 			if (0 == (lane_mask & (0xff << ((i - 1) * 8))))
 				continue;
 
-			ncr_read(NCP_REGION_ID(0x115, i),
-				 lane0_dig_asic_rx_asic_in_0, 2, &temp);
+			region = NCP_REGION_ID(0x115, i);
+			ncr_read(region, lane0_dig_asic_rx_asic_in_0, 2, &temp);
 
 			if (2 == ((temp & 0x180) >> 7)) {
-				ncr_read(NCP_REGION_ID(0x115, i),
-					 lane0_dig_asic_rx_asic_out_0,
+				ncr_read(region, lane0_dig_asic_rx_asic_out_0,
 					 2, &temp);
 
-				if (0 != (temp & 2))
+				if (0 != (temp & 2)) {
 					temp = 0x4700;
-				else
+					ncr_write(region,
+						  lane0_dig_asic_rx_ovrd_in_0,
+						  2, &temp);
 					temp = 0x0700;
-
-				ncr_write(NCP_REGION_ID(0x115, i),
-					  lane0_idg_asic_rx_ovrd_in_0,
-					  2, &temp);
+					ncr_write(region,
+						  lane0_dig_asic_rx_ovrd_in_0,
+						  2, &temp);
+				}
 			}
 
-			ncr_read(NCP_REGION_ID(0x115, i),
-				 lane1_dig_asic_rx_asic_in_0,
-				 2, &temp);
+			ncr_read(region, lane1_dig_asic_rx_asic_in_0, 2, &temp);
 
 			if (2 == ((temp & 0x180) >> 7)) {
-				ncr_read(NCP_REGION_ID(0x115, i),
-					 lane1_dig_asic_rx_asic_out_0,
+				ncr_read(region, lane1_dig_asic_rx_asic_out_0,
 					 2, &temp);
 
-				if (0 != (temp & 2))
+				if (0 != (temp & 2)) {
 					temp = 0x4700;
-				else
+					ncr_write(region,
+						  lane1_dig_asic_rx_ovrd_in_0,
+						  2, &temp);
 					temp = 0x0700;
-
-				ncr_write(NCP_REGION_ID(0x115, i),
-					  lane1_idg_asic_rx_ovrd_in_0,
-					  2, &temp);
+					ncr_write(region,
+						  lane1_dig_asic_rx_ovrd_in_0,
+						  2, &temp);
+				}
 			}
 		}
 
