@@ -859,8 +859,9 @@ static netdev_tx_t dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	percpu_stats = this_cpu_ptr(priv->percpu_stats);
 	percpu_extras = this_cpu_ptr(priv->percpu_extras);
 
-	needed_headroom = dpaa2_eth_needed_headroom(priv, skb);
-	if (unlikely(skb_headroom(skb) < dpaa2_eth_needed_headroom(priv))) {
+	/* For non-linear skb we don't need a minimum headroom */
+	if (skb_headroom(skb) < dpaa2_eth_tx_headroom(priv) &&
+	    !skb_is_nonlinear(skb)) {
 		struct sk_buff *ns;
 
 		ns = skb_realloc_headroom(skb, dpaa2_eth_needed_headroom(priv));
