@@ -1364,6 +1364,7 @@ static int dpaa2_eth_stop(struct net_device *net_dev)
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	int dpni_enabled;
 	int retries = 10, i;
+	int err = 0;
 
 	netif_tx_stop_all_queues(net_dev);
 	netif_carrier_off(net_dev);
@@ -1380,9 +1381,10 @@ static int dpaa2_eth_stop(struct net_device *net_dev)
 	} while (dpni_enabled && --retries);
 	if (!retries) {
 		netdev_warn(net_dev, "Retry count exceeded disabling DPNI\n");
-		/* Must go on and disable NAPI nonetheless, so we don't crash at
-		 * the next "ifconfig up"
+		/* Must go on and finish processing pending frames, so we don't
+		 * crash at the next "ifconfig up"
 		 */
+		err = -ETIMEDOUT;
 	}
 
 	priv->refill_thresh = 0;
@@ -1396,7 +1398,7 @@ static int dpaa2_eth_stop(struct net_device *net_dev)
 	/* Empty the buffer pool */
 	drain_pool(priv);
 
-	return 0;
+	return err;
 }
 
 static int dpaa2_eth_init(struct net_device *net_dev)
@@ -1773,14 +1775,17 @@ static int dpaa2_eth_set_xdp(struct net_device *net_dev, struct bpf_prog *prog)
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	struct dpaa2_eth_channel *ch;
 	struct bpf_prog *old_prog = NULL;
-	int i;
+	int i, err;
 
 	/* No support for SG frames */
 	if (DPAA2_ETH_L2_MAX_FRM(net_dev->mtu) > DPAA2_ETH_RX_BUF_SIZE)
 		return -EINVAL;
 
-	if (netif_running(net_dev))
-		dpaa2_eth_stop(net_dev);
+	if (netif_running(net_dev)) {
+		err = dpaa2_eth_stop(net_dev);
+		if (err)
+			return err;
+	}
 
 	if (prog) {
 		prog = bpf_prog_add(prog, priv->num_channels - 1);
@@ -1804,8 +1809,11 @@ static int dpaa2_eth_set_xdp(struct net_device *net_dev, struct bpf_prog *prog)
 	if (priv->has_xdp_prog != !!old_prog)
 		set_buffer_layout(priv);
 
-	if (netif_running(net_dev))
-		dpaa2_eth_open(net_dev);
+	if (netif_running(net_dev)) {
+		err = dpaa2_eth_open(net_dev);
+		if (err)
+			return err;
+	}
 
 	return 0;
 }
