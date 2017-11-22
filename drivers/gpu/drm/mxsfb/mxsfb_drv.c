@@ -27,6 +27,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/reservation.h>
 #include <linux/version.h>
+#include <linux/busfreq-imx.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
@@ -58,6 +59,7 @@ static const struct mxsfb_devdata mxsfb_devdata[] = {
 		.hs_wdth_mask	= 0xff,
 		.hs_wdth_shift	= 24,
 		.ipversion	= 3,
+		.flags		= MXSFB_FLAG_NULL,
 	},
 	[MXSFB_V4] = {
 		.transfer_count	= LCDC_V4_TRANSFER_COUNT,
@@ -67,6 +69,7 @@ static const struct mxsfb_devdata mxsfb_devdata[] = {
 		.hs_wdth_mask	= 0x3fff,
 		.hs_wdth_shift	= 18,
 		.ipversion	= 4,
+		.flags		= MXSFB_FLAG_BUSFREQ,
 	},
 };
 
@@ -108,6 +111,7 @@ static void mxsfb_pipe_enable(struct drm_simple_display_pipe *pipe,
 	drm_panel_prepare(mxsfb->panel);
 	mxsfb_crtc_enable(mxsfb);
 	drm_panel_enable(mxsfb->panel);
+	pm_runtime_get_sync(mxsfb->dev);
 }
 
 static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
@@ -117,6 +121,7 @@ static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
 	drm_panel_disable(mxsfb->panel);
 	mxsfb_crtc_disable(mxsfb);
 	drm_panel_unprepare(mxsfb->panel);
+	pm_runtime_put_sync(mxsfb->dev);
 }
 
 static void mxsfb_pipe_update(struct drm_simple_display_pipe *pipe,
@@ -173,6 +178,9 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 
 	drm->dev_private = mxsfb;
 	mxsfb->devdata = &mxsfb_devdata[pdev->id_entry->driver_data];
+	mxsfb->dev = &pdev->dev;
+
+	platform_set_drvdata(pdev, drm);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mxsfb->base = devm_ioremap_resource(drm->dev, res);
@@ -265,7 +273,6 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 		goto err_cma;
 	}
 
-	platform_set_drvdata(pdev, drm);
 
 	drm_helper_hpd_irq_event(drm);
 
@@ -426,6 +433,65 @@ static int mxsfb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int mxsfb_runtime_suspend(struct device *dev)
+{
+	struct drm_device *drm = dev_get_drvdata(dev);
+	struct mxsfb_drm_private *mxsfb = drm->dev_private;
+
+	if (!drm->registered)
+		return 0;
+
+	mxsfb_crtc_disable(mxsfb);
+
+	if (mxsfb->devdata->flags & MXSFB_FLAG_BUSFREQ)
+		release_bus_freq(BUS_FREQ_HIGH);
+
+	return 0;
+}
+
+static int mxsfb_runtime_resume(struct device *dev)
+{
+	struct drm_device *drm = dev_get_drvdata(dev);
+	struct mxsfb_drm_private *mxsfb = drm->dev_private;
+
+	if (!drm->registered)
+		return 0;
+
+	if (mxsfb->devdata->flags & MXSFB_FLAG_BUSFREQ)
+		request_bus_freq(BUS_FREQ_HIGH);
+
+	mxsfb_crtc_enable(mxsfb);
+
+	return 0;
+}
+
+static int mxsfb_suspend(struct device *dev)
+{
+	struct drm_device *drm = dev_get_drvdata(dev);
+	struct mxsfb_drm_private *mxsfb = drm->dev_private;
+
+	mxsfb_crtc_disable(mxsfb);
+
+	return 0;
+}
+
+static int mxsfb_resume(struct device *dev)
+{
+	struct drm_device *drm = dev_get_drvdata(dev);
+	struct mxsfb_drm_private *mxsfb = drm->dev_private;
+
+	mxsfb_crtc_enable(mxsfb);
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops mxsfb_pm_ops = {
+	SET_RUNTIME_PM_OPS(mxsfb_runtime_suspend, mxsfb_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(mxsfb_suspend, mxsfb_resume)
+};
+
 static struct platform_driver mxsfb_platform_driver = {
 	.probe		= mxsfb_probe,
 	.remove		= mxsfb_remove,
@@ -433,6 +499,7 @@ static struct platform_driver mxsfb_platform_driver = {
 	.driver	= {
 		.name		= "mxsfb_drm",
 		.of_match_table	= mxsfb_dt_ids,
+		.pm = &mxsfb_pm_ops,
 	},
 };
 
