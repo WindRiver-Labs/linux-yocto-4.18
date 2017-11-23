@@ -247,10 +247,10 @@ static int dpaa2_eth_xdp_tx(struct dpaa2_eth_priv *priv,
 	/* Mark the egress frame annotation area as valid */
 	frc = dpaa2_fd_get_frc(fd);
 	dpaa2_fd_set_frc(fd, frc | DPAA2_FD_FRC_FAEADV);
-	dpaa2_fd_set_ctrl(fd, DPAA2_FD_CTRL_PTA | DPAA2_FD_CTRL_ASAL);
+	dpaa2_fd_set_ctrl(fd, DPAA2_FD_CTRL_ASAL);
 
 	ctrl = DPAA2_FAEAD_A4V | DPAA2_FAEAD_A2V | DPAA2_FAEAD_EBDDV;
-	faead = dpaa2_get_faead(buf_start, true);
+	faead = dpaa2_get_faead(buf_start, false);
 	faead->ctrl = cpu_to_le32(ctrl);
 	faead->conf_fqid = 0;
 
@@ -390,7 +390,7 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 	dma_sync_single_for_cpu(dev, addr, DPAA2_ETH_RX_BUF_SIZE,
 				DMA_BIDIRECTIONAL);
 
-	fas = dpaa2_get_fas(vaddr, true);
+	fas = dpaa2_get_fas(vaddr, false);
 	prefetch(fas);
 	buf_data = vaddr + dpaa2_fd_get_offset(fd);
 	prefetch(buf_data);
@@ -427,7 +427,7 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 	/* Get the timestamp value */
 	if (priv->rx_tstamp) {
 		struct skb_shared_hwtstamps *shhwtstamps = skb_hwtstamps(skb);
-		u64 *ns = dpaa2_get_ts(vaddr, true);
+		u64 *ns = dpaa2_get_ts(vaddr, false);
 
 		memset(shhwtstamps, 0, sizeof(*shhwtstamps));
 
@@ -491,7 +491,7 @@ static void dpaa2_eth_rx_err(struct dpaa2_eth_priv *priv,
 
 	/* check frame errors in the FAS field */
 	if (has_fas_errors) {
-		fas = dpaa2_get_fas(vaddr, true);
+		fas = dpaa2_get_fas(vaddr, false);
 		status = le32_to_cpu(fas->status);
 		if (net_ratelimit())
 			netdev_dbg(priv->net_dev, "Rx frame FAS err: 0x%08x\n",
@@ -1749,6 +1749,7 @@ static int set_buffer_layout(struct dpaa2_eth_priv *priv)
 	/* rx buffer */
 	buf_layout.pass_parser_result = true;
 	buf_layout.data_align = priv->rx_buf_align;
+	buf_layout.private_data_size = 0;
 	buf_layout.data_head_room = dpaa2_eth_rx_headroom(priv);
 	/* If XDP program is attached, reserve extra space for
 	 * potential header expansions
@@ -1757,7 +1758,6 @@ static int set_buffer_layout(struct dpaa2_eth_priv *priv)
 		buf_layout.data_head_room += XDP_PACKET_HEADROOM;
 	buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 			     DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-			     DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
 			     DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
 			     DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
 			     DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
