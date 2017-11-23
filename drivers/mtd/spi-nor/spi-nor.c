@@ -3213,6 +3213,10 @@ void spi_nor_restore(struct spi_nor *nor)
 	    (JEDEC_MFR(nor->info) != SNOR_MFR_SPANSION) &&
 	    !(nor->info->flags & SPI_NOR_4B_OPCODES))
 		set_4byte(nor, nor->info, 0);
+
+	if (nor->addr_width == 3 &&
+		(nor->mtd.size >> nor->shift) > 0x1000000)
+		write_ear(nor, 0);
 }
 EXPORT_SYMBOL_GPL(spi_nor_restore);
 
