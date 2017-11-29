@@ -145,12 +145,6 @@ static int fsl_mqs_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_component *component = dai->component;
 	struct fsl_mqs *mqs_priv = snd_soc_component_get_drvdata(component);
 
-	if (mqs_priv->ipg)
-		clk_prepare_enable(mqs_priv->ipg);
-
-	if (mqs_priv->mclk)
-		clk_prepare_enable(mqs_priv->mclk);
-
 	if (mqs_priv->use_gpr)
 		regmap_update_bits(mqs_priv->gpr, IOMUXC_GPR2, IMX6SX_GPR2_MQS_EN_MASK,
 					1 << IMX6SX_GPR2_MQS_EN_SHIFT);
@@ -173,12 +167,6 @@ static void fsl_mqs_shutdown(struct snd_pcm_substream *substream,
 	else
 		regmap_update_bits(mqs_priv->regmap, REG_MQS_CTRL,
 					MQS_EN_MASK, 0);
-
-	if (mqs_priv->mclk)
-		clk_disable_unprepare(mqs_priv->mclk);
-
-	if (mqs_priv->ipg)
-		clk_disable_unprepare(mqs_priv->ipg);
 }
 
 static struct snd_soc_component_driver soc_component_fsl_mqs = {
@@ -316,6 +304,20 @@ static int fsl_mqs_runtime_resume(struct device *dev)
 	return 0;
 }
 
+static int fsl_mqs_runtime_suspend(struct device *dev)
+{
+	struct fsl_mqs *mqs_priv = dev_get_drvdata(dev);
+
+	if (mqs_priv->mclk)
+		clk_disable_unprepare(mqs_priv->mclk);
+
+	if (mqs_priv->ipg)
+		clk_disable_unprepare(mqs_priv->ipg);
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_PM_SLEEP
 static int fsl_mqs_resume(struct device *dev)
 {
@@ -347,6 +349,9 @@ static int fsl_mqs_suspend(struct device *dev)
 #endif
 
 static const struct dev_pm_ops fsl_mqs_pm_ops = {
+	SET_RUNTIME_PM_OPS(fsl_mqs_runtime_suspend,
+			   fsl_mqs_runtime_resume,
+			   NULL)
 	SET_SYSTEM_SLEEP_PM_OPS(fsl_mqs_suspend, fsl_mqs_resume)
 };
 
