@@ -48,6 +48,14 @@ config POWER_RESET_BRCMKONA
 	  Say Y here if you have a Broadcom Kona-based board and you wish
 	  to have restart support.
 
+config POWER_RESET_AXXIA
+	bool "Axxia reset driver"
+	depends on ARCH_AXXIA
+	help
+	  This driver supports restart for Axxia SoC.
+
+	  Say Y if you have an Axxia family SoC.
+
 if POWER_RESET_AXXIA
 config POWER_RESET_AXXIA_DDR_RETENTION
 	bool "Keep memory content"
