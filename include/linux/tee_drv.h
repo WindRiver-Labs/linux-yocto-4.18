@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015-2016, Linaro Limited
+ * Copyright (c) 2018, Renesas Electronics Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -32,6 +33,10 @@
 #define TEE_SHM_REGISTER	BIT(3)  /* Memory registered in secure world */
 #define TEE_SHM_USER_MAPPED	BIT(4)  /* Memory mapped in user space */
 #define TEE_SHM_POOL		BIT(5)  /* Memory allocated from pool */
+
+/* Define functions corresponding to TEEC_RegisterSharedMemory */
+/* in kernel space with macros */
+#define tee_shm_reg tee_shm_alloc
 
 struct device;
 struct tee_device;
