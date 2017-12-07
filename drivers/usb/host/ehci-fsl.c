@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/fsl_devices.h>
 #include <linux/of_platform.h>
+#include <linux/io.h>
 
 #ifdef CONFIG_PPC
 #include <asm/fsl_pm.h>
@@ -301,7 +302,7 @@ static bool usb_phy_clk_valid(struct usb_hcd *hcd)
 	void __iomem *non_ehci = hcd->regs;
 	bool ret = true;
 
-	if (!(in_be32(non_ehci + FSL_SOC_USB_CTRL) & PHY_CLK_VALID))
+	if (!(ioread32be(non_ehci + FSL_SOC_USB_CTRL) & PHY_CLK_VALID))
 		ret = false;
 
 	return ret;
