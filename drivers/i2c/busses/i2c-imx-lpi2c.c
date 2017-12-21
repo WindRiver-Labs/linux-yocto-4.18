@@ -100,6 +100,7 @@ enum lpi2c_imx_pincfg {
 
 struct lpi2c_imx_struct {
 	struct i2c_adapter	adapter;
+	int			irq;
 	struct clk		*clk_per;
 	struct clk		*clk_ipg;
 	void __iomem		*base;
@@ -551,7 +552,7 @@ static int lpi2c_imx_probe(struct platform_device *pdev)
 	struct lpi2c_imx_struct *lpi2c_imx;
 	struct resource *res;
 	unsigned int temp;
-	int irq, ret;
+	int ret;
 
 	lpi2c_imx = devm_kzalloc(&pdev->dev, sizeof(*lpi2c_imx), GFP_KERNEL);
 	if (!lpi2c_imx)
@@ -562,10 +563,10 @@ static int lpi2c_imx_probe(struct platform_device *pdev)
 	if (IS_ERR(lpi2c_imx->base))
 		return PTR_ERR(lpi2c_imx->base);
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
+	lpi2c_imx->irq = platform_get_irq(pdev, 0);
+	if (lpi2c_imx->irq < 0) {
 		dev_err(&pdev->dev, "can't get irq number\n");
-		return irq;
+		return lpi2c_imx->irq;
 	}
 
 	lpi2c_imx->adapter.owner	= THIS_MODULE;
@@ -591,13 +592,6 @@ static int lpi2c_imx_probe(struct platform_device *pdev)
 				   "clock-frequency", &lpi2c_imx->bitrate);
 	if (ret)
 		lpi2c_imx->bitrate = LPI2C_DEFAULT_RATE;
-
-	ret = devm_request_irq(&pdev->dev, irq, lpi2c_imx_isr, 0,
-			       pdev->name, lpi2c_imx);
-	if (ret) {
-		dev_err(&pdev->dev, "can't claim irq %d\n", irq);
-		return ret;
-	}
 
 	i2c_set_adapdata(&lpi2c_imx->adapter, lpi2c_imx);
 	platform_set_drvdata(pdev, lpi2c_imx);
@@ -661,6 +655,7 @@ static int lpi2c_runtime_suspend(struct device *dev)
 {
 	struct lpi2c_imx_struct *lpi2c_imx = dev_get_drvdata(dev);
 
+	devm_free_irq(dev, lpi2c_imx->irq, lpi2c_imx);
 	clk_disable_unprepare(lpi2c_imx->clk_ipg);
 	clk_disable_unprepare(lpi2c_imx->clk_per);
 	pinctrl_pm_select_sleep_state(dev);
@@ -684,6 +679,13 @@ static int lpi2c_runtime_resume(struct device *dev)
 	if (ret) {
 		clk_disable_unprepare(lpi2c_imx->clk_per);
 		dev_err(dev, "can't enable I2C ipg clock, ret=%d\n", ret);
+	}
+
+	ret = devm_request_irq(dev, lpi2c_imx->irq, lpi2c_imx_isr, 0,
+                               dev_name(dev), lpi2c_imx);
+	if (ret) {
+		dev_err(dev, "can't claim irq %d\n", lpi2c_imx->irq);
+		return ret;
 	}
 
 	return 0;
