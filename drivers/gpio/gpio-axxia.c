@@ -279,7 +279,7 @@ static int pl061_irq_set_wake(struct irq_data *d, unsigned int state)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 
-	return irq_set_irq_wake(gc->irq_parent, state);
+	return irq_set_irq_wake(gc->irq.parents[0], state);
 }
 
 static struct irq_chip pl061_irqchip = {
