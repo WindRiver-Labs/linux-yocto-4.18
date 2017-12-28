@@ -847,13 +847,13 @@ static int nemac_poll(struct napi_struct *napi, int budget)
 /**
  * nemac_get_stats64 - Retrieve the MAC counters.
  */
-static struct rtnl_link_stats64*
+void
 nemac_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *s)
 {
 	struct nemac_priv *priv = netdev_priv(dev);
 
 	if (nemac_stats_snapshot(priv) <= 0)
-		return NULL;
+		return;
 
 	s->rx_packets = nemac_rx_stat_counter(priv, RX_FRM);
 	s->tx_packets = nemac_tx_stat_counter(priv, TX_FRM);
@@ -874,7 +874,7 @@ nemac_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *s)
 	s->tx_aborted_errors = nemac_tx_stat_counter(priv, TX_XSCOL);
 	s->tx_fifo_errors = nemac_tx_stat_counter(priv, TX_URUN);
 
-	return s;
+	return;
 }
 
 static const struct net_device_ops nemac_netdev_ops = {
