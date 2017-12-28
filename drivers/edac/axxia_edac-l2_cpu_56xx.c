@@ -25,8 +25,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <trace/events/edac.h>
-#include "edac_core.h"
 #include "edac_module.h"
+#include "axxia_edac.h"
 #include "axxia_l2_56xx.h"
 
 

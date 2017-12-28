@@ -28,8 +28,8 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
-#include "edac_core.h"
 #include "edac_module.h"
+#include "axxia_edac.h"
 
 #define FMT "%s: syscon lookup failed hence using hardcoded register address\n"
 
