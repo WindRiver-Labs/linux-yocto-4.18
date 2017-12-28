@@ -25,8 +25,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <linux/interrupt.h>
-#include "edac_core.h"
 #include "edac_module.h"
+#include "axxia_edac.h"
 
 #define LSI_EDAC_MOD_STR     "lsi_edac"
 

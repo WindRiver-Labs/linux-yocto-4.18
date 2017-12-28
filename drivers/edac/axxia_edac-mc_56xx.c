@@ -26,8 +26,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <linux/interrupt.h>
-#include "edac_core.h"
 #include "edac_module.h"
+#include "axxia_edac.h"
 
 #define FMT "%s: syscon lookup failed hence using hardcoded register address\n"
 

@@ -11,7 +11,7 @@ config EDAC_SUPPORT
 
 menuconfig EDAC
 	tristate "EDAC (Error Detection And Correction) reporting"
-	depends on HAS_IOMEM && EDAC_SUPPORT && RAS
+	depends on HAS_IOMEM && EDAC_SUPPORT
 	help
 	  EDAC is a subsystem along with hardware-specific drivers designed to
 	  report hardware errors. These are low-level errors that are reported

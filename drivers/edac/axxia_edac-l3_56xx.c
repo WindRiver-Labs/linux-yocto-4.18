@@ -27,8 +27,8 @@
 #include <linux/regmap.h>
 #include <linux/arm-smccc.h>
 #include <trace/events/edacl3.h>
-#include "edac_core.h"
 #include "edac_module.h"
+#include "axxia_edac.h"
 
 #if defined(CONFIG_EDAC_AXXIA_L3_5600)
 #define INTEL_EDAC_MOD_STR     "axxia56xx_edac"
