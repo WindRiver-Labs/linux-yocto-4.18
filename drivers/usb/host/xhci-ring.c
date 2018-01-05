@@ -1900,8 +1900,7 @@ static int finish_td(struct xhci_hcd *xhci, struct xhci_td *td,
 			 * The class driver clears the device side halt later.
 			 */
 			xhci_cleanup_halted_endpoint(xhci, slot_id, ep_index,
-					ep_ring->stream_id, td, ep_trb,
-					EP_HARD_RESET);
+					ep_ring->stream_id, td, EP_HARD_RESET);
 		}
 	} else {
 		/* Update ring dequeue pointer */
