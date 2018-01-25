@@ -245,6 +245,7 @@ static int xilinx_pcie_intx_map(struct irq_domain *domain, unsigned int irq,
 /* INTx IRQ Domain operations */
 static const struct irq_domain_ops intx_domain_ops = {
 	.map = xilinx_pcie_intx_map,
+	.xlate = pci_irqd_intx_xlate,
 };
 
 /**
@@ -305,7 +306,7 @@ static irqreturn_t xilinx_pcie_intr_handler(int irq, void *data)
 
 		for_each_set_bit(bit, &intr_val, INTX_NUM)
 			generic_handle_irq(irq_find_mapping(port->leg_domain,
-							    bit + 1));
+							    bit));
 	}
 
 	if (status & XILINX_PCIE_INTR_MSI) {
