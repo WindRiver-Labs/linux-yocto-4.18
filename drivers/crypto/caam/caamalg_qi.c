@@ -390,7 +390,7 @@ static int tls_setkey(struct crypto_aead *tls, const u8 *key,
 		       keys.enckeylen);
 		dma_sync_single_for_device(jrdev, ctx->key_dma,
 					   ctx->adata.keylen_pad +
-					   keys.enckeylen, DMA_TO_DEVICE);
+					   keys.enckeylen, ctx->dir);
 		goto skip_split_key;
 	}
 
@@ -403,7 +403,7 @@ static int tls_setkey(struct crypto_aead *tls, const u8 *key,
 	/* postpend encryption key to auth split key */
 	memcpy(ctx->key + ctx->adata.keylen_pad, keys.enckey, keys.enckeylen);
 	dma_sync_single_for_device(jrdev, ctx->key_dma, ctx->adata.keylen_pad +
-				   keys.enckeylen, DMA_TO_DEVICE);
+				   keys.enckeylen, ctx->dir);
 
 #ifdef DEBUG
 	dev_err(jrdev, "split keylen %d split keylen padded %d\n",
@@ -2984,7 +2984,7 @@ struct caam_crypto_alg {
 };
 
 static int caam_init_common(struct caam_ctx *ctx, struct caam_alg_entry *caam,
-			    bool uses_dkp)
+			   bool uses_dkp)
 {
 	struct caam_drv_private *priv;
 	/* Digest sizes for MD5, SHA1, SHA-224, SHA-256, SHA-384, SHA-512 */
@@ -3069,8 +3069,9 @@ static int caam_aead_init(struct crypto_aead *tfm)
 						      aead);
 	struct caam_ctx *ctx = crypto_aead_ctx(tfm);
 
-	return caam_init_common(ctx, &caam_alg->caam,
-				alg->setkey == aead_setkey);
+	return caam_init_common(ctx, &caam_alg->caam, 
+				(alg->setkey == aead_setkey) ||
+				(alg->setkey == tls_setkey));
 }
 
 static void caam_exit_common(struct caam_ctx *ctx)
