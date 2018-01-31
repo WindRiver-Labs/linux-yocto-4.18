@@ -390,7 +390,7 @@ static int tls_setkey(struct crypto_aead *tls, const u8 *key,
 		       keys.enckeylen);
 		dma_sync_single_for_device(jrdev, ctx->key_dma,
 					   ctx->adata.keylen_pad +
-					   keys.enckeylen, DMA_TO_DEVICE);
+					   keys.enckeylen, ctx->dir);
 		goto skip_split_key;
 	}
 
@@ -403,7 +403,7 @@ static int tls_setkey(struct crypto_aead *tls, const u8 *key,
 	/* postpend encryption key to auth split key */
 	memcpy(ctx->key + ctx->adata.keylen_pad, keys.enckey, keys.enckeylen);
 	dma_sync_single_for_device(jrdev, ctx->key_dma, ctx->adata.keylen_pad +
-				   keys.enckeylen, DMA_TO_DEVICE);
+				   keys.enckeylen, ctx->dir);
 
 #ifdef DEBUG
 	dev_err(jrdev, "split keylen %d split keylen padded %d\n",
