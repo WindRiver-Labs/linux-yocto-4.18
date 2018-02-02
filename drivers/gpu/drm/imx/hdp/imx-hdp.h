@@ -234,5 +234,8 @@ struct imx_hdp {
 };
 
 void imx_hdp_register_audio_driver(struct device *dev);
+void imx_arc_power_up(state_struct *state);
+void imx_arc_calibrate(state_struct *state);
+void imx_arc_config(state_struct *state);
 
 #endif
