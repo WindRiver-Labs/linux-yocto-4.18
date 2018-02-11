@@ -52,8 +52,13 @@
 	.equ	swapper_pg_dir, KERNEL_RAM_VADDR - PG_DIR_SIZE
 
 	.macro	pgtbl, rd, phys
+#ifdef CONFIG_ARCH_AXXIA
+	ldr	\rd, =(TEXT_OFFSET - PG_DIR_SIZE)
+	add	\rd, \rd, \phys
+#else
 	add	\rd, \phys, #TEXT_OFFSET
 	sub	\rd, \rd, #PG_DIR_SIZE
+#endif
 	.endm
 
 /*
@@ -318,6 +323,9 @@ __create_page_tables:
 #endif
 #else
 	orr	r3, r3, #PMD_SECT_XN
+#ifdef CONFIG_ARCH_AXXIA
+	orr	r7, r7, #0x20
+#endif
 	str	r3, [r0], #4
 #endif
 

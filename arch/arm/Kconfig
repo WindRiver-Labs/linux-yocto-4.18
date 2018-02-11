@@ -357,6 +357,29 @@ config ARM_SINGLE_ARMV7M
 	select SPARSE_IRQ
 	select USE_OF
 
+config ARCH_AXXIA
+	bool "Intel Axxia family"
+	select ARCH_PHYS_ADDR_T_64BIT
+	select ARCH_DMA_ADDR_T_64BIT
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select ARM_AMBA
+	select COMMON_CLK
+	select CLKDEV_LOOKUP
+	select CLKSRC_MMIO
+	select GENERIC_CLOCKEVENTS
+	select HAVE_CLK
+	select HAVE_PATA_PLATFORM
+	select ARM_TIMER_SP804
+	select ICST
+	select NEED_MACH_IO_H
+	select ZONE_DMA
+	select PCI
+	select PCI_DOMAINS if PCI
+	select ARCH_SUPPORTS_MSI if PCI
+	select HAS_RAPIDIO
+	help
+	  This enables support for the Intel Axxia boards.
+
 config ARCH_EBSA110
 	bool "EBSA-110"
 	select ARCH_USES_GETTIMEOFFSET
@@ -842,6 +865,8 @@ source "arch/arm/mach-ux500/Kconfig"
 
 source "arch/arm/mach-versatile/Kconfig"
 
+source "arch/arm/mach-axxia/Kconfig"
+
 source "arch/arm/mach-vexpress/Kconfig"
 source "arch/arm/plat-versatile/Kconfig"
 
@@ -1277,6 +1302,19 @@ source "drivers/pci/Kconfig"
 
 source "drivers/pcmcia/Kconfig"
 
+config HAS_RAPIDIO
+	bool
+	default n
+
+config RAPIDIO
+	bool "RapidIO support"
+	depends on HAS_RAPIDIO && PCI
+	help
+          If you say Y here, the kernel will include drivers and
+          infrastructure code to support RapidIO interconnect devices.
+
+source "drivers/rapidio/Kconfig"
+
 endmenu
 
 menu "Kernel Features"
@@ -1447,12 +1485,46 @@ config NR_CPUS
 	depends on SMP
 	default "4"
 
+menu "Support for hot-pluggable CPUs"
+
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs"
 	depends on SMP
 	help
 	  Say Y here to experiment with turning CPUs off and on.  CPUs
 	  can be controlled through /sys/devices/system/cpu.
+choice
+	prompt "CPU Power Down Mode"
+	default HOTPLUG_CPU_COMPLETE_POWER_DOWN
+	help
+		This is used to select how the CPU is going to be powered down. If LOW POWER
+		is selected then the CPU enters a WFI state and waits for an interrupt to
+		wake up. If COMPLETE POWER down is selected the CPU power is turned off. The only
+		way to power on the CPU is to execute a command.
+
+config HOTPLUG_CPU_COMPLETE_POWER_DOWN
+	bool "Power off the CPU"
+	help
+		This will power off the CPU completely. The irqs are migrated
+		to another CPU.
+
+config HOTPLUG_CPU_LOW_POWER
+	bool "Low Power CPU (wfi)"
+	help
+		This will put the CPU into a low power mode wfi mode. When an interrupt
+		is received the CPU will power on again.
+
+endchoice
+
+config HOTPLUG_CPU_L2_POWER_DOWN
+	bool "Power Off L2 Cache"
+	depends on HOTPLUG_CPU_COMPLETE_POWER_DOWN
+	default n if HOTPLUG_CPU_LOW_POWER
+	help
+		Select this if you want to power down the L2 cache when
+		all CPUS of a cluster have been powered off.
+
+endmenu
 
 config ARM_PSCI
 	bool "Support for the ARM Power State Coordination Interface (PSCI)"
@@ -1464,6 +1536,16 @@ config ARM_PSCI
 	  management operations described in ARM document number ARM DEN
 	  0022A ("Power State Coordination Interface System Software on
 	  ARM processors").
+
+config LOCAL_TIMERS
+	bool "Use local timer interrupts"
+	depends on SMP
+	default n
+	help
+	  Enable support for local timers on SMP platforms, rather then the
+	  legacy IPI broadcast method.  Local timers allows the system
+	  accounting to be spread across the timer interval, preventing a
+	  "thundering herd" at every timer tick.
 
 # The GPIO number here must be sorted by descending number. In case of
 # a multiplatform kernel, we just want the highest value required by the
