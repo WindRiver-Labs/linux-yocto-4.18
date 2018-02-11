@@ -512,6 +512,12 @@ config AXXIA_OEM
        help
 	 OEM calls to the secure monitor for Axxia.
 
+config AXXIA_FAULT
+       bool "Axxia Fault Handlers"
+       depends on ARCH_AXXIA
+       help
+	 Add fault handlers for system aborts.
+
 config AXXIA_PEI
        bool "Axxia PEI Controller Setup"
        depends on ARCH_AXXIA
