@@ -2285,7 +2285,7 @@ static int mxsfb_probe(struct platform_device *pdev)
 		if (ret == -EPROBE_DEFER)
 			dev_info(&pdev->dev,
 				 "Defer fb probe due to dispdrv not ready\n");
-		goto fb_pm_runtime_disable;
+		goto fb_free_videomem;
 	}
 
 	if (!host->dispdrv) {
