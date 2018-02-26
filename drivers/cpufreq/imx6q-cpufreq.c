@@ -21,12 +21,15 @@
 
 #define PU_SOC_VOLTAGE_NORMAL	1250000
 #define PU_SOC_VOLTAGE_HIGH	1275000
+#define DC_VOLTAGE_MIN		1300000
+#define DC_VOLTAGE_MAX		1400000
 #define FREQ_1P2_GHZ		1200000000
 #define FREQ_396_MHZ		396000
 
 static struct regulator *arm_reg;
 static struct regulator *pu_reg;
 static struct regulator *soc_reg;
+static struct regulator *dc_reg;
 
 enum IMX6_CPUFREQ_CLKS {
 	ARM,
@@ -255,6 +258,19 @@ static struct cpufreq_driver imx6q_cpufreq_driver = {
 static int imx6_cpufreq_pm_notify(struct notifier_block *nb,
 	unsigned long event, void *dummy)
 {
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		if (!IS_ERR(dc_reg))
+			regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MAX, 0);
+		break;
+	case PM_POST_SUSPEND:
+		if (!IS_ERR(dc_reg))
+			regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
+		break;
+	default:
+		break;
+	}
+
 	return NOTIFY_OK;
 }
 
@@ -421,6 +437,10 @@ static int imx6q_cpufreq_probe(struct platform_device *pdev)
 		ret = -ENOENT;
 		goto put_reg;
 	}
+
+	dc_reg = devm_regulator_get_optional(cpu_dev, "dc");
+	if (!IS_ERR(dc_reg))
+		regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
 
 	/*
 	 * soc_reg sync  with arm_reg if arm shares the same regulator
