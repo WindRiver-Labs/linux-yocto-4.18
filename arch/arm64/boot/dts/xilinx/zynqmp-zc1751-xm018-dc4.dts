@@ -116,7 +116,7 @@
 	status = "okay";
 };
 
-&xlnx_dp {
+&zynqmp_dpsub {
 	status = "okay";
 };
 
