@@ -998,8 +998,12 @@ static int adv7511_init_cec_regmap(struct adv7511 *adv)
 {
 	int ret;
 
-	adv->i2c_cec = i2c_new_secondary_device(adv->i2c_main, "cec",
-						ADV7511_CEC_I2C_ADDR_DEFAULT);
+	if (adv7511->addr_edid != 0)
+		adv->i2c_cec = i2c_new_secondary_device(adv->i2c_main, "cec",
+							adv7511->addr_edid);
+	else
+		adv->i2c_cec = i2c_new_secondary_device(adv->i2c_main, "cec",
+							ADV7511_CEC_I2C_ADDR_DEFAULT);
 	if (!adv->i2c_cec)
 		return -EINVAL;
 	i2c_set_clientdata(adv->i2c_cec, adv);
@@ -1194,8 +1198,12 @@ static int adv7511_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		goto uninit_regulators;
 	}
 
-	regmap_write(adv7511->regmap, ADV7511_REG_EDID_I2C_ADDR,
-		     adv7511->i2c_edid->addr << 1);
+	if (adv7511->addr_edid != 0)
+		regmap_write(adv7511->regmap, ADV7511_REG_EDID_I2C_ADDR,
+			     adv7511->addr_edid << 1);
+	else
+		regmap_write(adv7511->regmap, ADV7511_REG_EDID_I2C_ADDR,
+			     adv7511->i2c_edid->addr << 1);
 
 	adv7511->i2c_packet = i2c_new_secondary_device(i2c, "packet",
 					ADV7511_PACKET_I2C_ADDR_DEFAULT);
@@ -1204,15 +1212,23 @@ static int adv7511_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		goto err_i2c_unregister_edid;
 	}
 
-	regmap_write(adv7511->regmap, ADV7511_REG_PACKET_I2C_ADDR,
-		     adv7511->i2c_packet->addr << 1);
+	if (adv7511->addr_pkt != 0)
+		regmap_write(adv7511->regmap, ADV7511_REG_PACKET_I2C_ADDR,
+			     adv7511->addr_pkt << 1);
+	else
+		regmap_write(adv7511->regmap, ADV7511_REG_PACKET_I2C_ADDR,
+			     adv7511->i2c_packet->addr << 1);
 
 	ret = adv7511_init_cec_regmap(adv7511);
 	if (ret)
 		goto err_i2c_unregister_packet;
 
-	regmap_write(adv7511->regmap, ADV7511_REG_CEC_I2C_ADDR,
-		     adv7511->i2c_cec->addr << 1);
+	if (adv7511->addr_cec != 0)
+		regmap_write(adv7511->regmap, ADV7511_REG_CEC_I2C_ADDR,
+			     adv7511->addr_cec << 1);
+	else
+		regmap_write(adv7511->regmap, ADV7511_REG_CEC_I2C_ADDR,
+			     adv7511->i2c_cec->addr << 1);
 
 	INIT_WORK(&adv7511->hpd_work, adv7511_hpd_work);
 
