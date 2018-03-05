@@ -27,6 +27,7 @@
 #include <linux/serial_core.h>
 #include <linux/slab.h>
 #include <linux/tty_flip.h>
+#include <linux/pinctrl/consumer.h>
 
 /* All registers are 8-bit width */
 #define UARTBDH			0x00
@@ -1455,8 +1456,8 @@ static int lpuart_startup(struct uart_port *port)
 
 	if (sport->dma_rx_chan && !lpuart_dma_rx_request(port)) {
 		sport->lpuart_dma_rx_use = true;
-		setup_timer(&sport->lpuart_timer, lpuart_timer_func,
-			    (unsigned long)sport);
+		timer_setup(&sport->lpuart_timer, lpuart_timer_func,
+			    0);
 	} else
 		sport->lpuart_dma_rx_use = false;
 
@@ -1516,9 +1517,9 @@ static int lpuart32_startup(struct uart_port *port)
 	if (sport->dma_rx_chan && !lpuart_dma_rx_request(port)) {
 		sport->lpuart_dma_rx_use = true;
 		if (!sport->dma_eeop)
-			setup_timer(&sport->lpuart_timer,
+			timer_setup(&sport->lpuart_timer,
 				    lpuart_timer_func,
-				    (unsigned long)sport);
+				    0);
 	} else
 		sport->lpuart_dma_rx_use = false;
 
@@ -1862,11 +1863,12 @@ lpuart32_set_termios(struct uart_port *port, struct ktermios *termios,
 {
 	struct lpuart_port *sport = container_of(port, struct lpuart_port, port);
 	unsigned long flags;
-	unsigned long ctrl, old_ctrl, modem;
+	unsigned long ctrl, old_ctrl, bd, modem;
 	unsigned int  baud;
 	unsigned int old_csize = old ? old->c_cflag & CSIZE : CS8;
 
 	ctrl = old_ctrl = lpuart32_read(&sport->port, UARTCTRL);
+	bd = lpuart32_read(&sport->port, UARTBAUD);
 	modem = lpuart32_read(&sport->port, UARTMODIR);
 	/*
 	 * only support CS8 and CS7, and for CS7 must enable PE.
@@ -2708,6 +2710,37 @@ static int lpuart_suspend(struct device *dev)
 	return 0;
 }
 
+static void lpuart_console_fixup(struct lpuart_port *sport)
+{
+	struct tty_port *port = &sport->port.state->port;
+	struct uart_port *uport = &sport->port;
+	struct device_node *np = sport->port.dev->of_node;
+	struct ktermios termios;
+
+	if (!lpuart_is_32(sport) || !np)
+		return;
+
+	/* i.MX7ULP enter VLLS mode that lpuart module power off and registers
+	 * all lost no matter the port is wakeup source.
+	 * For console port, console baud rate setting lost and print messy
+	 * log when enable the console port as wakeup source. To avoid the
+	 * issue happen, user should not enable uart port as wakeup source
+	 * in VLLS mode, or restore console setting here.
+	 */
+	if (of_device_is_compatible(np, "fsl,imx7ulp-lpuart") &&
+	    lpuart_uport_is_active(sport) && console_suspend_enabled &&
+	    uart_console(&sport->port)) {
+
+		mutex_lock(&port->mutex);
+		memset(&termios, 0, sizeof(struct ktermios));
+		termios.c_cflag = uport->cons->cflag;
+		if (port->tty && termios.c_cflag == 0)
+			termios = port->tty->termios;
+		uport->ops->set_termios(uport, &termios, NULL);
+		mutex_unlock(&port->mutex);
+	}
+}
+
 static inline void lpuart32_resume_init(struct lpuart_port *sport)
 {
 	unsigned long temp;
@@ -2733,9 +2766,9 @@ static inline void lpuart32_resume_init(struct lpuart_port *sport)
 		if (!lpuart_dma_rx_request(&sport->port)) {
 			sport->lpuart_dma_rx_use = true;
 			if (!sport->dma_eeop)
-				setup_timer(&sport->lpuart_timer,
+				timer_setup(&sport->lpuart_timer,
 					    lpuart_timer_func,
-					    (unsigned long)sport);
+					    0);
 		} else {
 			sport->lpuart_dma_rx_use = false;
 		}
@@ -2790,9 +2823,9 @@ static inline void lpuart_resume_init(struct lpuart_port *sport)
 	if (sport->lpuart_dma_rx_use) {
 		if (!lpuart_dma_rx_request(&sport->port)) {
 			sport->lpuart_dma_rx_use = true;
-			setup_timer(&sport->lpuart_timer,
+			timer_setup(&sport->lpuart_timer,
 				lpuart_timer_func,
-				(unsigned long)sport);
+				0);
 		} else {
 			sport->lpuart_dma_rx_use = false;
 		}
@@ -2847,6 +2880,7 @@ static int lpuart_resume(struct device *dev)
 		pm_runtime_enable(sport->port.dev);
 	}
 
+	lpuart_console_fixup(sport);
 	uart_resume_port(&lpuart_reg, &sport->port);
 
 	return 0;
