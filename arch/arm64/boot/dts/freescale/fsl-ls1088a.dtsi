@@ -709,6 +709,7 @@
 			dr_mode = "host";
 			configure-gfladj;
 			snps,dis_rxdet_inp3_quirk;
+			snps,incr-burst-type-adjustment = <1>, <4>, <8>, <16>;
 		};
 
 		usb1: usb3@3110000 {
@@ -718,6 +719,7 @@
 			dr_mode = "host";
 			configure-gfladj;
 			snps,dis_rxdet_inp3_quirk;
+			snps,incr-burst-type-adjustment = <1>, <4>, <8>, <16>;
 		};
 
 		sata: sata@3200000 {
