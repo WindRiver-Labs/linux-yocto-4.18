@@ -31,6 +31,7 @@
 #include <linux/of_device.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/pinctrl/consumer.h>
 
 #include <asm/irq.h>
 #include <linux/busfreq-imx.h>
@@ -579,7 +580,6 @@ static void imx_uart_dma_tx_callback(void *data)
 	struct scatterlist *sgl = &sport->tx_sgl[0];
 	struct circ_buf *xmit = &sport->port.state->xmit;
 	unsigned long flags;
-	u32 ucr1;
 
 	/* update the stat */
 	spin_lock_irqsave(&sport->port.lock, flags);
@@ -663,7 +663,7 @@ static void imx_uart_dma_tx_work(struct work_struct *w)
 			dev_err(dev, "We cannot prepare for the TX slave dma!\n");
 			goto err_out;
 		}
-		desc->callback = dma_tx_callback;
+		desc->callback = imx_uart_dma_tx_callback;
 		desc->callback_param = sport;
 
 		dev_dbg(dev, "TX: prepare to send %lu bytes by DMA.\n",
@@ -867,7 +867,7 @@ static unsigned int imx_uart_get_hwmctrl(struct imx_port *sport)
 		if (!(imx_uart_readl(sport, USR2) & USR2_RIIN))
 			tmp |= TIOCM_RI;
 
-	if (imx_uart_readl(sport, uts_reg(sport)) & UTS_LOOP)
+	if (imx_uart_readl(sport, imx_uart_uts_reg(sport)) & UTS_LOOP)
 		tmp |= TIOCM_LOOP;
 
 	return tmp;
@@ -1431,12 +1431,12 @@ static int imx_uart_startup(struct uart_port *port)
 		udelay(1);
 
 	/* Can we enable the DMA support? */
-	if (is_imx6q_uart(sport) && !uart_console(port)
+	if (imx_uart_is_imx6q(sport) && !uart_console(port)
 		&& !sport->dma_is_inited)
 		imx_uart_dma_init(sport);
 
 	if (sport->dma_is_inited)
-		INIT_WORK(&sport->tsk_dma_tx, dma_tx_work);
+		INIT_WORK(&sport->tsk_dma_tx, imx_uart_dma_tx_work);
 
 	spin_lock_irqsave(&sport->port.lock, flags);
 
@@ -1631,11 +1631,12 @@ imx_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct imx_port *sport = (struct imx_port *)port;
 	unsigned long flags;
 	u32 ufcr;
-	unsigned long ucr2, old_ucr1, old_ucr2, baud, quot;
+	unsigned long old_ucr1, old_ucr2, baud, quot;
 	unsigned int old_csize = old ? old->c_cflag & CSIZE : CS8;
 	unsigned long div;
 	unsigned long num, denom;
 	uint64_t tdiv64;
+	u32 ucr2;
 
 	/*
 	 * We only support CS7 and CS8.
@@ -2539,7 +2540,11 @@ static void imx_uart_save_context(struct imx_port *sport)
 
 static void imx_uart_enable_wakeup(struct imx_port *sport, bool on)
 {
-	u32 ucr3;
+	u32 ucr3, usr1;
+
+	usr1 = imx_uart_readl(sport, USR1);
+	if (usr1 & (USR1_AWAKE | USR1_RTSD))
+		imx_uart_writel(sport, USR1_AWAKE | USR1_RTSD, USR1);
 
 	ucr3 = imx_uart_readl(sport, UCR3);
 	if (on) {
@@ -2565,7 +2570,7 @@ static int imx_uart_suspend_noirq(struct device *dev)
 	struct imx_port *sport = dev_get_drvdata(dev);
 
 	/* enable wakeup from i.MX UART */
-	serial_imx_enable_wakeup(sport, true);
+	imx_uart_enable_wakeup(sport, true);
 
 	imx_uart_save_context(sport);
 
@@ -2579,7 +2584,6 @@ static int imx_uart_suspend_noirq(struct device *dev)
 static int imx_uart_resume_noirq(struct device *dev)
 {
 	struct imx_port *sport = dev_get_drvdata(dev);
-	unsigned int val;
 	int ret;
 
 	pinctrl_pm_select_default_state(dev);
@@ -2591,10 +2595,7 @@ static int imx_uart_resume_noirq(struct device *dev)
 	imx_uart_restore_context(sport);
 
 	/* disable wakeup from i.MX UART */
-	serial_imx_enable_wakeup(sport, false);
-	val = readl(sport->port.membase + USR1);
-	if (val & (USR1_AWAKE | USR1_RTSD))
-		writel(USR1_AWAKE | USR1_RTSD, sport->port.membase + USR1);
+	imx_uart_enable_wakeup(sport, false);
 
 	return 0;
 }
