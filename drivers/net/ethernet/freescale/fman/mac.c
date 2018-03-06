@@ -566,8 +566,6 @@ static struct platform_device *dpaa_eth_add_device(int fman_id,
 		goto no_mem;
 	}
 
-	pdev->dev.parent = priv->dev;
-
 	ret = platform_device_add_data(pdev, &data, sizeof(data));
 	if (ret)
 		goto err;
