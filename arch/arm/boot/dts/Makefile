@@ -600,6 +600,7 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 dtb-$(CONFIG_SOC_IMX6ULL) += \
 	imx6ull-14x14-ddr3-arm2.dtb \
 	imx6ull-14x14-ddr3-arm2-lcdif.dtb \
+	imx6ull-14x14-ddr3-arm2-gpmi-weim.dtb \
 	imx6ull-14x14-evk.dtb \
 	imx6ull-colibri-eval-v3.dtb \
 	imx6ull-colibri-wifi-eval-v3.dtb
