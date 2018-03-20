@@ -1288,9 +1288,16 @@ static int drm_atomic_connector_set_property(struct drm_connector *connector,
 				&state->hdr_source_metadata_blob_ptr,
 				val,
 				-1,
+				-1,
 				&replaced);
 		state->hdr_metadata_changed |= replaced;
-		return ret;
+		if (ret < 0)
+			return ret;
+
+		if (connector->funcs->atomic_set_property) {
+			return connector->funcs->atomic_set_property(connector,
+					state, property, val);
+		}
 	} else if (property == config->aspect_ratio_property) {
 		state->picture_aspect_ratio = val;
 	} else if (property == connector->scaling_mode_property) {
