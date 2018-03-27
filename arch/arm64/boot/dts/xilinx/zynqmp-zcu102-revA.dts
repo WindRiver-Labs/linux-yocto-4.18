@@ -78,7 +78,6 @@
 	status = "okay";
 };
 
-/* fpd_dma clk 667MHz, lpd_dma 500MHz */
 &fpd_dma_chan1 {
 	status = "okay";
 };
@@ -511,24 +510,19 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
-			dev@19 { /* u-boot detection */
-				compatible = "xxx";
+			dev@19 {
 				reg = <0x19>;
 			};
-			dev@30 { /* u-boot detection */
-				compatible = "xxx";
+			dev@30 {
 				reg = <0x30>;
 			};
-			dev@35 { /* u-boot detection */
-				compatible = "xxx";
+			dev@35 {
 				reg = <0x35>;
 			};
-			dev@36 { /* u-boot detection */
-				compatible = "xxx";
+			dev@36 {
 				reg = <0x36>;
 			};
-			dev@51 { /* u-boot detection - maybe SPD */
-				compatible = "xxx";
+			dev@51 {
 				reg = <0x51>;
 			};
 		};

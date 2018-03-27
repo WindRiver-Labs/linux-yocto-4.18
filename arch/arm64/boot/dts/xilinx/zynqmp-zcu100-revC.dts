@@ -106,10 +106,6 @@
 	};
 
 	ltc2954: ltc2954 { /* U7 */
-		/*
-		 * FIXME this is ltc2954 not ltc2952 - try this driver and
-		 * maybe just extend compatible string.
-		 */
 		compatible = "lltc,ltc2954", "lltc,ltc2952";
 		trigger-gpios = <&gpio 26 GPIO_ACTIVE_LOW>; /* INT line - input */
 		/* If there is HW watchdog on mezzanine this signal should be connected there */
