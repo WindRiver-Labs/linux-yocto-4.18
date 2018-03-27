@@ -154,18 +154,17 @@ static int dpaa2_dpio_probe(struct fsl_mc_device *dpio_dev)
 	 * Set the CENA regs to be the cache enabled area of the portal to
 	 * achieve the best performance.
 	 */
-	desc.regs_cena = ioremap_cache_ns(dpio_dev->regions[0].start,
-		resource_size(&dpio_dev->regions[0]));
-	if (IS_ERR(desc.regs_cena)) {
+	desc.regs_cena = devm_memremap(dev, dpio_dev->regions[1].start,
+				       resource_size(&dpio_dev->regions[1]),
+				       MEMREMAP_WC);
+	if (!desc.regs_cena) {
 		dev_err(dev, "devm_memremap failed\n");
-		err = PTR_ERR(desc.regs_cena);
 		goto err_allocate_irqs;
 	}
 
 	desc.regs_cinh = devm_ioremap(dev, dpio_dev->regions[1].start,
 				      resource_size(&dpio_dev->regions[1]));
 	if (!desc.regs_cinh) {
-		err = -ENOMEM;
 		dev_err(dev, "devm_ioremap failed\n");
 		goto err_allocate_irqs;
 	}
