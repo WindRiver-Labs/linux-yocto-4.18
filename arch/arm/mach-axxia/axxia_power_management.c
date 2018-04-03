@@ -1,5 +1,5 @@
 /*
- *  linux/arch/arm/mach-axxia/lsi_power_management.c
+ *  linux/arch/arm/mach-axxia/axxia_power_management.c
  *
  *  C *  Created on: Jun 19, 2014
  *      Author: z8cpaul
@@ -26,7 +26,7 @@
 
 #include "axxia.h"
 #include <mach/axxia-gic.h>
-#include "lsi_power_management.h"
+#include "axxia_power_management.h"
 
 #undef DEBUG_CPU_PM
 

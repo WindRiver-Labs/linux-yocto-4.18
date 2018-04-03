@@ -1,7 +1,7 @@
 /*
  * GPIO interface for SSP chip select pins.
  *
- * Copyright (C) 2013 LSI Corporation
+ * Copyright (C) 2013 INTEL Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ ssp_gpio_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id ssp_gpio_id_table[] = {
-	{ .compatible = "lsi,ssp-gpio" },
+	{ .compatible = "axxia,ssp-gpio" },
 	{}
 };
 MODULE_DEVICE_TABLE(platform, ssp_gpio_id_table);
@@ -131,6 +131,6 @@ static struct platform_driver ssp_gpio_driver = {
 
 module_platform_driver(ssp_gpio_driver);
 
-MODULE_AUTHOR("LSI Corporation");
+MODULE_AUTHOR("INTEL Corporation");
 MODULE_DESCRIPTION("GPIO interface for SSP chip selects");
 MODULE_LICENSE("GPL");

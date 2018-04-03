@@ -30,7 +30,7 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/of.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/mutex.h>
 
 static int is_5500;
@@ -2228,10 +2228,10 @@ pei_init(void)
 	memset(axxia_pei, 0, sizeof(axxia_pei));
 
 	/* Use the device tree to determine the Axxia type. */
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500") ||
-	    of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500") ||
+	    of_find_compatible_node(NULL, NULL, "axxia,axm5516")) {
 		is_5500 = 1;
-	} else if (of_find_compatible_node(NULL, NULL, "lsi,axm5616")) {
+	} else if (of_find_compatible_node(NULL, NULL, "axxia,axm5616")) {
 		is_5600 = 1;
 		axxia_pei[0].phys = 0xa003000000;
 		axxia_pei[0].virt = ioremap(axxia_pei[0].phys, 0x10000);
@@ -2241,7 +2241,7 @@ pei_init(void)
 		axxia_pei[2].virt = ioremap(axxia_pei[2].phys, 0x10000);
 		pcie_rc = ioremap(0xa002000000, 0x1000);
 		syscon = ioremap(0x8002c00000, 0x4000);
-	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
+	} else if (of_find_compatible_node(NULL, NULL, "axxia,axc6732")) {
 		is_6700 = 1;
 		axxia_pei[0].phys = 0xa003000000;
 		axxia_pei[0].virt = ioremap(axxia_pei[0].phys, 0x10000);

@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/axm5512-amarillo.dts
  *
- * Copyright (C) 2013 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 / {
 	model = "Amarillo AXM5500";
-	compatible = "lsi,axm5500-amarillo", "lsi,axm5500";
+	compatible = "axxia,axm5500-amarillo", "axxia,axm5500";
 
 	memory {
 		device_type = "memory";

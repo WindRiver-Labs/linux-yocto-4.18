@@ -380,7 +380,7 @@ EXPORT_SYMBOL(axxia_actlr_el2_set);
 static int
 axxia_oem_init(void)
 {
-	if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axc6732")) {
 		/* Only applicable to the 6700. */
 		if (NULL == proc_create("driver/axxia_dspc", S_IWUSR, NULL,
 					&axxia_dspc_proc_ops))

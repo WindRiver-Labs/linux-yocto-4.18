@@ -155,16 +155,16 @@ static int __init
 axxia_fault_init(void)
 {
 #if defined(ARM)
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500") ||
-	    of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500") ||
+	    of_find_compatible_node(NULL, NULL, "axxia,axm5516")) {
 		mask_aborts = 1;
 		hook_fault_code(0x11, axxia_x7_fault, SIGBUS, 0,
 				"asynchronous external abort");
 		pr_debug("Set up fault handler for Axxia 5500\n");
 	}
 #elif defined(ARM64)
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-	    of_find_compatible_node(NULL, NULL, "lsi,axc6732"))
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+	    of_find_compatible_node(NULL, NULL, "axxia,axc6732"))
 		pr_debug("Set up fault handler for Axxia 5600/6700\n");
 #endif
 

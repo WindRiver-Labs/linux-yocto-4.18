@@ -813,7 +813,7 @@ axxia_probe_pciex_bridge(struct platform_device *pdev)
 }
 
 static const struct of_device_id axxia_pcie_match_table[] = {
-	{.compatible = "lsi,plb-pciex",},
+	{.compatible = "axxia,plb-pciex",},
 	{},
 };
 

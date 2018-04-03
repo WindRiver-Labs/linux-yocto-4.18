@@ -1,10 +1,10 @@
 
 config AXXIA_RIO
-       bool "LSI Embedded SRIO Controller support"
+       bool "AXXIA Embedded SRIO Controller support"
        depends on RAPIDIO && (ACP || ARCH_AXXIA)
        default "n"
        ---help---
-         Include support for RapidIO controllers for LSI Axxia
+         Include support for RapidIO controllers for INTEL Axxia
          devices. The Axxia devices with arm (AXM55xx) and
          powerpc (AXM35xx) cores has the serial RapidIO
          controllers.

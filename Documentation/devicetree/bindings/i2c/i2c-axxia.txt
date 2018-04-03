@@ -1,7 +1,7 @@
-LSI Axxia I2C
+INTEL Axxia I2C
 
 Required properties :
-- compatible : Must be "lsi,api2c"
+- compatible : Must be "axxia,api2c"
 - reg : Offset and length of the register set for the device
 - interrupts : the interrupt specifier
 - #address-cells : Must be <1>;
@@ -18,7 +18,7 @@ Optional properties :
 Example :
 
 i2c@2010084000 {
-	compatible = "lsi,api2c";
+	compatible = "axxia,api2c";
 	device_type = "i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;

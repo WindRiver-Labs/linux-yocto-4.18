@@ -3,7 +3,7 @@
  *
  * Platform perf helper module for generic VP statistical monitor
  *
- * Copyright (C) 2013 LSI Corporation.
+ * Copyright (C) 2013 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,7 +20,7 @@
 
 #include <linux/io.h>
 
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 
 #include "smon.h"
 

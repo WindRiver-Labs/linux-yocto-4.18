@@ -3,13 +3,13 @@ AXXIA TRNG HWRNG Driver Module
 Required properties:
 
 - compatible : Should contain entries for this.
-  - "lsi,trng" for AXXIA devices
+  - "axxia,trng" for AXXIA devices
 - reg : Offset and length of the register set for the module
 - interrupts : the interrupt number for the TRNG module.
 
 Example:
 trng: trng@8031060000 {
-	compatible = "lsi,trng";
+	compatible = "axxia,trng";
 	reg = <0x80 0x31060000 0x20000>;
 	interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 };

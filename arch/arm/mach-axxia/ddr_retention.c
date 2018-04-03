@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2013 LSI Corporation
+ *  Copyright (C) 2013 INTEL Corporation
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -28,7 +28,7 @@
 
 #include <linux/of.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <asm/cacheflush.h>
 #include "axxia.h"
 
@@ -337,7 +337,7 @@ axxia_ddr_retention_init(void)
 	* Only available on ASIC systems.
 	*/
 
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500-amarillo")) {
 		/* Create /proc entry. */
 		if (!proc_create("driver/axxia_ddr_retention_reset",
 				S_IWUSR, NULL, &axxia_ddr_retention_proc_ops)) {

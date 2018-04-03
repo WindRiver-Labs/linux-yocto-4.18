@@ -1,9 +1,9 @@
 /*
  * arch/arm/mach-axxia/axxia.c
  *
- * Support for the LSI Axxia boards based on ARM cores.
+ * Support for the INTEL Axxia boards based on ARM cores.
  *
- * Copyright (C) 2012 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 #include <linux/sizes.h>
 #include <linux/pmu.h>
 #include <linux/kexec.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #ifdef CONFIG_ARM_ARCH_TIMER
 #include <asm/arch_timer.h>
 #endif
@@ -57,7 +57,7 @@
 #endif
 
 static const char *axxia_dt_match[] __initconst = {
-	"lsi,axm5500",
+	"axxia,axm5500",
 	NULL
 };
 
@@ -133,7 +133,7 @@ void __init axxia_dt_timer_init(void)
 {
 	int is_sim;
 
-	is_sim = of_find_compatible_node(NULL, NULL, "lsi,axm5500-sim") != NULL;
+	is_sim = of_find_compatible_node(NULL, NULL, "axxia,axm5500-sim") != NULL;
 
 	axxia_init_clocks(is_sim);
 
@@ -196,7 +196,7 @@ static struct notifier_block axxia_amba_nb = {
 void __init axxia_dt_init(void)
 {
 	base = ioremap(0x2010000000, 0x40000);
-	if (!of_find_compatible_node(NULL, NULL, "lsi,axm5500-sim")) {
+	if (!of_find_compatible_node(NULL, NULL, "axxia,axm5500-sim")) {
 		dickens = ioremap(0x2000000000, SZ_16M);
 #ifdef CONFIG_KEXEC
 		kexec_reinit = flush_l3;
@@ -228,7 +228,7 @@ static void axxia_restart(enum reboot_mode mode, const char *cmd)
 	writel(0x00080802, base + 0x31008); /* Chip Reset */
 }
 
-DT_MACHINE_START(AXXIA_DT, "LSI Axxia")
+DT_MACHINE_START(AXXIA_DT, "INTEL Axxia")
 .dt_compat	= axxia_dt_match,
 	.smp		= smp_ops(axxia_smp_ops),
 	.map_io		= axxia_dt_map_io,

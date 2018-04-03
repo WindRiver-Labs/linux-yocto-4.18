@@ -495,7 +495,7 @@
 
 #define RIO_OUTB_ATMU_WINDOWS   16
 
-#define LSI_AXXIA_RIO_COOKIE	0x41734230	/* aka 'AsR0' */
+#define AXXIA_RIO_COOKIE	0x41734230	/* aka 'AsR0' */
 
 /***********************************/
 /* *********** STRUCTS *********** */

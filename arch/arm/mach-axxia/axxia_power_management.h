@@ -1,12 +1,12 @@
 /*
- * lsi_power_management.h
+ * axxia_power_management.h
  *
  *  Created on: Jun 23, 2014
  *      Author: z8cpaul
  */
 
-#ifndef LSI_POWER_MANAGEMENT_H_
-#define LSI_POWER_MANAGEMENT_H_
+#ifndef AXXIA_POWER_MANAGEMENT_H_
+#define AXXIA_POWER_MANAGEMENT_H_
 
 
 #define     NCP_SYSCON_MCG_CSW_CPU                              (0x00000000)
@@ -189,4 +189,4 @@ extern bool cluster_power_up[];
 extern u32 pm_cpu_powered_down;
 
 
-#endif /* LSI_POWER_MANAGEMENT_H_ */
+#endif /* AXXIA_POWER_MANAGEMENT_H_ */

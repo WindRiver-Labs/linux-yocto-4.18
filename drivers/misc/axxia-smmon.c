@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2013 LSI Corporation
+ *  Copyright (C) 2013 INTEL Corporation
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -289,14 +289,14 @@ smmon_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id smmon_id_table[] = {
-	{ .compatible = "lsi,smmon" },
+	{ .compatible = "axxia,smmon" },
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, smmon_id_table);
 
 static struct platform_driver smmon_driver = {
 	.driver = {
-		.name = "lsi-smmon",
+		.name = "axxia-smmon",
 		.of_match_table = smmon_id_table
 	},
 	.probe = smmon_probe,

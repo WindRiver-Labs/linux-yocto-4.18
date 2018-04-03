@@ -9,10 +9,10 @@ config MTD_NAND_EP501X
 	  and EP501G3 controllers.
 
 config MTD_NAND_EP501X_UBOOTENV
-	tristate "U-Boot Environment Access for LSI's APP and ACP"
+	tristate "U-Boot Environment Access for INTEL Axxia's APP and ACP"
 	depends on ( MTD_NAND_EP501X && CRC32 )
 	help
-	  Add U-Boot environment access on LSI's APP/ACP boards.
+	  Add U-Boot environment access on INTEL Axxia's APP/ACP boards.
 
 source "drivers/mtd/nand/onenand/Kconfig"
 

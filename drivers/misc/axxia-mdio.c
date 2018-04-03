@@ -163,8 +163,8 @@ axxia_mdio_probe(struct platform_device *pdev)
 	priv->bus->parent = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, priv->bus);
 
-	of_property_read_u32(np, "lsi,mdio-clk-offset", &clk_offset);
-	of_property_read_u32(np, "lsi,mdio-clk-period", &clk_period);
+	of_property_read_u32(np, "axxia,mdio-clk-offset", &clk_offset);
+	of_property_read_u32(np, "axxia,mdio-clk-period", &clk_period);
 
 	writel(clk_offset, priv->base + MDIO_CLK_OFFSET);
 	writel(clk_period, priv->base + MDIO_CLK_PERIOD);
@@ -200,9 +200,9 @@ axxia_mdio_remove(struct platform_device *pdev)
 }
 
 static struct of_device_id axxia_mdio_match[] = {
-	{ .compatible = "lsi,axm-mdio", },
-	{ .compatible = "intel,axxia-mdio0", },
-	{ .compatible = "intel,axxia-mdio1", },
+	{ .compatible = "axxia,axm-mdio", },
+	{ .compatible = "axxia,axxia-mdio0", },
+	{ .compatible = "axxia,axxia-mdio1", },
 	{},
 };
 

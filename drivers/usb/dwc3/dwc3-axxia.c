@@ -87,7 +87,7 @@ arch_setup_pdev_archdata(struct platform_device *pdev)
 }
 
 static const struct of_device_id adwc3_of_match[] = {
-	{ .compatible = "intel,axxia-dwc3", },
+	{ .compatible = "axxia,axxia-dwc3", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, adwc3_of_match);

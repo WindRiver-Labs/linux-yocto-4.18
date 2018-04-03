@@ -1,7 +1,7 @@
 * Intel Axxia Designware Serial RapidIO interface
 
 Required properties:
-- compatible: should contain "intel,axxia-rapidio" to identify the core.
+- compatible: should contain "axxia,axxia-rapidio" to identify the core.
 - reg: Should contain the sRIO Register address space.
 - #address-cells: set to <2>
 - #size-cells: set to <2>
@@ -13,7 +13,7 @@ Required properties:
 Example:
 	rio0: rapidio@0xb000000000 {
 		index = <0>;
-		compatible = "intel,axxia-rapidio";
+		compatible = "axxia,axxia-rapidio";
 		device_type = "rapidio";
 		reg = <0xa0 0x00020000 0 0x00001000>;
 		#address-cells = <2>;

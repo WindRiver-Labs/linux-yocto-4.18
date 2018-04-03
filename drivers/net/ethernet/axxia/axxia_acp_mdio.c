@@ -1,7 +1,7 @@
 /*
- * drivers/net/ethernet/lsi/lsi_acp_mdio.c
+ * drivers/net/ethernet/axxia/axxia_acp_mdio.c
  *
- * Copyright (C) 2013 LSI Corporation.
+ * Copyright (C) 2013 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,11 @@
 
 /* MDIO Access */
 
-struct lsi_mdio_priv {
+struct axxia_mdio_priv {
 	unsigned long base;
 };
 
-static struct lsi_mdio_priv *mdio_priv;
+static struct axxia_mdio_priv *mdio_priv;
 static DEFINE_SPINLOCK(mdio_lock);
 
 #define MDIO_CONTROL_RD_DATA ((void *)(mdio_priv->base + 0x0))
@@ -271,14 +271,14 @@ acp_mdio_init(void)
 
 	pr_info("MDIO: Initializing Axxia Wrappers.\n");
 
-	mdio_priv = kzalloc(sizeof(struct lsi_mdio_priv), GFP_KERNEL);
+	mdio_priv = kzalloc(sizeof(struct axxia_mdio_priv), GFP_KERNEL);
 	if (!mdio_priv)
 		return -ENOMEM;
 
 	np = of_find_node_by_type(np, "network");
 
 	while (np &&
-	       !of_device_is_compatible(np, "lsi,acp-femac") &&
+	       !of_device_is_compatible(np, "axxia,acp-femac") &&
 	       !of_device_is_compatible(np, "acp-femac"))
 		np = of_find_node_by_type(np, "network");
 
@@ -333,6 +333,6 @@ error:
 
 module_init(acp_mdio_init);
 
-MODULE_AUTHOR("LSI Corporation");
+MODULE_AUTHOR("INTEL Corporation");
 MODULE_DESCRIPTION("Timing Test");
 MODULE_LICENSE("GPL");

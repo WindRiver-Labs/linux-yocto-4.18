@@ -1,9 +1,9 @@
 /*
- * drivers/lsi/acp/nand.c
+ * drivers/axxia/acp/nand.c
  *
- * NAND Controller Driver for LSI's ACP
+ * NAND Controller Driver for INTEL Axxia's ACP
  *
- * Copyright (C) 2009 LSI Inc.
+ * Copyright (C) 2018 INTEL Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 
 /* -- DEBUG --------------------------------------------------------- */
 
-#include <asm/lsi/debug.h>
+#include <asm/axxia/debug.h>
 
 /* -- LOGIO --------------------------------------------------------- */
 
@@ -348,13 +348,13 @@ static unsigned long pecc_busy_mask;
   MTD structures
 */
 
-static struct mtd_info lsi_nand_mtd = { 0 };
-static struct nand_chip lsi_nand_chip = { 0 };
+static struct mtd_info axxia_nand_mtd = { 0 };
+static struct nand_chip axxia_nand_chip = { 0 };
 
-static struct lsi_nand_private {
+static struct axxia_nand_private {
 	int cur;	/* -1 means there is no meaningful data in buffer */
 	uint8_t buf[MAX_READ_BUF];
-} lsi_nand_private;
+} axxia_nand_private;
 
 #define NAND_CMD_START_ECC_READ	  0x23
 
@@ -418,10 +418,10 @@ typedef union {
 } __packed nand_timing_control_register_2_t;
 
 typedef enum {
-	LSI_NAND_NONE, LSI_NAND_EP501, LSI_NAND_EP501G1, LSI_NAND_EP501G3
-} lsi_nand_type_t;
+	AXXIA_NAND_NONE, AXXIA_NAND_EP501, AXXIA_NAND_EP501G1, AXXIA_NAND_EP501G3
+} axxia_nand_type_t;
 
-static lsi_nand_type_t lsi_nand_type;
+static axxia_nand_type_t axxia_nand_type;
 
 typedef struct page_wise_ecc_status_st {
 	unsigned err_bit:3;
@@ -455,7 +455,7 @@ typedef struct page_wise_ecc_status_st {
   The only usable option is 2K.  So, the OOB should be 64 bytes.  The
   first 2 bytes are reserved for marking bad blocks.  The last 12
   bytes are reserved for ECC.  All other bytes are free.  See
-  lsi_ep501_2k_ecclayout below.
+  axxia_ep501_2k_ecclayout below.
 
   EP501G1
 
@@ -465,7 +465,7 @@ typedef struct page_wise_ecc_status_st {
   =============================================================================
 */
 
-static struct nand_ecclayout lsi_2k_1bit_ecclayout = {
+static struct nand_ecclayout axxia_2k_1bit_ecclayout = {
 	.eccbytes = 12,
 	.eccpos = {
 		52, 53, 54, 55, 56, 57,
@@ -474,7 +474,7 @@ static struct nand_ecclayout lsi_2k_1bit_ecclayout = {
 };
 
 /*
-static struct nand_ecclayout lsi_4k_1bit_ecclayout = {
+static struct nand_ecclayout axxia_4k_1bit_ecclayout = {
 	.eccbytes = 24,
 	.eccpos = {
 		52, 53, 54, 55, 56, 57,
@@ -483,7 +483,7 @@ static struct nand_ecclayout lsi_4k_1bit_ecclayout = {
 };
 */
 
-static struct nand_ecclayout lsi_2k_4bit_ecclayout = {
+static struct nand_ecclayout axxia_2k_4bit_ecclayout = {
 	.eccbytes = 32,
 	.eccpos = {
 		32, 33, 34, 35, 36, 37, 38, 39,
@@ -493,7 +493,7 @@ static struct nand_ecclayout lsi_2k_4bit_ecclayout = {
 	.oobfree = {{2, 30} }
 };
 
-static struct nand_ecclayout lsi_4k_4bit_ecclayout = {
+static struct nand_ecclayout axxia_4k_4bit_ecclayout = {
 	.eccbytes = 64,
 	.eccpos = {
 		64,  65,  66,  67,  68,  69,  70,  71,
@@ -510,7 +510,7 @@ static struct nand_ecclayout lsi_4k_4bit_ecclayout = {
 
 #ifdef NOT_USED
 
-static struct nand_ecclayout lsi_8k_4bit_ecclayout = {
+static struct nand_ecclayout axxia_8k_4bit_ecclayout = {
 	.eccbytes = 128,
 	.eccpos = {
 		128, 129, 130, 131, 132, 133, 134, 135,
@@ -537,11 +537,11 @@ static struct nand_ecclayout lsi_8k_4bit_ecclayout = {
 
 /*
   -----------------------------------------------------------------------------
-  lsi_nand_hwcontrol
+  axxia_nand_hwcontrol
 */
 
 static void
-lsi_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
+axxia_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -551,7 +551,7 @@ lsi_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 
 /*
   ------------------------------------------------------------------------------
-  lsi_nand_device_ready
+  axxia_nand_device_ready
 
   The READ/BUSY# input from the NAND device(s) (ORed if there are more
   than one) is availble as an extra bit in the interrupt status
@@ -561,7 +561,7 @@ lsi_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 */
 
 static int
-lsi_nand_device_ready(struct mtd_info *mtd)
+axxia_nand_device_ready(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 	unsigned long interrupt_status;
@@ -573,7 +573,7 @@ lsi_nand_device_ready(struct mtd_info *mtd)
 }
 
 /**
- * lsi_nand_command - [DEFAULT] Send command to NAND large page device
+ * axxia_nand_command - [DEFAULT] Send command to NAND large page device
  * @mtd:	MTD device structure
  * @command:	the command to be sent
  * @column:	the column address for this command, -1 if none
@@ -584,12 +584,12 @@ lsi_nand_device_ready(struct mtd_info *mtd)
  * devices.  We must emulate NAND_CMD_READOOB to keep the code compatible.
  */
 static void
-lsi_nand_command(struct mtd_info *mtd, unsigned int command,
+axxia_nand_command(struct mtd_info *mtd, unsigned int command,
 		 int column, int page_addr)
 {
 	register struct nand_chip *chip = mtd->priv;
 	unsigned int status = 0;
-	struct lsi_nand_private *priv = &lsi_nand_private;
+	struct axxia_nand_private *priv = &axxia_nand_private;
 	struct device_node *np = NULL;
 
 	DEBUG_PRINT("command=0x%x\n", command);
@@ -611,7 +611,7 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 	    command != NAND_CMD_START_ECC_READ &&
 	    command != NAND_CMD_PAGEPROG &&
 	    command != NAND_CMD_ERASE2) {
-		pr_err("lsi_nand_command(): WARN: Unhandled command 0x%x "
+		pr_err("axxia_nand_command(): WARN: Unhandled command 0x%x "
 		       "issued for page=0x%x, column=0x%x.\n",
 		       command, page_addr, column);
 		return;
@@ -632,7 +632,7 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 		  mode is supported.
 		*/
 
-		if (LSI_NAND_EP501 == lsi_nand_type) {
+		if (AXXIA_NAND_EP501 == axxia_nand_type) {
 			/* column number */
 			if (column != -1)
 				index = column & 0xfff;
@@ -718,14 +718,14 @@ lsi_nand_command(struct mtd_info *mtd, unsigned int command,
 }
 
 /**
- * lsi_nand_read_buf - [DEFAULT] read chip data into buffer
+ * axxia_nand_read_buf - [DEFAULT] read chip data into buffer
  * @mtd:	MTD device structure
  * @buf:	buffer to store date
  * @len:	number of bytes to read
  *
  * Default read function for 8bit buswith
  */
-static void lsi_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
+static void axxia_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
 	int i = 0;
 	struct nand_chip *chip = (struct nand_chip *) mtd->priv;
@@ -741,7 +741,7 @@ static void lsi_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 }
 
 /**
- * lsi_nand_write_buf - [DEFAULT] write buffer to chip
+ * axxia_nand_write_buf - [DEFAULT] write buffer to chip
  * @mtd:	MTD device structure
  * @buf:	data buffer
  * @len:	number of bytes to write
@@ -749,7 +749,7 @@ static void lsi_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
  * Default write function for 8bit buswith
  */
 static void
-lsi_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
+axxia_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 {
 	int i = 0;
 	struct nand_chip *chip = mtd->priv;
@@ -764,7 +764,7 @@ lsi_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 		writel(p[i], chip->IO_ADDR_W);
 }
 
-static int lsi_nand_read_status(struct mtd_info *mtd)
+static int axxia_nand_read_status(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -775,7 +775,7 @@ static int lsi_nand_read_status(struct mtd_info *mtd)
 
 
 /**
- * lsi_nand_wait - [DEFAULT]  wait until the command is done
+ * axxia_nand_wait - [DEFAULT]  wait until the command is done
  * @mtd:	MTD device structure
  * @chip:	NAND chip structure
  *
@@ -783,7 +783,7 @@ static int lsi_nand_read_status(struct mtd_info *mtd)
  * Erase can take up to 400ms and program up to 20ms according to
  * general NAND and SmartMedia specs
  */
-static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
+static int axxia_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 {
 	unsigned long status = 0;
 	loff_t offset = 0;
@@ -818,7 +818,7 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	/*
 	  In all cases, wait for the NAND device to be "ready".
 
-	  N.B. The FL_READING case is handled in lsi_nand_command().
+	  N.B. The FL_READING case is handled in axxia_nand_command().
 	*/
 
 	if (FL_WRITING == chip->state || FL_ERASING == chip->state) {
@@ -835,7 +835,7 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	*/
 
 	for (;;) {
-		status = lsi_nand_read_status(mtd);
+		status = axxia_nand_read_status(mtd);
 
 		if (0 != (status & NAND_STATUS_READY))
 			break;
@@ -846,7 +846,7 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	if (status & NAND_STATUS_FAIL) {
 		offset = (READL(chip->IO_ADDR_R + NAND_INDEX_REG) /
 			  mtd->writesize) * mtd->writesize;
-		pr_err("lsi_nand_wait(): Action %d failed for "
+		pr_err("axxia_nand_wait(): Action %d failed for "
 		       "Offset: 0x%llx, status 0x%lx\n",
 		       chip->state, offset, status);
 	}
@@ -855,21 +855,21 @@ static int lsi_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 }
 
 /*
-  lsi_nand_ecc_hwctl
+  axxia_nand_ecc_hwctl
 */
 
 void
-lsi_nand_ecc_hwctl(struct mtd_info *mtd, int mode)
+axxia_nand_ecc_hwctl(struct mtd_info *mtd, int mode)
 {
 	/* nothing to do to enable ECC */
 }
 
 /**
- * lsi_nand_ecc_calculate
+ * axxia_nand_ecc_calculate
  */
 
 int
-lsi_nand_ecc_calculate(struct mtd_info *mtd, const uint8_t *dat,
+axxia_nand_ecc_calculate(struct mtd_info *mtd, const uint8_t *dat,
 		       uint8_t *ecc_code)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -885,11 +885,11 @@ lsi_nand_ecc_calculate(struct mtd_info *mtd, const uint8_t *dat,
 }
 
 /**
- * lsi_nand_ecc_correct
+ * axxia_nand_ecc_correct
  */
 
 int
-lsi_nand_ecc_correct(struct mtd_info *mtd, uint8_t *dat, uint8_t *read_ecc,
+axxia_nand_ecc_correct(struct mtd_info *mtd, uint8_t *dat, uint8_t *read_ecc,
 		     uint8_t *calc_ecc)
 {
 	/* nothing to do to correct ECC */
@@ -2917,14 +2917,14 @@ report_ecc_errors(struct mtd_info *mtd, struct nand_chip *chip,
 {
 	int rc = 0;
 
-	switch (lsi_nand_type) {
-	case LSI_NAND_EP501:
+	switch (axxia_nand_type) {
+	case AXXIA_NAND_EP501:
 		rc = report_ecc_errors_ep501(mtd, chip, buffer, page);
 		break;
-	case LSI_NAND_EP501G1:
+	case AXXIA_NAND_EP501G1:
 		rc = report_ecc_errors_ep501g1(mtd, chip, buffer, page);
 		break;
-	case LSI_NAND_EP501G3:
+	case AXXIA_NAND_EP501G3:
 		rc = report_ecc_errors_ep501g3(mtd, chip, buffer, page);
 		break;
 	default:
@@ -2946,7 +2946,7 @@ report_ecc_errors(struct mtd_info *mtd, struct nand_chip *chip,
  */
 
 static int
-lsi_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
+axxia_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 			 uint8_t *buf, int oob_required, int page)
 {
 	int rc;
@@ -2973,13 +2973,13 @@ lsi_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 }
 
 /**
- * lsi_nand_write_page_hwecc - hardware ecc based page write function
+ * axxia_nand_write_page_hwecc - hardware ecc based page write function
  * @mtd:	mtd info structure
  * @chip:	nand chip info structure
  * @buf:	data buffer
  */
 static int
-lsi_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
+axxia_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 			   const uint8_t *buf, int oob_required)
 {
 	/* write the page data */
@@ -2994,7 +2994,7 @@ lsi_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 }
 
 /**
- * lsi_nand_write_page - [REPLACEABLE] write one page
+ * axxia_nand_write_page - [REPLACEABLE] write one page
  * @mtd:	MTD device structure
  * @chip:	NAND chip descriptor
  * @buf:	the data to write
@@ -3004,7 +3004,7 @@ lsi_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
  */
 
 static int
-lsi_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
+axxia_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 		    uint32_t offset, int data_len, const uint8_t *buf,
 		    int oob_required, int page, int cached, int raw)
 {
@@ -3043,7 +3043,7 @@ lsi_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 
 /**
- * lsi_nand_read_oob_std - [REPLACABLE] the most common OOB data read function
+ * axxia_nand_read_oob_std - [REPLACABLE] the most common OOB data read function
  * @mtd:	mtd info structure
  * @chip:	nand chip info structure
  * @page:	page number to read
@@ -3051,7 +3051,7 @@ lsi_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
  */
 
 static int
-lsi_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
+axxia_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 		  int page)
 {
 	int rc;
@@ -3075,7 +3075,7 @@ lsi_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 }
 
 /**
- * lsi_nand_write_oob_std - [REPLACABLE] the most common OOB data write
+ * axxia_nand_write_oob_std - [REPLACABLE] the most common OOB data write
  *			      function
  * @mtd:	mtd info structure
  * @chip:	nand chip info structure
@@ -3083,7 +3083,7 @@ lsi_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
  */
 
 static int
-lsi_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip, int page)
+axxia_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip, int page)
 {
 	/* start OOB write */
 	chip->cmdfunc(mtd, NAND_CMD_SEQIN, mtd->writesize, page);
@@ -3113,18 +3113,18 @@ lsi_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip, int page)
 
 /*
   ------------------------------------------------------------------------------
-  lsi_nand_set_config
+  axxia_nand_set_config
 */
 
 int
-lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
+axxia_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 {
 	unsigned long config = 0;
 	unsigned long mbits;
 
 	mbits = ((chip->chipsize >> 20) * 8);
 
-	if (LSI_NAND_EP501 == lsi_nand_type) {
+	if (AXXIA_NAND_EP501 == axxia_nand_type) {
 		/* The EP501 only supports 512 and 2k page sizes. */
 		if (512 != mtd->writesize &&
 		    2048 != mtd->writesize)
@@ -3139,11 +3139,11 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 			config |= 0x100; /* large block */
 
 		config |= 0x200;	/* not write protected */
-		chip->ecc.layout = &lsi_2k_1bit_ecclayout;
+		chip->ecc.layout = &axxia_2k_1bit_ecclayout;
 		chip->ecc.size = mtd->writesize;
 		chip->ecc.bytes = chip->ecc.layout->eccbytes;
 		chip->ecc.strength = 1;
-	} else if (LSI_NAND_EP501G1 == lsi_nand_type) {
+	} else if (AXXIA_NAND_EP501G1 == axxia_nand_type) {
 		/* The EP501G1 only supports 512, 2k, and 4k page sizes, */
 		if (512 != mtd->writesize &&
 		    2048 != mtd->writesize &&
@@ -3214,11 +3214,11 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 			break;
 		case 2048:
 			config |= 0x1 << 8;
-			chip->ecc.layout = &lsi_2k_4bit_ecclayout;
+			chip->ecc.layout = &axxia_2k_4bit_ecclayout;
 			break;
 		case 4096:
 			config |= 0x2 << 8;
-			chip->ecc.layout = &lsi_4k_4bit_ecclayout;
+			chip->ecc.layout = &axxia_4k_4bit_ecclayout;
 			break;
 		default:
 			return -1;
@@ -3240,7 +3240,7 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 
 		chip->ecc.strength = 4;
 
-	} else if (LSI_NAND_EP501G3 == lsi_nand_type) {
+	} else if (AXXIA_NAND_EP501G3 == axxia_nand_type) {
 		/* The EP501G3 only supports 2k, 4k, and 8k page sizes, */
 		if (2048 != mtd->writesize &&
 		    4096 != mtd->writesize &&
@@ -3280,16 +3280,16 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 		switch (mtd->writesize) {
 		case 2048:
 			config |= 0x1 << 8;
-			chip->ecc.layout = &lsi_2k_4bit_ecclayout;
+			chip->ecc.layout = &axxia_2k_4bit_ecclayout;
 			break;
 		case 4096:
 			config |= 0x2 << 8;
-			chip->ecc.layout = &lsi_4k_4bit_ecclayout;
+			chip->ecc.layout = &axxia_4k_4bit_ecclayout;
 			break;
 #ifdef NOT_USED
 		case 8192:
 			config |= 0x3 << 8;
-			chip->ecc.layout = &lsi_8k_4bit_ecclayout;
+			chip->ecc.layout = &axxia_8k_4bit_ecclayout;
 			break;
 #endif
 		default:
@@ -3330,9 +3330,9 @@ lsi_nand_set_config(struct mtd_info *mtd, struct nand_chip *chip)
 }
 
 static uint8_t
-lsi_nand_read_byte(struct mtd_info *mtd)
+axxia_nand_read_byte(struct mtd_info *mtd)
 {
-	struct lsi_nand_private *priv = &lsi_nand_private;
+	struct axxia_nand_private *priv = &axxia_nand_private;
 	struct nand_chip *chip = mtd->priv;
 
 	if (priv->cur >= 0) {
@@ -3342,7 +3342,7 @@ lsi_nand_read_byte(struct mtd_info *mtd)
 		return readb(chip->IO_ADDR_R);
 }
 
-static int lsi_nand_errstat
+static int axxia_nand_errstat
 	(struct mtd_info *mtd, struct nand_chip *chip,
 	int state, int status, int page) {
 	/* if erase failed for a block, mark it as bad block */
@@ -3353,7 +3353,7 @@ static int lsi_nand_errstat
 }
 
 static int
-lsi_nand_init_size(struct mtd_info *mtd, struct nand_chip *chip, u8 *id_data)
+axxia_nand_init_size(struct mtd_info *mtd, struct nand_chip *chip, u8 *id_data)
 {
 	int busw, extid;
 
@@ -3387,14 +3387,14 @@ lsi_nand_init_size(struct mtd_info *mtd, struct nand_chip *chip, u8 *id_data)
 		busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
 	}
 
-	lsi_nand_set_config(mtd, chip);
+	axxia_nand_set_config(mtd, chip);
 
 	return busw;
 }
 
 /*
   ----------------------------------------------------------------------
-  lsi_nand_init
+  axxia_nand_init
 */
 
 #define NAND_BASE 0x002000440000ULL
@@ -3403,7 +3403,7 @@ lsi_nand_init_size(struct mtd_info *mtd, struct nand_chip *chip, u8 *id_data)
 #define GPREG_SIZE 0x1000
 
 static int __init
-lsi_nand_init(void)
+axxia_nand_init(void)
 {
 	void *nand_base;
 	struct device_node *np = NULL;
@@ -3466,15 +3466,15 @@ lsi_nand_init(void)
 	  The ECC status register and mask are different on 344x, 342x, 35xx...
 	*/
 
-	if (of_machine_is_compatible("lsi,acp3500")) {
+	if (of_machine_is_compatible("axxia,acp3500")) {
 		pecc_busy_register = (gpreg_base + 0x8c);
 		pecc_busy_mask = (1 << 20);
 	} else {
-		if (of_machine_is_compatible("lsi,acp3420")) {
+		if (of_machine_is_compatible("axxia,acp3420")) {
 			pecc_busy_register = (gpreg_base + 0xc);
 			pecc_busy_mask = (1 << 28);
 		} else {
-			if (of_machine_is_compatible("lsi,acp3440")) {
+			if (of_machine_is_compatible("axxia,acp3440")) {
 				pecc_busy_register = (gpreg_base + 0xc);
 				pecc_busy_mask = (1 << 28);
 			} else {
@@ -3500,24 +3500,24 @@ lsi_nand_init(void)
 	WRITEL(cr_save, (void *)(nand_base + EP501_NAND_CONFIG_REG));
 
 	if (0 == (cr & 0x2038))
-		lsi_nand_type = LSI_NAND_EP501G1;
+		axxia_nand_type = AXXIA_NAND_EP501G1;
 	else if (0x38 == (cr & 0x2038))
-		lsi_nand_type = LSI_NAND_EP501;
+		axxia_nand_type = AXXIA_NAND_EP501;
 	else if (0x2000 == (cr & 0x2038))
-		lsi_nand_type = LSI_NAND_EP501G3;
+		axxia_nand_type = AXXIA_NAND_EP501G3;
 	else
-		lsi_nand_type = LSI_NAND_NONE;
+		axxia_nand_type = AXXIA_NAND_NONE;
 
-	switch (lsi_nand_type) {
-	case LSI_NAND_EP501:
+	switch (axxia_nand_type) {
+	case AXXIA_NAND_EP501:
 		pr_info("EP501 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501;
 		break;
-	case LSI_NAND_EP501G1:
+	case AXXIA_NAND_EP501G1:
 		pr_info("EP501G1 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501G1;
 		break;
-	case LSI_NAND_EP501G3:
+	case AXXIA_NAND_EP501G3:
 		pr_info("EP501G3 NAND Controller.\n");
 		nand_cmd_ce_off = NAND_CMD_CE_OFF_501G3;
 		break;
@@ -3527,49 +3527,49 @@ lsi_nand_init(void)
 	}
 
 	/* Initialize structures */
-	memset(&lsi_nand_mtd, 0, sizeof(struct mtd_info));
-	memset(&lsi_nand_chip, 0, sizeof(struct nand_chip));
+	memset(&axxia_nand_mtd, 0, sizeof(struct mtd_info));
+	memset(&axxia_nand_chip, 0, sizeof(struct nand_chip));
 
 	/* Link the private data with the MTD structure */
-	lsi_nand_mtd.priv = &lsi_nand_chip;
-	lsi_nand_mtd.owner = THIS_MODULE;
-	lsi_nand_mtd.name = "acp-nand";
+	axxia_nand_mtd.priv = &axxia_nand_chip;
+	axxia_nand_mtd.owner = THIS_MODULE;
+	axxia_nand_mtd.name = "acp-nand";
 
 	/* init chip callbacks */
-	lsi_nand_chip.IO_ADDR_R = (void *) nand_base;
-	lsi_nand_chip.IO_ADDR_W = (void *) nand_base;
-	lsi_nand_chip.write_buf = lsi_nand_write_buf;
-	lsi_nand_chip.read_buf = lsi_nand_read_buf;
-	lsi_nand_chip.write_page = lsi_nand_write_page;
-	lsi_nand_chip.cmd_ctrl = lsi_nand_hwcontrol;
-	lsi_nand_chip.dev_ready = lsi_nand_device_ready;
-	lsi_nand_chip.cmdfunc = lsi_nand_command;
-	lsi_nand_chip.waitfunc = lsi_nand_wait;
-	lsi_nand_chip.chip_delay = 10;
-	lsi_nand_chip.bbt_options = NAND_BBT_USE_FLASH;
-	lsi_nand_chip.read_byte = lsi_nand_read_byte;
-	lsi_nand_chip.errstat = lsi_nand_errstat;
-	lsi_nand_chip.init_size = lsi_nand_init_size;
+	axxia_nand_chip.IO_ADDR_R = (void *) nand_base;
+	axxia_nand_chip.IO_ADDR_W = (void *) nand_base;
+	axxia_nand_chip.write_buf = axxia_nand_write_buf;
+	axxia_nand_chip.read_buf = axxia_nand_read_buf;
+	axxia_nand_chip.write_page = axxia_nand_write_page;
+	axxia_nand_chip.cmd_ctrl = axxia_nand_hwcontrol;
+	axxia_nand_chip.dev_ready = axxia_nand_device_ready;
+	axxia_nand_chip.cmdfunc = axxia_nand_command;
+	axxia_nand_chip.waitfunc = axxia_nand_wait;
+	axxia_nand_chip.chip_delay = 10;
+	axxia_nand_chip.bbt_options = NAND_BBT_USE_FLASH;
+	axxia_nand_chip.read_byte = axxia_nand_read_byte;
+	axxia_nand_chip.errstat = axxia_nand_errstat;
+	axxia_nand_chip.init_size = axxia_nand_init_size;
 
 	/* initialize ECC */
-	lsi_nand_chip.ecc.mode = NAND_ECC_HW;
-	lsi_nand_chip.ecc.steps = 1;
-	lsi_nand_chip.ecc.total = 12;
-	lsi_nand_chip.ecc.hwctl = lsi_nand_ecc_hwctl;
-	lsi_nand_chip.ecc.calculate = lsi_nand_ecc_calculate;
-	lsi_nand_chip.ecc.correct = lsi_nand_ecc_correct;
-	lsi_nand_chip.ecc.read_page = lsi_nand_read_page_hwecc;
-	lsi_nand_chip.ecc.write_page = lsi_nand_write_page_hwecc;
-	lsi_nand_chip.ecc.read_page_raw = lsi_nand_read_page_hwecc;
-	lsi_nand_chip.ecc.write_page_raw = lsi_nand_write_page_hwecc;
-	lsi_nand_chip.ecc.read_oob = lsi_nand_read_oob;
-	lsi_nand_chip.ecc.write_oob = lsi_nand_write_oob;
+	axxia_nand_chip.ecc.mode = NAND_ECC_HW;
+	axxia_nand_chip.ecc.steps = 1;
+	axxia_nand_chip.ecc.total = 12;
+	axxia_nand_chip.ecc.hwctl = axxia_nand_ecc_hwctl;
+	axxia_nand_chip.ecc.calculate = axxia_nand_ecc_calculate;
+	axxia_nand_chip.ecc.correct = axxia_nand_ecc_correct;
+	axxia_nand_chip.ecc.read_page = axxia_nand_read_page_hwecc;
+	axxia_nand_chip.ecc.write_page = axxia_nand_write_page_hwecc;
+	axxia_nand_chip.ecc.read_page_raw = axxia_nand_read_page_hwecc;
+	axxia_nand_chip.ecc.write_page_raw = axxia_nand_write_page_hwecc;
+	axxia_nand_chip.ecc.read_oob = axxia_nand_read_oob;
+	axxia_nand_chip.ecc.write_oob = axxia_nand_write_oob;
 
 	pr_err("Enabling NAND ECC...\n");
 	/* clear any existing ECC status */
-	WRITEL(0x0, lsi_nand_chip.IO_ADDR_W + NAND_INTR_STATUS_REG);
+	WRITEL(0x0, axxia_nand_chip.IO_ADDR_W + NAND_INTR_STATUS_REG);
 	/* enable ECC */
-	WRITEL(0x0, lsi_nand_chip.IO_ADDR_W + NAND_INTR_EN_REG);
+	WRITEL(0x0, axxia_nand_chip.IO_ADDR_W + NAND_INTR_EN_REG);
 
 	/*
 	  ======================================================================
@@ -3599,7 +3599,7 @@ lsi_nand_init(void)
 		tcr0.bits.ts = 0x05;
 
 		WRITEL(tcr0.raw,
-		       (lsi_nand_chip.IO_ADDR_W + NAND_TIMING1_REG));
+		       (axxia_nand_chip.IO_ADDR_W + NAND_TIMING1_REG));
 	}
 
 	/*
@@ -3622,7 +3622,7 @@ lsi_nand_init(void)
 		tcr1.bits.twh = 0x03;
 
 		WRITEL(tcr1.raw,
-		       (lsi_nand_chip.IO_ADDR_W + NAND_TIMING2_REG));
+		       (axxia_nand_chip.IO_ADDR_W + NAND_TIMING2_REG));
 	}
 
 	/*
@@ -3636,41 +3636,41 @@ lsi_nand_init(void)
 		tcr2.bits.twhr = 0x10;
 		tcr2.bits.trhw = 0x14;
 		WRITEL(tcr2.raw,
-		       (lsi_nand_chip.IO_ADDR_W + EP501G3_NAND_TIMING2_REG));
+		       (axxia_nand_chip.IO_ADDR_W + EP501G3_NAND_TIMING2_REG));
 	}
 
 	pr_err("Searching for NAND flash...\n");
 	/* Scan to find existence of the device */
-	if (nand_scan(&lsi_nand_mtd, 1)) {
+	if (nand_scan(&axxia_nand_mtd, 1)) {
 		pr_err("nand_scan failure...\n");
 		return -ENXIO;
 	}
 
 	/* Register the partitions */
 
-	mtd_device_parse_register(&lsi_nand_mtd, part_probe_types, &ppdata,
+	mtd_device_parse_register(&axxia_nand_mtd, part_probe_types, &ppdata,
 				  NULL, 0);
 
 	/* Return happy */
 	return 0;
 }
 
-module_init(lsi_nand_init);
+module_init(axxia_nand_init);
 
 /*
   ----------------------------------------------------------------------
-  lsi_nand_exit
+  axxia_nand_exit
 */
 
 static void __exit
-lsi_nand_exit(void)
+axxia_nand_exit(void)
 {
 	/* Release resources, unregister device */
-	nand_release(&lsi_nand_mtd);
+	nand_release(&axxia_nand_mtd);
 }
 
-module_exit(lsi_nand_exit);
+module_exit(axxia_nand_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Jay Jayatheerthan <jay.jayatheerthan@lsi.com>");
-MODULE_DESCRIPTION("MTD map driver for LSI's ACP board");
+MODULE_AUTHOR("Jay Jayatheerthan <jay.jayatheerthan@intel.com>");
+MODULE_DESCRIPTION("MTD map driver for INTEL Axxia's ACP board");

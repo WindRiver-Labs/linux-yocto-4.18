@@ -97,15 +97,15 @@ config AT_XDMAC
 	help
 	  Support the Atmel XDMA controller.
 
-config LSI_DMA
-	tristate "LSI General Purpose DMA support"
+config AXXIA_DMA
+	tristate "INTEL Axxia General Purpose DMA support"
 	depends on ARCH_AXXIA
 	default y
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 	select ASYNC_TX_ENABLE_CHANNEL_SWITCH
 	help
-	  Enable support for the LSI General Purpose DMA controller found
+	  Enable support for the INTEL Axxia General Purpose DMA controller found
 	  on ACP34xx, AXM25xx, AXM55xx and AXM56xx devices.
 
 config AXI_DMAC

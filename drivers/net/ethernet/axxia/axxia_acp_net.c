@@ -1,7 +1,7 @@
 /*
- * drivers/net/ethernet/lsi/lsi_acp_net.c
+ * drivers/net/ethernet/axxia/axxia_acp_net.c
  *
- * Copyright (C) 2013 LSI Corporation.
+ * Copyright (C) 2013 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,18 +75,18 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 
 #include <asm/dma.h>
 
-#include "lsi_acp_net.h"
+#include "axxia_acp_net.h"
 
-#define LSI_DRV_NAME           "acp-femac"
-#define LSI_MDIO_NAME          "acp-femac-mdio"
-#define LSI_DRV_VERSION        "2014-01-09"
+#define AXXIA_DRV_NAME           "acp-femac"
+#define AXXIA_MDIO_NAME          "acp-femac-mdio"
+#define AXXIA_DRV_VERSION        "2014-01-09"
 
 MODULE_AUTHOR("John Jacques");
-MODULE_DESCRIPTION("LSI ACP-FEMAC Ethernet driver");
+MODULE_DESCRIPTION("AXXIA ACP-FEMAC Ethernet driver");
 MODULE_LICENSE("GPL");
 
 /* ----------------------------------------------------------------------
@@ -258,7 +258,7 @@ skip_first:
 	pdata->duplex = -1;
 	pdata->phy_dev = phydev;
 
-	pr_info("%s: PHY initialized successfully", LSI_DRV_NAME);
+	pr_info("%s: PHY initialized successfully", AXXIA_DRV_NAME);
 	return 0;
 }
 
@@ -278,7 +278,7 @@ static int appnic_mii_init(struct platform_device *pdev,
 		goto err_out_1;
 	}
 
-	pdata->mii_bus->name = LSI_MDIO_NAME;
+	pdata->mii_bus->name = AXXIA_MDIO_NAME;
 	snprintf(pdata->mii_bus->id, MII_BUS_ID_SIZE, "%s-%x",
 		 pdev->name, pdev->id);
 	pdata->mii_bus->priv = pdata;
@@ -289,12 +289,12 @@ static int appnic_mii_init(struct platform_device *pdev,
 		pdata->mii_bus->irq[i] = PHY_POLL;
 
 	if (mdiobus_register(pdata->mii_bus)) {
-		pr_warn("%s: Error registering mii bus", LSI_DRV_NAME);
+		pr_warn("%s: Error registering mii bus", AXXIA_DRV_NAME);
 		goto err_out_free_bus_2;
 	}
 
 	if (appnic_mii_probe(dev) < 0) {
-		pr_warn("%s: Error registering mii bus", LSI_DRV_NAME);
+		pr_warn("%s: Error registering mii bus", AXXIA_DRV_NAME);
 		goto err_out_unregister_bus_3;
 	}
 
@@ -341,21 +341,21 @@ err_out_1:
 
 /* Receiver */
 
-int rx_num_desc = (CONFIG_LSI_NET_NUM_RX_DESC * DESCRIPTOR_GRANULARITY);
+int rx_num_desc = (CONFIG_AXXIA_NET_NUM_RX_DESC * DESCRIPTOR_GRANULARITY);
 module_param(rx_num_desc, int, 0000);
 MODULE_PARM_DESC(rx_num_desc, "appnic : Number of receive descriptors");
 
-int rx_buf_sz = CONFIG_LSI_NET_RX_BUF_SZ;
+int rx_buf_sz = CONFIG_AXXIA_NET_RX_BUF_SZ;
 module_param(rx_buf_sz, int, 0000);
 MODULE_PARM_DESC(rx_buf_sz, "appnic : Receive buffer size");
 
 /* Transmitter */
 
-int tx_num_desc = (CONFIG_LSI_NET_NUM_TX_DESC * DESCRIPTOR_GRANULARITY);
+int tx_num_desc = (CONFIG_AXXIA_NET_NUM_TX_DESC * DESCRIPTOR_GRANULARITY);
 module_param(tx_num_desc, int, 0000);
 MODULE_PARM_DESC(tx_num_desc, "appnic : Number of receive descriptors");
 
-int tx_buf_sz = CONFIG_LSI_NET_TX_BUF_SZ;
+int tx_buf_sz = CONFIG_AXXIA_NET_TX_BUF_SZ;
 module_param(tx_buf_sz, int, 0000);
 MODULE_PARM_DESC(tx_buf_sz, "Appnic : Receive buffer size");
 
@@ -647,10 +647,10 @@ static void handle_transmit_interrupt(struct net_device *dev)
 }
 
 /* ----------------------------------------------------------------------
- * lsinet_rx_packet
+ * axxianet_rx_packet
  */
 
-static void lsinet_rx_packet(struct net_device *dev)
+static void axxianet_rx_packet(struct net_device *dev)
 {
 	struct appnic_device *pdata = netdev_priv(dev);
 	struct appnic_dma_descriptor descriptor;
@@ -664,11 +664,11 @@ static void lsinet_rx_packet(struct net_device *dev)
 	readdescriptor(((unsigned long)pdata->rx_desc +
 			pdata->rx_tail_copy.bits.offset), &descriptor);
 
-	sk_buff = netdev_alloc_skb(NULL, LSINET_MAX_MTU);
+	sk_buff = netdev_alloc_skb(NULL, AXXIANET_MAX_MTU);
 
 	if ((struct sk_buff *)0 == sk_buff) {
 		pr_info_ratelimited("%s: No buffer, packet dropped.\n",
-				    LSI_DRV_NAME);
+				    AXXIA_DRV_NAME);
 		pdata->stats.rx_dropped++;
 		return;
 	} else {
@@ -700,7 +700,7 @@ static void lsinet_rx_packet(struct net_device *dev)
 			       descriptor.pdu_length);
 		} else {
 			pr_err_ratelimited("%s: PDU overrun (%u/%u, %d)\n",
-					   LSI_DRV_NAME,
+					   AXXIA_DRV_NAME,
 					   descriptor.pdu_length,
 					   bytes_copied,
 					   descriptor.error);
@@ -723,7 +723,7 @@ static void lsinet_rx_packet(struct net_device *dev)
 
 	if (0 == descriptor.end_of_packet) {
 		pr_err("%s: No end of packet! %lu/%lu/%lu/%lu\n",
-		       LSI_DRV_NAME, ok_stat, overflow_stat,
+		       AXXIA_DRV_NAME, ok_stat, overflow_stat,
 		       crc_stat, align_stat);
 		BUG();
 		dev_kfree_skb(sk_buff);
@@ -760,10 +760,10 @@ static void lsinet_rx_packet(struct net_device *dev)
 }
 
 /* ----------------------------------------------------------------------
- * lsinet_rx_packets
+ * axxianet_rx_packets
  */
 
-static int lsinet_rx_packets(struct net_device *dev, int max)
+static int axxianet_rx_packets(struct net_device *dev, int max)
 {
 	struct appnic_device *pdata = netdev_priv(dev);
 	union appnic_queue_pointer orig_queue, new_queue;
@@ -784,7 +784,7 @@ static int lsinet_rx_packets(struct net_device *dev, int max)
 				&descriptor);
 
 		if (0 != descriptor.end_of_packet) {
-			lsinet_rx_packet(dev);
+			axxianet_rx_packet(dev);
 			packets++;
 			new_queue.raw = pdata->rx_tail_copy.raw;
 
@@ -825,10 +825,10 @@ static int lsinet_rx_packets(struct net_device *dev, int max)
 }
 
 /* ----------------------------------------------------------------------
- * lsinet_poll
+ * axxianet_poll
  */
 
-static int lsinet_poll(struct napi_struct *napi, int budget)
+static int axxianet_poll(struct napi_struct *napi, int budget)
 {
 	struct appnic_device *pdata =
 		container_of(napi, struct appnic_device, napi);
@@ -842,7 +842,7 @@ static int lsinet_poll(struct napi_struct *napi, int budget)
 		write_mac(~APPNIC_DMA_INTERRUPT_ENABLE_RECEIVE, APPNIC_DMA_INTERRUPT_STATUS);
 
 		/* Get Rx packets. */
-		work_done += lsinet_rx_packets(dev, budget - work_done);
+		work_done += axxianet_rx_packets(dev, budget - work_done);
 
 		/* We've hit the budget limit. */
 		if (work_done == budget)
@@ -957,10 +957,10 @@ static int appnic_open(struct net_device *dev)
 	napi_enable(&pdata->napi);
 
 	/* Install the interrupt handlers. */
-	return_code = request_irq(dev->irq, appnic_isr, 0x00, LSI_DRV_NAME, dev);
+	return_code = request_irq(dev->irq, appnic_isr, 0x00, AXXIA_DRV_NAME, dev);
 	if (0 != return_code) {
 		pr_err("%s: request_irq() failed, returned 0x%x/%d\n",
-		       LSI_DRV_NAME, return_code, return_code);
+		       AXXIA_DRV_NAME, return_code, return_code);
 		return return_code;
 	}
 
@@ -987,7 +987,7 @@ static int appnic_stop(struct net_device *dev)
 {
 	struct appnic_device *pdata = netdev_priv(dev);
 
-	pr_info("%s: Stopping the interface.\n", LSI_DRV_NAME);
+	pr_info("%s: Stopping the interface.\n", AXXIA_DRV_NAME);
 
 	/* Disable interrupts. Note that disable_irq() will wait for
 	 * any interrupt handlers that are currently executing to
@@ -1110,7 +1110,7 @@ static int appnic_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	} else {
 		pdata->out_of_tx_descriptors++;
 		pr_err("%s: No transmit descriptors available!\n",
-		       LSI_DRV_NAME);
+		       AXXIA_DRV_NAME);
 		spin_unlock_irqrestore(&pdata->tx_lock, flags);
 		return NETDEV_TX_BUSY;
 	}
@@ -1280,8 +1280,8 @@ static int appnic_get_sset_count(struct net_device *netdev, int sset)
 static void appnic_get_drvinfo(struct net_device *dev,
 			       struct ethtool_drvinfo *info)
 {
-	strcpy(info->driver, LSI_DRV_NAME);
-	strcpy(info->version, LSI_DRV_VERSION);
+	strcpy(info->driver, AXXIA_DRV_NAME);
+	strcpy(info->version, AXXIA_DRV_VERSION);
 	strlcpy(info->bus_info, dev_name(dev->dev.parent),
 		sizeof(info->bus_info));
 }
@@ -1359,7 +1359,7 @@ int appnic_init(struct net_device *dev)
 
 	if (0 != (rx_num_desc % DESCRIPTOR_GRANULARITY)) {
 		pr_err("%s: rx_num_desc was not a multiple of %d.\n",
-		       LSI_DRV_NAME, DESCRIPTOR_GRANULARITY);
+		       AXXIA_DRV_NAME, DESCRIPTOR_GRANULARITY);
 		rc = -EINVAL;
 		goto err_param;
 	}
@@ -1368,7 +1368,7 @@ int appnic_init(struct net_device *dev)
 
 	if (0 != (tx_num_desc % DESCRIPTOR_GRANULARITY)) {
 		pr_err("%s: tx_num_desc was not a multiple of %d.\n",
-		       LSI_DRV_NAME, DESCRIPTOR_GRANULARITY);
+		       AXXIA_DRV_NAME, DESCRIPTOR_GRANULARITY);
 		rc = -EINVAL;
 		goto err_param;
 	}
@@ -1381,7 +1381,7 @@ int appnic_init(struct net_device *dev)
 
 	if (0 != (rx_buf_sz % (BUFFER_ALIGNMENT * rx_num_desc))) {
 		pr_err("%s: rx_buf_sz was not a multiple of %d.\n",
-		       LSI_DRV_NAME, (BUFFER_ALIGNMENT * rx_num_desc));
+		       AXXIA_DRV_NAME, (BUFFER_ALIGNMENT * rx_num_desc));
 		rc = -EINVAL;
 		goto err_param;
 	}
@@ -1390,7 +1390,7 @@ int appnic_init(struct net_device *dev)
 
 	if (0 != (tx_buf_sz % (BUFFER_ALIGNMENT * tx_num_desc))) {
 		pr_err("%s: tx_buf_sz was not a multiple of %d.\n",
-		       LSI_DRV_NAME, (BUFFER_ALIGNMENT * tx_num_desc));
+		       AXXIA_DRV_NAME, (BUFFER_ALIGNMENT * tx_num_desc));
 		rc = -EINVAL;
 		goto err_param;
 	}
@@ -1427,7 +1427,7 @@ int appnic_init(struct net_device *dev)
 
 	rc = femac_alloc_mem_buffers(dev);
 	if (rc != 0) {
-		pr_err("%s: Can't allocate DMA-able memory!\n", LSI_DRV_NAME);
+		pr_err("%s: Can't allocate DMA-able memory!\n", AXXIA_DRV_NAME);
 		goto err_mem_buffers;
 	}
 
@@ -1552,12 +1552,12 @@ int appnic_init(struct net_device *dev)
 #endif
 
 	/* Set the MAC address. */
-	pr_info("%s: MAC %pM\n", LSI_DRV_NAME, dev->dev_addr);
+	pr_info("%s: MAC %pM\n", AXXIA_DRV_NAME, dev->dev_addr);
 
 	memcpy(&(address.sa_data[0]), dev->dev_addr, ETH_ALEN);
 	rc = appnic_set_mac_address(dev, &address);
 	if (rc != 0) {
-		pr_err("%s: Unable to set MAC address!\n", LSI_DRV_NAME);
+		pr_err("%s: Unable to set MAC address!\n", AXXIA_DRV_NAME);
 		goto err_set_mac_addr;
 	}
 
@@ -1635,7 +1635,7 @@ int appnic_init(struct net_device *dev)
 	/* Setup IRQ. */
 	rc = femac_irq_setup(dev);
 	if (rc != 0) {
-		pr_err("%s: IRQ setup failed!\n", LSI_DRV_NAME);
+		pr_err("%s: IRQ setup failed!\n", AXXIA_DRV_NAME);
 		goto err_irq_setup;
 	}
 
@@ -1645,7 +1645,7 @@ int appnic_init(struct net_device *dev)
 
 	memset((void *) &pdata->napi, 0, sizeof(struct napi_struct));
 	netif_napi_add(dev, &pdata->napi,
-		       lsinet_poll, LSINET_NAPI_WEIGHT);
+		       axxianet_poll, AXXIANET_NAPI_WEIGHT);
 	pdata->device = dev;
 
 	return 0;
@@ -1681,9 +1681,9 @@ static int appnic_probe_config_dt(struct net_device *dev,
 		return -ENODEV;
 
 #ifdef CONFIG_ARM
-	gp_node = of_find_compatible_node(NULL, NULL, "lsi,gpreg");
+	gp_node = of_find_compatible_node(NULL, NULL, "axxia,gpreg");
 	if (!gp_node) {
-		pr_err("%s: DTS is missing mode 'gpreg'\n", LSI_DRV_NAME);
+		pr_err("%s: DTS is missing mode 'gpreg'\n", AXXIA_DRV_NAME);
 		return -ENODEV;
 	}
 	pdata->gpreg_base = of_iomap(gp_node, 0);
@@ -1785,7 +1785,7 @@ static int appnic_probe_config_dt(struct net_device *dev,
 	return 0;
 
 device_tree_failed:
-	pr_err("%s: Reading Device Tree Failed\n", LSI_DRV_NAME);
+	pr_err("%s: Reading Device Tree Failed\n", AXXIA_DRV_NAME);
 #ifdef CONFIG_ARM
 	iounmap(pdata->gpreg_base);
 #endif
@@ -1814,14 +1814,14 @@ static int appnic_drv_probe(struct platform_device *pdev)
 	struct net_device *dev;
 	struct appnic_device *pdata;
 
-	pr_info("%s: LSI(R) 10/100 Network Driver - version %s\n",
-		LSI_DRV_NAME, LSI_DRV_VERSION);
+	pr_info("%s: INTEL(R) 10/100 Network Driver - version %s\n",
+		AXXIA_DRV_NAME, AXXIA_DRV_VERSION);
 
 	/* Allocate space for the device. */
 
 	dev = alloc_etherdev(sizeof(struct appnic_device));
 	if (!dev) {
-		pr_err("%s: Couldn't allocate net device.\n", LSI_DRV_NAME);
+		pr_err("%s: Couldn't allocate net device.\n", AXXIA_DRV_NAME);
 		rc = -ENOMEM;
 		goto err_alloc_etherdev;
 	}
@@ -1852,7 +1852,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 
 		if (0 != ubootenv_get("ethaddr", ethaddr_string)) {
 			pr_err("%s: Could not read ethernet address!\n",
-			       LSI_DRV_NAME);
+			       AXXIA_DRV_NAME);
 			rc = -EINVAL;
 			goto err_inval;
 		} else {
@@ -1875,7 +1875,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 			dev->addr_len = ETH_ALEN;
 
 			pr_info("%s: Using Static Addresses and Interrupts",
-				LSI_DRV_NAME);
+				AXXIA_DRV_NAME);
 			pdata->rx_base = ioremap(0x002000480000ULL, 0x1000);
 			pdata->tx_base = ioremap(0x002000481000ULL, 0x1000);
 			pdata->dma_base = ioremap(0x002000482000ULL, 0x1000);
@@ -1883,7 +1883,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 		}
 #else
 		/* Neither dtb info nor ubootenv driver found. */
-		pr_err("%s: Could not read ethernet address!", LSI_DRV_NAME);
+		pr_err("%s: Could not read ethernet address!", AXXIA_DRV_NAME);
 		rc = -EINVAL;
 		goto err_inval;
 #endif
@@ -1914,7 +1914,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 	/* Initialize the device. */
 	rc = appnic_init(dev);
 	if (0 != rc) {
-		pr_err("%s: appnic_init() failed: %d\n", LSI_DRV_NAME, rc);
+		pr_err("%s: appnic_init() failed: %d\n", AXXIA_DRV_NAME, rc);
 		rc = -ENODEV;
 		goto err_nodev;
 	}
@@ -1922,7 +1922,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 	/* Register the device. */
 	rc = register_netdev(dev);
 	if (0 != rc) {
-		pr_err("%s: register_netdev() failed: %d\n", LSI_DRV_NAME, rc);
+		pr_err("%s: register_netdev() failed: %d\n", AXXIA_DRV_NAME, rc);
 		rc = -ENODEV;
 		goto err_nodev;
 	}
@@ -1930,7 +1930,7 @@ static int appnic_drv_probe(struct platform_device *pdev)
 	/* Initialize the PHY. */
 	rc = appnic_mii_init(pdev, dev);
 	if (rc) {
-		pr_warn("%s: Failed to initialize PHY", LSI_DRV_NAME);
+		pr_warn("%s: Failed to initialize PHY", AXXIA_DRV_NAME);
 		rc = -ENODEV;
 		goto err_mii_init;
 	}
@@ -1955,7 +1955,7 @@ static int appnic_drv_remove(struct platform_device *pdev)
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct appnic_device *pdata = NULL;
 
-	pr_info("%s: Stopping driver", LSI_DRV_NAME);
+	pr_info("%s: Stopping driver", AXXIA_DRV_NAME);
 
 	BUG_ON(!dev);
 	pdata = netdev_priv(dev);
@@ -1982,7 +1982,7 @@ static int appnic_drv_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id appnic_dt_ids[] = {
-	{ .compatible = "lsi,acp-femac", },
+	{ .compatible = "axxia,acp-femac", },
 	{ .compatible = "acp-femac", },
 	{ /* end of list */ },
 };
@@ -1992,7 +1992,7 @@ static struct platform_driver appnic_driver = {
 	.probe = appnic_drv_probe,
 	.remove = appnic_drv_remove,
 	.driver = {
-		.name   = LSI_DRV_NAME,
+		.name   = AXXIA_DRV_NAME,
 		.owner  = THIS_MODULE,
 		.pm     = NULL,
 		.of_match_table = appnic_dt_ids,

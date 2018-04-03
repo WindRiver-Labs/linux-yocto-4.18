@@ -27,7 +27,7 @@
 #include <linux/proc_fs.h>
 #include <linux/axxia-pei.h>
 #include <linux/time.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <asm-generic/msi.h>
 
 #include "pcie-axxia.h"
@@ -138,7 +138,7 @@ MODULE_PARM_DESC(trace, "Trace PCI Accesses");
 int
 axxia_is_x9(void)
 {
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5616"))
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5616"))
 		return 1;
 
 	return 0;
@@ -1780,7 +1780,7 @@ static int __exit axxia_pcie_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id axxia_pcie_of_match[] = {
-	{ .compatible = "intel,axxia-pcie", },
+	{ .compatible = "axxia,axxia-pcie", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, axxia_pcie_of_match);

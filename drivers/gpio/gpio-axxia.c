@@ -356,7 +356,7 @@ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
 		return ret;
 	}
 
-	if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axc6732")) {
 		for (i = 0; i < AMBA_NR_IRQS; i++) {
 			if (adev->irq[i] <= 0)
 				continue;

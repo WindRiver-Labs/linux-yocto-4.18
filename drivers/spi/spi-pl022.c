@@ -2466,7 +2466,7 @@ static struct vendor_data vendor_st_pl023 = {
 	.internal_cs_ctrl = false,
 };
 
-static struct vendor_data vendor_lsi = {
+static struct vendor_data vendor_axxia = {
 	.fifodepth = 8,
 	.max_bpw = 16,
 	.unidir = false,
@@ -2514,7 +2514,7 @@ static const struct amba_id pl022_ids[] = {
 		 */
 		.id	= 0x000b6022,
 		.mask	= 0x000fffff,
-		.data	= &vendor_lsi,
+		.data	= &vendor_axxia,
 	},
 	{ 0, 0 },
 };

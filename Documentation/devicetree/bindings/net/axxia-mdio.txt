@@ -1,21 +1,21 @@
-* LSI Fast Ethernet Controller (FEMAC)
+* INTEL Axxia Fast Ethernet Controller (FEMAC)
 
 Required properties:
-- compatible : Should be "lsi,axm-mdio"
+- compatible : Should be "axxia,axm-mdio"
 - reg : Address and length of the register set.
 - #address-cells : Must be 1.
 - #size-cells : Must be 0.
 
 Optional properties:
-- lsi,mdio-clk-offset : Set value used to offset the MDIO output signal. A
+- axxia,mdio-clk-offset : Set value used to offset the MDIO output signal. A
 value of N means the MDIO output signal is held for (N + 1) clk_per units long.
-- lsi,mdio-clk-period : Set value used to offset the MDC signal. A value of N
+- axxia,mdio-clk-period : Set value used to offset the MDC signal. A value of N
 means the MDC signal is 2 x (N + 1) clk_per units long.
 
 Example:
 
 mdio@2010090000 {
-	compatible = "lsi,axm-mdio";
+	compatible = "axxia,axm-mdio";
 	reg = <0x20 0x10090000 0 0x1000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
