@@ -1,7 +1,7 @@
 /*
  * Helper module for board specific I2C bus registration
  *
- * Copyright (C) 2014 LSI Corporation.
+ * Copyright (C) 2014 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

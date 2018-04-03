@@ -2,9 +2,9 @@
  * arch/arm/mach-axxia/perf_event_vp.c
  * included from arch/arm/mach-axxia/perf_event_platform.c
  *
- * Support for the LSI Axxia boards based on ARM cores.
+ * Support for the INTEL Axxia boards based on ARM cores.
  *
- * Copyright (C) 2014 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

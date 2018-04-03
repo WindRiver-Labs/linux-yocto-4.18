@@ -1,7 +1,7 @@
 /*
- * drivers/net/ethernet/lsi/lsi_acp_net.h
+ * drivers/net/ethernet/axxia/axxia_acp_net.h
  *
- * Copyright (C) 2013 LSI Corporation.
+ * Copyright (C) 2013 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * along with this program.
  */
 
-#ifndef _LSI_ACP_NET_H
-#define _LSI_ACP_NET_H
+#ifndef _AXXIA_ACP_NET_H
+#define _AXXIA_ACP_NET_H
 
 #ifdef CONFIG_MTD_NAND_EP501X_UBOOTENV
 extern int ubootenv_get(const char *, char *);
@@ -30,12 +30,12 @@ extern int acp_mdio_write(unsigned long, unsigned long, unsigned short, int);
 /* This is the maximum number of packets to be received every
  * NAPI poll
  */
-#define LSINET_NAPI_WEIGHT	64
+#define AXXIANET_NAPI_WEIGHT	64
 
 /* This is the maximum number of bytes that serve to hold
  * incoming Rx data.
  */
-#define LSINET_MAX_MTU		(ETH_DATA_LEN + 100) /* MTU + padding */
+#define AXXIANET_MAX_MTU		(ETH_DATA_LEN + 100) /* MTU + padding */
 
 /* Device Data Structures */
 
@@ -666,4 +666,4 @@ femac_free_mem_buffers(struct net_device *dev)
 #define swab_queue_pointer(pointer) \
 	_swab_queue_pointer((const union appnic_queue_pointer *) (pointer))
 
-#endif /* _LSI_ACP_NET_H */
+#endif /* _AXXIA_ACP_NET_H */

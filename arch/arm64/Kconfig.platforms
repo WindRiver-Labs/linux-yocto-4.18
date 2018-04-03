@@ -61,7 +61,7 @@ config ARCH_BRCMSTB
 config ARCH_AXXIA
 	bool "Axxia SoC family"
 	help
-	  This enables support for LSI Axxia 56xx SOC Family
+	  This enables support for INTEL Axxia 56xx SOC Family
 
 config ARCH_EXYNOS
 	bool "ARMv8 based Samsung Exynos SoC family"

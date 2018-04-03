@@ -1441,10 +1441,10 @@ config SERIAL_ST_ASC_CONSOLE
 	select SERIAL_CORE_CONSOLE
 
 config SERIAL_ACP
-	bool "LSI's Serial Driver for the ACP"
+	bool "INTEL Axxia's Serial Driver for the ACP"
 	select SERIAL_CORE
 	help
-	  Handles the serial ports (there are two) on LSI's ACP board
+	  Handles the serial ports (there are two) on INTEL Axxia's ACP board
 	  and the simulated serial port provided by ISS.
 
 config SERIAL_ACP_CONSOLE

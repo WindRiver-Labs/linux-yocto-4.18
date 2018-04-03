@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-axxia/include/mach/hardware.h
  *
- * Copyright (c) 2013 LSI Corporation
+ * Copyright (c) 2013 INTEL Corporation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the

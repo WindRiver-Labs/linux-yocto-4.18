@@ -16,7 +16,7 @@
 
 / {
 	model = "AXM56xx Simulator";
-	compatible = "lsi,axm5616";
+	compatible = "axxia,axm5616";
 
 	memory {
 		device_type = "memory";
@@ -69,8 +69,8 @@
 
 &mdio {
 	status = "okay";
-	lsi,mdio-clk-offset = <0x5>;
-	lsi,mdio-clk-period = <0xc>;
+	axxia,mdio-clk-offset = <0x5>;
+	axxia,mdio-clk-period = <0xc>;
 	max-speed = <10>;
 
 	phy0: ethernet-phy@3 {

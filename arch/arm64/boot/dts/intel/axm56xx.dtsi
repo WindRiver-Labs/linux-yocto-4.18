@@ -97,7 +97,7 @@
 		ranges;
 
 		syscon: syscon@8002000000 {
-			compatible = "intel,axxia-syscon", "syscon";
+			compatible = "axxia,axxia-syscon", "syscon";
 			reg = <0x80 0x02c00000 0 0x40000>;
 		};
 		edac_cpu: edac_cpu {
@@ -152,7 +152,7 @@
 		};
 
 		mdio: mdio@8080200000 {
-			compatible = "lsi,axm-mdio", "intel,axxia-mdio0";
+			compatible = "axxia,axm-mdio", "axxia,axxia-mdio0";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x80200000 0 0x1000>;
@@ -176,7 +176,7 @@
 		};
 
 		usb0: usb@9000000000 {
-			compatible = "intel,axxia-dwc3";
+			compatible = "axxia,axxia-dwc3";
 			dma-coherent;
 			status = "disabled";
 			#address-cells = <2>;
@@ -204,7 +204,7 @@
 		};
 
 		gpdma0: gpdma@8004120000 {
-			compatible = "lsi,dma32";
+			compatible = "axxia,dma32";
 			reg = <0x80 0x04120000 0 0x10000>;
 			interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
@@ -218,7 +218,7 @@
 		};
 
 		gpdma1: gpdma@8004130000 {
-			compatible = "lsi,dma32";
+			compatible = "axxia,dma32";
 			reg = <0x80 0x04130000 0 0x10000>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
@@ -233,7 +233,7 @@
 		};
 
 		i2c0: i2c@8080080000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x80080000 0 0x1000>;
@@ -244,7 +244,7 @@
 		};
 
 		i2c1: i2c@8080090000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x80090000 0 0x1000>;
@@ -255,7 +255,7 @@
 		};
 
 		i2c2: i2c@80800a0000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x800a0000 0 0x1000>;
@@ -266,7 +266,7 @@
 		};
 
 		i2c3: i2c@80800b0000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80 0x800b0000 0 0x1000>;
@@ -277,21 +277,21 @@
 		};
 
 		mtc: mtc@8080210000 {
-			compatible = "lsi,mtc";
+			compatible = "axxia,mtc";
 			reg = <0x80 0x80210000 0 0x10000>;
 			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
 		trng: trng@8031060000 {
-			compatible = "lsi,trng";
+			compatible = "axxia,trng";
 			reg = <0x80 0x31060000 0 0x20000>;
 			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
 		pci0: pcie@c000000000 {
-			compatible = "intel,axxia-pcie";
+			compatible = "axxia,axxia-pcie";
 			device_type = "pci";
 			reg = <0xa0 0x02000000 0 0x00100000   /* dbi */
 			       0xa0 0x03000000 0 0x00008000   /* AXI gpreg */
@@ -347,7 +347,7 @@
 		};
 
 		pci1: pcie@c800000000 {
-			compatible = "intel,axxia-pcie";
+			compatible = "axxia,axxia-pcie";
 			device_type = "pci";
 			reg = <0xa0 0x04000000 0 0x00100000   /* dbi */
 			       0xa0 0x05000000 0 0x00008000   /* AXI gpreg */
@@ -375,7 +375,7 @@
 		};
 
 		pci2: pcie@d000000000 {
-			compatible = "intel,axxia-pcie";
+			compatible = "axxia,axxia-pcie";
 			device_type = "pci";
 			reg = <0xa0 0x06000000 0 0x00100000   /* dbi */
 			       0xa0 0x07000000 0 0x00008000   /* AXI gpreg */
@@ -404,7 +404,7 @@
 
 		rio0: rapidio@0xb000000000 {
 			index = <0>;
-			compatible = "intel,axxia-rapidio";
+			compatible = "axxia,axxia-rapidio";
 			device_type = "rapidio";
 			reg = <0xa0 0x00020000 0 0x00001000>;
 			#address-cells = <2>;
@@ -420,7 +420,7 @@
 
 		rio1: rapidio@0xb800000000 {
 			index = <1>;
-			compatible = "intel,axxia-rapidio";
+			compatible = "axxia,axxia-rapidio";
 			device_type = "rapidio";
 			reg = <0xa0 0x00030000 0 0x00001000>;
 			#address-cells = <2>;

@@ -16,7 +16,7 @@
 
 / {
 	model = "AXM56xx Victoria";
-	compatible = "lsi,axm5616";
+	compatible = "axxia,axm5616";
 
 	memory {
 		device_type = "memory";
@@ -58,8 +58,8 @@
 
 &mdio {
 	status = "okay";
-	lsi,mdio-clk-offset = <0x1c>;
-	lsi,mdio-clk-period = <0xf0>;
+	axxia,mdio-clk-offset = <0x1c>;
+	axxia,mdio-clk-period = <0xf0>;
 	max-speed = <10>;
 
 	phy0: ethernet-phy@3 {

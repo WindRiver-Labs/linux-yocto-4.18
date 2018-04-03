@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/intel/axm5606-emu.dts
  *
- * Copyright (C) 2013 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 / {
 	model = "AXM56xx Emulation";
-	compatible = "lsi,axm5616";
+	compatible = "axxia,axm5616";
 
 	memory {
 		device_type = "memory";
@@ -46,8 +46,8 @@
 
 &mdio {
 	status = "okay";
-	lsi,mdio-clk-offset = <0x5>;
-	lsi,mdio-clk-period = <0xc>;
+	axxia,mdio-clk-offset = <0x5>;
+	axxia,mdio-clk-period = <0xc>;
 	max-speed = <10>;
 
 	phy0: ethernet-phy@3 {

@@ -33,7 +33,7 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 
 #include "axxia-rio.h"
 #include "axxia-rio-irq.h"
@@ -67,7 +67,7 @@ static DEFINE_SPINLOCK(rio_io_lock);
 int
 axxia_rio_is_x9(void)
 {
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5616"))
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5616"))
 		return 1;
 
 	return 0;
@@ -108,8 +108,8 @@ axxia_rapidio_board_init(struct platform_device *dev, int dev_num,
 
 		/* Verify that this device is actually enabled */
 		if (NULL !=
-		of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) {
-#ifdef CONFIG_LSI_NCR
+		of_find_compatible_node(NULL, NULL, "axxia,axm5500-amarillo")) {
+#ifdef CONFIG_AXXIA_NCR
 			ncr_read(NCP_REGION_ID(0x115, 0), 0x23c, 4, &reg);
 
 			if ((reg & (1 << (21+(dev_num*4)))) == 0) {
@@ -1490,7 +1490,7 @@ static struct rio_priv *rio_priv_dtb_setup(
 
 	/* master port driver handle (bidirectional reference supported) */
 	mport->priv = priv;
-	priv->cookie = LSI_AXXIA_RIO_COOKIE;
+	priv->cookie = AXXIA_RIO_COOKIE;
 	priv->mport = mport;
 	priv->ndx = ndx;
 	priv->port_ndx = port_ndx;
@@ -1862,7 +1862,7 @@ static int axxia_of_rio_rpn_probe(struct platform_device *dev)
 
 static const struct of_device_id axxia_of_rio_rpn_ids[] = {
 	{ .compatible = "axxia, rapidio-delta", },
-	{ .compatible = "intel,axxia-rapidio", },
+	{ .compatible = "axxia,axxia-rapidio", },
 	{ .compatible = "acp, rapidio-delta", },
 	{},
 };

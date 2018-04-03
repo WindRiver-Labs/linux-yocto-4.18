@@ -1,7 +1,7 @@
 /*
  * linux/arch/arm/mach-axxia/platsmp.c
  *
- * Copyright (C) 2012 LSI Corporation
+ * Copyright (C) 2012 INTEL Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -24,7 +24,7 @@
 #include <asm/virt.h>
 
 #include "axxia.h"
-#include "lsi_power_management.h"
+#include "axxia_power_management.h"
 #include <mach/axxia-gic.h>
 
 #define SYSCON_PHYS_ADDR 0x002010030000ULL
@@ -237,9 +237,9 @@ static void __init axxia_smp_prepare_cpus(unsigned int max_cpus)
 	do_fixup_sev();
 
 	if (of_find_compatible_node(NULL, NULL,
-				    "lsi,axm5500-sim") != NULL ||
+				    "axxia,axm5500-sim") != NULL ||
 	    of_find_compatible_node(NULL, NULL,
-				    "lsi,axm5500-emu") != NULL)
+				    "axxia,axm5500-emu") != NULL)
 		wfe_available = 0;
 	else
 		wfe_available = 1;

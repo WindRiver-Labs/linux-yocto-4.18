@@ -1,9 +1,9 @@
 /*
  * arch/arm/mach-axxia/perf_event_platform.c
  *
- * Support for the LSI Axxia boards based on ARM cores.
+ * Support for the INTEL Axxia boards based on ARM cores.
  *
- * Copyright (C) 2014 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
 #include <linux/proc_fs.h>
 
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <asm/cacheflush.h>
 
 #include "perf_event_platform.h"
@@ -198,7 +198,7 @@ static struct platform_device axmperf_device = {
 
 #define PLATFORM_PMU_NAME_LEN 32
 
-struct lsi_platform_pmu {
+struct axxia_platform_pmu {
 	struct pmu pmu;
 	char name[PLATFORM_PMU_NAME_LEN];
 };
@@ -206,9 +206,9 @@ struct lsi_platform_pmu {
 static int axmperf_probe(struct platform_device *dev)
 {
 	int ret;
-	struct lsi_platform_pmu *axm_pmu;
+	struct axxia_platform_pmu *axm_pmu;
 
-	axm_pmu = kzalloc(sizeof(struct lsi_platform_pmu), GFP_KERNEL);
+	axm_pmu = kzalloc(sizeof(struct axxia_platform_pmu), GFP_KERNEL);
 	if (!axm_pmu) {
 		pr_warn("Failed platform perf memory alloc!\n");
 		return -ENOMEM;
@@ -225,7 +225,7 @@ static int axmperf_probe(struct platform_device *dev)
 		.event_idx = platform_pmu_event_idx,
 	};
 
-	sprintf(axm_pmu->name, "LSI AXM55xx Platform");
+	sprintf(axm_pmu->name, "INTEL Axxia AXM55xx Platform");
 
 	ret = perf_pmu_register(&axm_pmu->pmu, axm_pmu->name, PERF_TYPE_RAW);
 
@@ -241,15 +241,15 @@ static int axmperf_probe(struct platform_device *dev)
 	return ret;
 }
 
-static const struct of_device_id lsi_platformperf_match[] = {
-	{ .compatible = "lsi,axm-platformperf", },
+static const struct of_device_id axxia_platformperf_match[] = {
+	{ .compatible = "axxia,axm-platformperf", },
 	{},
 };
 
 static struct platform_driver axmperf_driver = {
 	.driver = {
 		.name = "AXM55xxPlatformPerf",
-		.of_match_table = lsi_platformperf_match,
+		.of_match_table = axxia_platformperf_match,
 		.owner = THIS_MODULE,
 		},
 	.probe = axmperf_probe,

@@ -18,7 +18,7 @@
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
 #include <asm/cp15.h>
-#include "lsi_power_management.h"
+#include "axxia_power_management.h"
 
 extern volatile int pen_release;
 

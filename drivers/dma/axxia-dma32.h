@@ -10,8 +10,8 @@
  * (at your option) any later version.
  *
  */
-#ifndef __LSI_DMA32_H
-#define __LSI_DMA32_H
+#ifndef __AXXIA_DMA32_H
+#define __AXXIA_DMA32_H
 
 #include <linux/dmaengine.h>
 #include <linux/dma-mapping.h>
@@ -186,19 +186,19 @@ static inline struct gpdma_channel *to_gpdma_chan(struct dma_chan *chan)
 	return container_of(chan, struct gpdma_channel, vc.chan);
 }
 
-struct lsidma_hw {
+struct axxiadma_hw {
 	unsigned int num_channels;
 	unsigned int chregs_offset;
 	unsigned int genregs_offset;
 	unsigned int flags;
-#define LSIDMA_NEXT_FULL     (1<<0)
-#define LSIDMA_SEG_REGS      (1<<1)
-#define LSIDMA_EDGE_INT      (1<<2)
+#define AXXIADMA_NEXT_FULL     (1<<0)
+#define AXXIADMA_SEG_REGS      (1<<1)
+#define AXXIADMA_EDGE_INT      (1<<2)
 };
 
 struct gpdma_engine {
 	struct device			*dev;
-	struct lsidma_hw		*chip;
+	struct axxiadma_hw		*chip;
 	struct gpdma_channel		channel[MAX_GPDMA_CHANNELS];
 	/** Bit mask where bit[n] == 1 if channel busy */
 	unsigned long                   ch_busy;

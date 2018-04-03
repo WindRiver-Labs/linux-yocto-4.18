@@ -4,7 +4,7 @@ The EDAC accesses ARM v7/v8 L2MERRSR_EL1 register data.
 Required properties:
 - compatible	: should contain "intel,cortex-a53-cpu" for AXM67xx
 		: should contain "intel,cortex-a57-cpu" for AXM56xx
-		: should contain "lsi,cortex-a15-cpu" for AXM55xx
+		: should contain "axxia,cortex-a15-cpu" for AXM55xx
 - syscon	: should referernce syscon node for both 55xx/56xx/67xx
 
 Example:

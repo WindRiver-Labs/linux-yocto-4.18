@@ -13,7 +13,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/edac.h>
 #include <linux/of_platform.h>
 #include <linux/of.h>
@@ -28,7 +28,7 @@
 #include "edac_module.h"
 #include "axxia_edac.h"
 
-#define LSI_EDAC_MOD_STR     "lsi_edac"
+#define AXXIA_EDAC_MOD_STR     "axxia_edac"
 
 #define APB2_SER3_PHY_ADDR        0x002010030000ULL
 #define APB2_SER3_PHY_SIZE   0x1000
@@ -136,7 +136,7 @@ static const struct event_logging {
 };
 
 /* Private structure for common edac device */
-struct lsi_edac_dev_info {
+struct axxia_edac_dev_info {
 	struct platform_device *pdev;
 	char *ctl_name;
 	char *blk_name;
@@ -151,7 +151,7 @@ struct lsi_edac_dev_info {
 static irqreturn_t
 smmon_isr(int interrupt, void *device)
 {
-	struct lsi_edac_dev_info *edac_dev = device;
+	struct axxia_edac_dev_info *edac_dev = device;
 	u32 status;
 	unsigned long set_val;
 	int i;
@@ -195,12 +195,12 @@ smmon_isr(int interrupt, void *device)
 	return IRQ_HANDLED;
 }
 
-static void lsi_sm_error_check(struct edac_device_ctl_info *edac_dev)
+static void axxia_sm_error_check(struct edac_device_ctl_info *edac_dev)
 {
 	unsigned long sm_reg_val, clear_val;
-	struct lsi_edac_dev_info *dev_info;
+	struct axxia_edac_dev_info *dev_info;
 
-	dev_info = (struct lsi_edac_dev_info *) edac_dev->pvt_info;
+	dev_info = (struct axxia_edac_dev_info *) edac_dev->pvt_info;
 
 	/* SM0 is instance 0 */
 	ncr_read(dev_info->sm_region, SM_INT_STATUS_REG, 4, &sm_reg_val);
@@ -215,10 +215,10 @@ static void lsi_sm_error_check(struct edac_device_ctl_info *edac_dev)
 }
 
 
-static int lsi_edac_mc_probe(struct platform_device *pdev)
+static int axxia_edac_mc_probe(struct platform_device *pdev)
 {
 	static int count;
-	struct lsi_edac_dev_info *dev_info = NULL;
+	struct axxia_edac_dev_info *dev_info = NULL;
 	/* 4 cores per cluster */
 	struct resource *io;
 	struct device_node *np = pdev->dev.of_node;
@@ -294,9 +294,9 @@ static int lsi_edac_mc_probe(struct platform_device *pdev)
 	dev_info->edac_dev->pvt_info = dev_info;
 	dev_info->edac_dev->dev = &dev_info->pdev->dev;
 	dev_info->edac_dev->ctl_name = dev_info->ctl_name;
-	dev_info->edac_dev->mod_name = LSI_EDAC_MOD_STR;
+	dev_info->edac_dev->mod_name = AXXIA_EDAC_MOD_STR;
 	dev_info->edac_dev->dev_name = dev_name(&dev_info->pdev->dev);
-	dev_info->edac_dev->edac_check = lsi_sm_error_check;
+	dev_info->edac_dev->edac_check = axxia_sm_error_check;
 
 
 	if (edac_device_add_device(dev_info->edac_dev) != 0) {
@@ -313,27 +313,27 @@ err1:
 	return 1;
 }
 
-static int lsi_edac_mc_remove(struct platform_device *pdev)
+static int axxia_edac_mc_remove(struct platform_device *pdev)
 {
 	platform_device_unregister(pdev);
 	return 0;
 }
 
-static const struct of_device_id lsi_edac_smmon_match[] = {
-	{ .compatible = "lsi,smmon" },
+static const struct of_device_id axxia_edac_smmon_match[] = {
+	{ .compatible = "axxia,smmon" },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, lsi_edac_smmon_match);
+MODULE_DEVICE_TABLE(platform, axxia_edac_smmon_match);
 
-static struct platform_driver lsi_edac_mc_driver = {
-	.probe = lsi_edac_mc_probe,
-	.remove = lsi_edac_mc_remove,
+static struct platform_driver axxia_edac_mc_driver = {
+	.probe = axxia_edac_mc_probe,
+	.remove = axxia_edac_mc_remove,
 	.driver = {
-		.name = "lsi_edac_smmon",
-		.of_match_table = lsi_edac_smmon_match,
+		.name = "axxia_edac_smmon",
+		.of_match_table = axxia_edac_smmon_match,
 	}
 };
-module_platform_driver(lsi_edac_mc_driver);
+module_platform_driver(axxia_edac_mc_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sangeetha Rao <sangeetha.rao@avagotech.com>");

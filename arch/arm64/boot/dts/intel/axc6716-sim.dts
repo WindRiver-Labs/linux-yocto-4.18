@@ -16,7 +16,7 @@
 
 / {
 	model = "Lionfish Simulator";
-	compatible = "lsi,axc6732";
+	compatible = "axxia,axc6732";
 
 	memory {
 		device_type = "memory";

@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/axm55xx.dtsi
  *
- * Copyright (C) 2013 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@
 	};
 
 	edac: edac0@0x1000 {
-		compatible = "lsi,edac";
+		compatible = "axxia,edac";
 		reg = <0 0x00220000 0 0x1000>,
 			<0 0x000f0000 0 0x1000>,
 			<0x20 0x10030000 0 0001000>,
@@ -94,12 +94,12 @@
 	};
 
 	perf_platform: perf_platform {
-		compatible = "lsi,axm-platformperf";
+		compatible = "axxia,axm-platformperf";
 		status = "disabled";
 	};
 
 	sm0: sm0@00220000 {
-		compatible = "lsi,smmon";
+		compatible = "axxia,smmon";
 		reg = <0 0x00220000 0 0x1000>,
 			<0x20 0x10030000 0 0001000>;
 		interrupts = <0 161 4>;
@@ -107,7 +107,7 @@
 	};
 
 	sm1: sm1@00220000 {
-		compatible = "lsi,smmon";
+		compatible = "axxia,smmon";
 		reg = <0 0x000f0000 0 0x1000>,
 			<0x20 0x10030000 0 0001000>;
 		interrupts = <0 160 4>;
@@ -115,7 +115,7 @@
 	};
 
 	femac: femac@0x2010120000 {
-		compatible = "lsi,acp-femac";
+		compatible = "axxia,acp-femac";
 		device_type = "network";
 		reg = <0x20 0x10120000 0 0x1000>,
 		      <0x20 0x10121000 0 0x1000>,
@@ -142,7 +142,7 @@
 		ranges;
 
 		gpdma0: gpdma@2020140000 {
-			compatible = "lsi,dma32";
+			compatible = "axxia,dma32";
 			reg = <0x20 0x20140000 0x00 0x1000>;
 			interrupts = <0 60 4>,
 				     <0 61 4>;
@@ -157,7 +157,7 @@
 		};
 
 		gpdma1: gpdma@2020141000 {
-			compatible = "lsi,dma32";
+			compatible = "axxia,dma32";
 			reg = <0x20 0x20141000 0x00 0x1000>;
 			interrupts = <0 64 4>,
 				     <0 65 4>;
@@ -172,12 +172,12 @@
 		};
 
 		gpreg: gpreg@2010094000  {
-			compatible = "lsi,gpreg";
+			compatible = "axxia,gpreg";
 			reg = <0x20 0x10094000 0 0x1000>;
 		};
 
 		pcie0: pciex@0x3000000000 {
-			compatible = "lsi,plb-pciex";
+			compatible = "axxia,plb-pciex";
 			device_type = "pci";
 			#interrupt-cells = <1>;
 			#size-cells = <2>;
@@ -218,7 +218,7 @@
 		};
 
 		pcie1: pciex@0x3080000000 {
-			compatible = "lsi,plb-pciex";
+			compatible = "axxia,plb-pciex";
 			device_type = "pci";
 			#interrupt-cells = <1>;
 			#size-cells = <2>;
@@ -246,7 +246,7 @@
 			index = <0>;
 			#address-cells = <2>;
 			#size-cells = <2>;
-			compatible = "intel,axxia-rapidio";
+			compatible = "axxia,axxia-rapidio";
 			device_type = "rapidio";
 			reg = <0x0020 0x20142000 0x0 0x1000>; /* SRIO Conf 0 region */
 			ranges = <0x0 0x0 0x0031 0x00000000 0x0 0x40000000>;
@@ -261,7 +261,7 @@
 			index = <1>;
 			#address-cells = <2>;
 			#size-cells = <2>;
-			compatible = "intel,axxia-rapidio";
+			compatible = "axxia,axxia-rapidio";
 			device_type = "rapidio";
 			reg = <0x0020 0x20143000 0x0 0x1000>; /* SRIO Conf 1 region */
 			ranges = <0x0 0x0 0x0031 0x40000000 0x0 0x40000000>;
@@ -273,7 +273,7 @@
 		};
 
 		usb0: usb@004a4000 {
-			compatible = "lsi,acp-usb";
+			compatible = "axxia,acp-usb";
 			device_type = "usb";
 			reg = <0x20 0x10140000 0x0 0020000>,
 			      <0x20 0x10094000 0x0 0002000>;
@@ -283,7 +283,7 @@
 		};
 
 		i2c0: i2c@0x02010084000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			device_type = "i2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -293,7 +293,7 @@
 		};
 
 		i2c1: i2c@0x02010085000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			device_type = "i2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -303,7 +303,7 @@
 		};
 
 		i2c2: i2c@0x02010086000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			device_type = "i2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -313,7 +313,7 @@
 		};
 
 		i2c3: i2c@0x02010087000 {
-			compatible = "lsi,api2c";
+			compatible = "axxia,api2c";
 			device_type = "i2c";
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -323,21 +323,21 @@
 		};
 
 		mtc: mtc@0x2010098000 {
-			compatible = "lsi,mtc";
+			compatible = "axxia,mtc";
 			reg = <0x20 0x10098000 0 0x3000>;
 			interrupts = <0 45 4>;
 			status = "disabled";
 		};
 
 		trng: trng@0x20101a0000 {
-			compatible = "lsi,trng";
+			compatible = "axxia,trng";
 			reg = <0x20 0x101a0000 0 0x20000>;
 			interrupts = <0 8 4>;
 			status = "disabled";
 		};
 
 		nca@2020100000 {
-			compatible = "lsi,nca";
+			compatible = "axxia,nca";
 			reg = <0x20 0x20100000 0 0x20000>;
 		};
 
@@ -419,7 +419,7 @@
 
 			spics: sspgpio@2010088030 {
 				#gpio-cells = <2>;
-				compatible = "lsi,ssp-gpio";
+				compatible = "axxia,ssp-gpio";
 				gpio-controller;
 				reg = <0x20 0x10088000 0x00 0x1000>;
 				status = "disabled";

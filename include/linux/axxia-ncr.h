@@ -1,7 +1,7 @@
 /*
- * drivers/lsi/common/version.h
+ * drivers/axxia/common/version.h
  *
- * Copyright (C) 2010 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * along with this program.
  */
 
-#ifndef __DRIVERS_LSI_ACP_NCR_H
-#define __DRIVERS_LSI_ACP_NCR_H
+#ifndef __DRIVERS_AXXIA_ACP_NCR_H
+#define __DRIVERS_AXXIA_ACP_NCR_H
 
 #ifndef NCP_REGION_ID
 #define NCP_REGION_ID(node, target) \
@@ -49,10 +49,10 @@ void ncr_stop_trace(void);
   * when defined, the RTE driver module will set/clear
   * the ncr_reset_active flag to indicate when Axxia device
   * reset is in progress. This flag will be checked by the
-  * kernel lsi-ncr driver and ddr_retention code.
+  * kernel axxia-ncr driver and ddr_retention code.
   */
 #ifdef CONFIG_ARCH_AXXIA_NCR_RESET_CHECK
 extern int ncr_reset_active;
 #endif
 
-#endif /*  __DRIVERS_LSI_ACP_NCR_H */
+#endif /*  __DRIVERS_AXXIA_ACP_NCR_H */

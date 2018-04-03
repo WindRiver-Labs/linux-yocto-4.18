@@ -697,7 +697,7 @@ static int axxia_i2c_resume(struct platform_device *pdev)
 
 /* Match table for of_platform binding */
 static const struct of_device_id axxia_i2c_of_match[] = {
-	{ .compatible = "lsi,api2c", },
+	{ .compatible = "axxia,api2c", },
 	{},
 };
 
@@ -718,5 +718,5 @@ static struct platform_driver axxia_i2c_driver = {
 module_platform_driver(axxia_i2c_driver);
 
 MODULE_DESCRIPTION("Axxia I2C Bus driver");
-MODULE_AUTHOR("Anders Berg <anders.berg@lsi.com>");
+MODULE_AUTHOR("Anders Berg <anders.berg@intel.com>");
 MODULE_LICENSE("GPL v2");

@@ -16,7 +16,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/edac.h>
 #include <linux/of_platform.h>
 #include <linux/of.h>

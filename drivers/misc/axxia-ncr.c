@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2009 LSI Corporation
+ *  Copyright (C) 2009 INTEL Corporation
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -20,7 +20,7 @@
 
 #include <linux/module.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <linux/sizes.h>
@@ -278,9 +278,9 @@ ncr_pio_error_dump(struct ncr_io_fns *io_fn, char *str)
 	stat0 = io_fn->rd((unsigned int *)(nca + 0xe4));
 	stat1 = io_fn->rd((unsigned int *)(nca + 0xe8));
 
-	pr_err("lsi-ncr: %8s failed, error status : 0x%08x 0x%08x\n",
+	pr_err("axxia-ncr: %8s failed, error status : 0x%08x 0x%08x\n",
 	       str, stat0, stat1);
-	pr_err("lsi-ncr:  CDR0-2: 0x%08x 0x%08x 0x%08x\n",
+	pr_err("axxia-ncr:  CDR0-2: 0x%08x 0x%08x 0x%08x\n",
 	       cdr0, cdr1, cdr2);
 }
 
@@ -306,7 +306,7 @@ ncr_check_pio_status(struct ncr_io_fns *io_fn, char *str)
 
 	if (0x1 == cdr0.bits.start_done) {
 		/* timed out without completing */
-		pr_err("lsi-ncr: PIO operation timeout cdr0=0x%08x!\n",
+		pr_err("axxia-ncr: PIO operation timeout cdr0=0x%08x!\n",
 		       cdr0.raw);
 		ncr_pio_error_dump(io_fn, str);
 		BUG();
@@ -1199,7 +1199,7 @@ ncr_init(void)
 	default_io_fn = &ncr_io_fn_nolock;
 
 
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500-amarillo")) {
 		u32 pfuse;
 		u32 chip_type;
 		u32 chip_ver;
@@ -1228,13 +1228,13 @@ ncr_init(void)
 		iounmap(syscon);
 	}
 
-	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500") ||
-	    of_find_compatible_node(NULL, NULL, "lsi,axm5516")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500") ||
+	    of_find_compatible_node(NULL, NULL, "axxia,axm5516")) {
 		pr_debug("Using AXM5500 Addresses\n");
 		nca = ioremap(0x002020100000ULL, 0x20000);
 		apb2ser0 = ioremap(0x002010000000ULL, 0x10000);
 		is_5500 = 1;
-	} else if (of_find_compatible_node(NULL, NULL, "lsi,axm5616")) {
+	} else if (of_find_compatible_node(NULL, NULL, "axxia,axm5616")) {
 		pr_debug("Using AXM5600 Addresses\n");
 		nca = ioremap(0x8031080000ULL, 0x20000);
 		apb2ser0 = ioremap(0x8002000000ULL, 0x4000000);
@@ -1242,7 +1242,7 @@ ncr_init(void)
 		pr_debug("0x%lx 0x%lx\n",
 			 (unsigned long)nca,
 			 (unsigned long)apb2ser0);
-	} else if (of_find_compatible_node(NULL, NULL, "lsi,axc6732")) {
+	} else if (of_find_compatible_node(NULL, NULL, "axxia,axc6732")) {
 		pr_debug("Using AXC6700 Addresses\n");
 		nca = ioremap(0x8020000000ULL, 0x20000);
 		apb2ser0 = ioremap(0x8002000000ULL, 0x400000);
@@ -1253,7 +1253,7 @@ ncr_init(void)
 		return -1;
 	}
 #else
-	if (of_find_compatible_node(NULL, NULL, "lsi,acp3500")) {
+	if (of_find_compatible_node(NULL, NULL, "axxia,acp3500")) {
 		pr_debug("Using ACP3500 Addresses\n");
 		nca = ioremap(0x002000520000ULL, 0x20000);
 		default_io_fn = &ncr_io_fn_nolock;

@@ -3,7 +3,7 @@
  *
  *  Cloned from linux/arch/arm/common/gic.c
  *
- *  Copyright (C) 2013 LSI Corporation
+ *  Copyright (C) 2013 INTEL Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -45,7 +45,7 @@
 #include <asm/mach/irq.h>
 
 #include <mach/axxia-gic.h>
-#include "lsi_power_management.h"
+#include "axxia_power_management.h"
 
 #define MAX_GIC_INTERRUPTS  1020
 

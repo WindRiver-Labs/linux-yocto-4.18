@@ -1,9 +1,9 @@
  /*
   * drivers/usb/host/ehci-ci13612.c
   *
-  * USB Host Controller Driver for LSI's ACP
+  * USB Host Controller Driver for INTEL Axxia's ACP
   *
-  * Copyright (C) 2010 LSI Inc.
+  * Copyright (C) 2018 INTEL Inc.
   *
   * This program is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 
 static int ci13612_ehci_halt(struct ehci_hcd *ehci);
 
-#ifdef CONFIG_LSI_USB_SW_WORKAROUND
+#ifdef CONFIG_AXXIA_USB_SW_WORKAROUND
 static void ci13612_usb_setup(struct usb_hcd *hcd)
 {
 	int USB_TXFIFOTHRES, VUSB_HS_TX_BURST;
@@ -40,9 +40,9 @@ static void ci13612_usb_setup(struct usb_hcd *hcd)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	u32 txfulltuning = 0;
 
-	if ((of_find_compatible_node(NULL, NULL, "lsi,acp3500")
+	if ((of_find_compatible_node(NULL, NULL, "axxia,acp3500")
 		!= NULL)
-		|| (of_find_compatible_node(NULL, NULL, "lsi,axxia35xx")
+		|| (of_find_compatible_node(NULL, NULL, "axxia,axxia35xx")
 		!= NULL)) {
 		writel(3, USB_SBUSCFG);
 		return;
@@ -82,7 +82,7 @@ static void ci13612_usb_setup(struct usb_hcd *hcd)
 static int ehci_ci13612_reinit(struct ehci_hcd *ehci)
 {
 
-#ifdef CONFIG_LSI_USB_SW_WORKAROUND
+#ifdef CONFIG_AXXIA_USB_SW_WORKAROUND
 	/* S/W workarounds are not needed in AXM55xx */
 	ci13612_usb_setup(ehci_to_hcd(ehci));
 #endif
@@ -125,7 +125,7 @@ static int ci13612_ehci_init(struct usb_hcd *hcd)
 	return retval;
 }
 
-#ifdef CONFIG_LSI_USB_SW_WORKAROUND
+#ifdef CONFIG_AXXIA_USB_SW_WORKAROUND
 /*
  * ci13612_fixup_usbcmd_rs
  *
@@ -140,9 +140,9 @@ ci13612_fixup_usbcmd_rs(struct ehci_hcd *ehci)
 {
 	u32 port_status;
 	/* This workaround is not applicable to 3500 */
-	if ((of_find_compatible_node(NULL, NULL, "lsi,acp3500")
+	if ((of_find_compatible_node(NULL, NULL, "axxia,acp3500")
 		!= NULL)
-		|| (of_find_compatible_node(NULL, NULL, "lsi,axxia35xx")
+		|| (of_find_compatible_node(NULL, NULL, "axxia,axxia35xx")
 		!= NULL)) {
 		return 0;
 	}
@@ -160,7 +160,7 @@ ci13612_fixup_usbcmd_rs(struct ehci_hcd *ehci)
 #endif
 
 
-#ifdef CONFIG_LSI_USB_SW_WORKAROUND
+#ifdef CONFIG_AXXIA_USB_SW_WORKAROUND
 /*
  * ci13612_fixup_txpburst
  *
@@ -178,9 +178,9 @@ ci13612_fixup_txpburst(struct ehci_hcd *ehci)
 	unsigned burst_size;
 
 	/* This workaround is not applicable to 3500 */
-	if ((of_find_compatible_node(NULL, NULL, "lsi,acp3500")
+	if ((of_find_compatible_node(NULL, NULL, "axxia,acp3500")
 		!= NULL)
-		|| (of_find_compatible_node(NULL, NULL, "lsi,axxia35xx")
+		|| (of_find_compatible_node(NULL, NULL, "axxia,axxia35xx")
 		!= NULL)) {
 		return;
 	}
@@ -204,7 +204,7 @@ static int ci13612_ehci_run(struct usb_hcd *hcd)
 		return retval;
 
 
-#ifndef CONFIG_LSI_USB_SW_WORKAROUND
+#ifndef CONFIG_AXXIA_USB_SW_WORKAROUND
 	/* Setup AMBA interface to force INCR16 busts when possible */
 	writel(3, USB_SBUSCFG);
 #endif
@@ -215,7 +215,7 @@ static int ci13612_ehci_run(struct usb_hcd *hcd)
 
 	ci13612_fixup_txpburst(ehci);
 
-#ifndef CONFIG_LSI_USB_SW_WORKAROUND
+#ifndef CONFIG_AXXIA_USB_SW_WORKAROUND
 	/* Set ITC (bits [23:16]) to zero for interrupt on every micro-frame */
 	tmp = ehci_readl(ehci, &ehci->regs->command);
 	tmp &= 0xFFFF;
@@ -282,7 +282,7 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 	}
 
 
-#ifndef CONFIG_LSI_USB_SW_WORKAROUND
+#ifndef CONFIG_AXXIA_USB_SW_WORKAROUND
 	/* Device using 32-bit addressing */
 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 	pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
@@ -313,7 +313,7 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 	} else {
 		/* Set address bits [39:32] to zero */
 		writel(0x0, gpreg_base + 0x8);
-#ifndef CONFIG_LSI_USB_SW_WORKAROUND
+#ifndef CONFIG_AXXIA_USB_SW_WORKAROUND
 		/* hprot cachable and bufferable */
 		writel(0xc, gpreg_base + 0x74);
 #endif
@@ -362,7 +362,7 @@ MODULE_ALIAS("platform:ci13612-ehci");
 static struct of_device_id ci13612_match[] = {
 	{
 		.type	= "usb",
-		.compatible = "lsi,acp-usb",
+		.compatible = "axxia,acp-usb",
 	},
 	{
 		.type	= "usb",

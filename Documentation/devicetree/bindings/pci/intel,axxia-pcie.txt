@@ -1,7 +1,7 @@
 * Intel Axxia Designware PCIe interface
 
 Required properties:
-- compatible: should contain "intel,axxia-pcie" to identify the core.
+- compatible: should contain "axxia,axxia-pcie" to identify the core.
 - reg: Should contain the DBI, AXI GPREG and CC GPREG address space.
 - reg-names: Must be "dbi" for the DBI, "axi_gpreg" for
 	AXI GPREG and "cc_gpreg" for CC GPREG address space.
@@ -14,7 +14,7 @@ Required properties:
 
 Example:
 	pci0: pcie@c000000000 {
-		compatible = "intel,axxia-pcie";
+		compatible = "axxia,axxia-pcie";
 		device_type = "pci";
 		reg = <0xa0 0x02000000 0x00100000 /* dbi */
 			0xa0 0x03000000 0x00008000 /* AXI gpreg */

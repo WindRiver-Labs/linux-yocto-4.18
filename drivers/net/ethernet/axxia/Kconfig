@@ -1,38 +1,38 @@
-config LSI_NET
-	bool "LSI ACP34XX Ethernet support"
+config AXXIA_NET
+	bool "INTEL Axxia ACP34XX Ethernet support"
 	select MII
 	select PHYLIB
 	help
-	  Network interface driver for LSI's APP and AXXIA series boards.
+	  Network interface driver for INTEL Axxia's APP and AXXIA series boards.
 
-if LSI_NET
+if AXXIA_NET
 
-config LSI_NET_NUM_RX_DESC
-	int "LSI Axxia Network Driver: Number of receive descriptors"
-	depends on LSI_NET
+config AXXIA_NET_NUM_RX_DESC
+	int "INTEL Axxia Network Driver: Number of receive descriptors"
+	depends on AXXIA_NET
 	default "4"
 	help
           The number of receive descriptors to allocate.
 
-config LSI_NET_RX_BUF_SZ
+config AXXIA_NET_RX_BUF_SZ
 	int "NIC driver: Size of the receive buffer"
-	depends on LSI_NET
+	depends on AXXIA_NET
 	default "32768"
 	help
           The size of the receive buffer.
 
-config LSI_NET_NUM_TX_DESC
+config AXXIA_NET_NUM_TX_DESC
 	int "NIC driver: Number of transmit descriptors"
-	depends on LSI_NET
+	depends on AXXIA_NET
 	default "4"
 	help
 	  The number of transmit descriptors to allocate.
 
-config LSI_NET_TX_BUF_SZ
+config AXXIA_NET_TX_BUF_SZ
 	int "NIC driver: Size of the transmit buffer"
-	depends on LSI_NET
+	depends on AXXIA_NET
 	default "32768"
 	help
 	  The size of the transmit buffer.
 
-endif # LSI_NET
+endif # AXXIA_NET

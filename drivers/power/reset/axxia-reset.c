@@ -1,7 +1,7 @@
 /*
  * Reset driver for Axxia devices
  *
- * Copyright (C) 2014 LSI
+ * Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -93,7 +93,7 @@ axxia_ddr_retention_init(void)
 	* but for now we allow it on simulator
 	*/
 
-/*	if (of_find_compatible_node(NULL, NULL, "lsi,axm5500-amarillo")) { */
+/*	if (of_find_compatible_node(NULL, NULL, "axxia,axm5500-amarillo")) { */
 	if (1) {
 		/* Create /proc entry. */
 		if (!proc_create("driver/axxia_ddr_retention_reset",

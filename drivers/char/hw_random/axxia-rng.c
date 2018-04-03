@@ -563,7 +563,7 @@ static int trng_resume(struct platform_device *pdev)
 #endif
 
 static const struct of_device_id trng_of_ids[] = {
-	{.compatible = "lsi,trng"},
+	{.compatible = "axxia,trng"},
 	{}
 };
 

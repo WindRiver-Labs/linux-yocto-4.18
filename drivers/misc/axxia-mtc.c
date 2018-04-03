@@ -1,12 +1,12 @@
 /*
- *  Copyright (C) 2013 LSI Corporation
+ *  Copyright (C) 2013 INTEL Corporation
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
- *  Device driver for LSI Master Test Controller (MTC), which is a test
+ *  Device driver for INTEL Axxia Master Test Controller (MTC), which is a test
  *  generator that is fully compliant with IEEE 1149.1 and can run JTAG test
  *  sequences on external devices. The device is accessed via a character
  *  device (/dev/mtc) through which test sequences can be loaded and exececuted
@@ -30,14 +30,14 @@
 #include <linux/io.h>
 #include <linux/string.h>
 #include <linux/delay.h>
-#include "linux/lsi_mtc_ioctl.h"
+#include "linux/axxia_mtc_ioctl.h"
 
 
 /*
    device tree node:
 
    mtc@2010098000 {
-	   compatible = "lsi,mtc";
+	   compatible = "axxia,mtc";
 	   reg = <0x20 0x10098000 0 0x3000>;
 	   interrupts = <0 45 4>;
    };
@@ -3321,7 +3321,7 @@ mtc_dev_write(struct file *filp,
  *
  */
 
-static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg);
+static long _mtc_config(struct mtc_device *dev, struct axxia_mtc_cfg_t *pMTCCfg);
 
 static long
 mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -3352,7 +3352,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_CFG:
 		{
-			struct lsi_mtc_cfg_t mtc_cfg;
+			struct axxia_mtc_cfg_t mtc_cfg;
 
 			if (copy_from_user
 			    ((void *)&mtc_cfg, (void *)arg, sizeof(mtc_cfg))) {
@@ -3436,7 +3436,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_TCKCLK_GATE:
 		{
-			struct lsi_mtc_tckclk_gate_t tckGate;
+			struct axxia_mtc_tckclk_gate_t tckGate;
 			struct ncp_axis_mtc_MTC_CONFIG1_REG_ADDR_r_t cfg1 = {0};
 
 			if (copy_from_user
@@ -3519,7 +3519,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_READ_STATS:
 		{
-			struct lsi_mtc_stats_regs_t stats;
+			struct axxia_mtc_stats_regs_t stats;
 
 			stats.statsReg1 = dev->regs->status1;
 			stats.statsReg2 = dev->regs->status2;
@@ -3532,7 +3532,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_READ_DEBUG:
 		{
-			struct lsi_mtc_debug_regs_t debug;
+			struct axxia_mtc_debug_regs_t debug;
 
 			debug.debugReg0 = dev->regs->debug0;
 			debug.debugReg1 = dev->regs->debug1;
@@ -3550,8 +3550,8 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_EXT_PRGM_MEM_ENABLE:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
 							= {0};
 			int ext_prgm_mode;
@@ -3582,10 +3582,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_CAPT_WINDOW_PARAM_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_capt_window_param_t wndparm;
+			struct axxia_mtc_axi_capt_window_param_t wndparm;
 
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
 							= {0};
@@ -3648,10 +3648,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_CAPT_WINDOW_PARAM_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_capt_window_param_t wndparm;
+			struct axxia_mtc_axi_capt_window_param_t wndparm;
 			struct ncp_axis_mtc_MTC_CONFIG2_REG_ADDR_r_5600_t cfg0
 								= {0};
 			struct ncp_axis_mtc_MTC_CONFIG3_REG_ADDR_r_5600_t cfg1
@@ -3690,10 +3690,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_WATER_MARK_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_extmem_wm_t wm;
+			struct axxia_mtc_axi_extmem_wm_t wm;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 								 = {0};
 
@@ -3727,10 +3727,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_WATER_MARK_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_extmem_wm_t wm;
+			struct axxia_mtc_axi_extmem_wm_t wm;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 						 = {0};
 
@@ -3751,8 +3751,8 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_M_ARPROT_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 			int arprot;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
 								 = {0};
@@ -3785,8 +3785,8 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_M_ARPROT_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
 			int arprot;
 			struct ncp_axis_mtc_MTC_CONFIG4_REG_ADDR_r_5600_t cfg2
@@ -3807,10 +3807,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_MASTER_ADDR_SET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_master_addr_t addr;
+			struct axxia_mtc_axi_master_addr_t addr;
 
 			struct ncp_axis_mtc_MTC_CONFIG5_REG_ADDR_r_5600_t cfg3
 								 = {0};
@@ -3823,7 +3823,7 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 			if (copy_from_user
 			    ((void *)&addr, (void *)arg,
-				sizeof(struct lsi_mtc_axi_master_addr_t))) {
+				sizeof(struct axxia_mtc_axi_master_addr_t))) {
 				pr_debug("MTC Error ioctl\n");
 				return -EFAULT;
 			}
@@ -3881,10 +3881,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_MASTER_ADDR_GET:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_master_addr_t addr;
+			struct axxia_mtc_axi_master_addr_t addr;
 			struct ncp_axis_mtc_MTC_CONFIG5_REG_ADDR_r_5600_t cfg3
 									 = {0};
 			struct ncp_axis_mtc_MTC_CONFIG6_REG_ADDR_r_5600_t cfg4
@@ -3926,10 +3926,10 @@ mtc_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case MTC_AXI_READ_STATUS:
 
-		if (of_find_compatible_node(NULL, NULL, "lsi,axm5616") ||
-		   (of_find_compatible_node(NULL, NULL, "lsi,axc6732"))) {
+		if (of_find_compatible_node(NULL, NULL, "axxia,axm5616") ||
+		   (of_find_compatible_node(NULL, NULL, "axxia,axc6732"))) {
 
-			struct lsi_mtc_axi_status_regs_t status;
+			struct axxia_mtc_axi_status_regs_t status;
 
 			status.axiStatusReg0 = dev->regs->axi_status0;
 			status.axiStatusReg1 = dev->regs->axi_status1;
@@ -4097,7 +4097,7 @@ static int mtc_resume(struct platform_device *pdev)
 #endif
 
 static const struct of_device_id mtc_of_ids[] = {
-	{.compatible = "lsi,mtc"},
+	{.compatible = "axxia,mtc"},
 	{}
 };
 
@@ -4115,34 +4115,34 @@ static struct platform_driver mtc_driver = {
 
 module_platform_driver(mtc_driver);
 
-MODULE_AUTHOR("LSI Corporation");
+MODULE_AUTHOR("INTEL Corporation");
 MODULE_DESCRIPTION("Master Test Controller driver");
 MODULE_LICENSE("GPL");
 
 /* MTC operating mode. */
-#define  LSI_MTC_BOARDTEST_MODE 0  /* MTC Board Test Mode.  */
-#define  LSI_MTC_EXTTEST_MODE   1  /* MTC External Test Mode DBC3 excluded. */
-#define  LSI_MTC_SYSTTEST_MODE  2  /* MTC System Test Mode DBC3 excluded. */
+#define  AXXIA_MTC_BOARDTEST_MODE 0  /* MTC Board Test Mode.  */
+#define  AXXIA_MTC_EXTTEST_MODE   1  /* MTC External Test Mode DBC3 excluded. */
+#define  AXXIA_MTC_SYSTTEST_MODE  2  /* MTC System Test Mode DBC3 excluded. */
 
 /* Test data output recording mode. */
 /* Do not save TDO data during shiftir and shiftdr. */
-#define   LSI_MTC_TDO_NOREC 0
+#define   AXXIA_MTC_TDO_NOREC 0
   /* Do not save TDO data during shiftir, but save TDO during shiftdr. */
-#define   LSI_MTC_TDO_NOREC_SHIFTIR 1
+#define   AXXIA_MTC_TDO_NOREC_SHIFTIR 1
   /* Do not save TDO data during shiftdr, but save TDO during shiftir. */
-#define  LSI_MTC_TDO_NOREC_SHIFTDR 2
+#define  AXXIA_MTC_TDO_NOREC_SHIFTDR 2
   /* Save TDO data during shiftdr and shiftir. */
 #define   ACELL_MTCI_TDO_REC_ALL  3
 
 /* Test data output buffer mode. */
 /* TDO output buffer always enabled. */
-#define  LSI_MTC_TDOBUF_ENABLED 0
+#define  AXXIA_MTC_TDOBUF_ENABLED 0
 /* TDO output buffer active  when in shift-DR or shift-IR states
    and inactive in all other states. */
-#define  LSI_MTC_TDOBUF_TRISTATE_CAPABLE 1
+#define  AXXIA_MTC_TDOBUF_TRISTATE_CAPABLE 1
 
 /* config MTC hardware */
-static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
+static long _mtc_config(struct mtc_device *dev, struct axxia_mtc_cfg_t *pMTCCfg)
 {
 
 	struct ncp_axis_mtc_MTC_CONFIG0_REG_ADDR_r_t cfg0 = { 0 };
@@ -4184,10 +4184,10 @@ static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
 	      &(dev->regs->config1));
 
 	/*set MTC mode */
-	if (pMTCCfg->opMode == LSI_MTC_BOARDTEST_MODE) {
+	if (pMTCCfg->opMode == AXXIA_MTC_BOARDTEST_MODE) {
 		/* board testing mode */
 		cfg0.cfg_config_ctl = 0;
-	} else if (pMTCCfg->opMode == LSI_MTC_EXTTEST_MODE) {
+	} else if (pMTCCfg->opMode == AXXIA_MTC_EXTTEST_MODE) {
 		/* external testing mode */
 		cfg0.cfg_config_ctl = 3;
 	} else {
@@ -4203,13 +4203,13 @@ static long _mtc_config(struct mtc_device *dev, struct lsi_mtc_cfg_t *pMTCCfg)
 	cfg0.mtc_mpu_tdo_inactive_en = pMTCCfg->buffMode;
 
 	/* set TDO recording mode */
-	if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC) {
+	if (pMTCCfg->recMode == AXXIA_MTC_TDO_NOREC) {
 		cfg1.record_tdo_in_shift_ir_state = 0;
 		cfg1.record_tdo_in_shift_dr_state = 0;
-	} else if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC_SHIFTIR) {
+	} else if (pMTCCfg->recMode == AXXIA_MTC_TDO_NOREC_SHIFTIR) {
 		cfg1.record_tdo_in_shift_ir_state = 0;
 		cfg1.record_tdo_in_shift_dr_state = 1;
-	} else if (pMTCCfg->recMode == LSI_MTC_TDO_NOREC_SHIFTDR) {
+	} else if (pMTCCfg->recMode == AXXIA_MTC_TDO_NOREC_SHIFTDR) {
 		cfg1.record_tdo_in_shift_ir_state = 1;
 		cfg1.record_tdo_in_shift_dr_state = 0;
 	} else {

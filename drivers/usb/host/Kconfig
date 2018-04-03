@@ -3,11 +3,11 @@
 #
 comment "USB Host Controller Drivers"
 
-config LSI_USB_SW_WORKAROUND
-	bool "LSI USB SW Workaround for ACP34xx devices"
+config AXXIA_USB_SW_WORKAROUND
+	bool "INTEL Axxia USB SW Workaround for ACP34xx devices"
 	default n
 	help
-	  LSI USB SW Workaround for ACP34xx devices
+	  INTEL Axxia USB SW Workaround for ACP34xx devices
 
 config USB_C67X00_HCD
 	tristate "Cypress C67x00 HCD support"

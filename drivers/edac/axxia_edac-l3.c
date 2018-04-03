@@ -3,7 +3,7 @@
   *
   * EDAC Driver for Avago's Axxia 5500 for L3 cache
   *
-  * Copyright (C) 2010 LSI Inc.
+  * Copyright (C) 2018 INTEL Inc.
   *
   * This program is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/edac.h>
 #include <linux/of_platform.h>
 #include <linux/of.h>
@@ -36,13 +36,13 @@
 #include "edac_module.h"
 #include "axxia_edac.h"
 
-#define LSI_EDAC_MOD_STR     "lsi_edac"
+#define AXXIA_EDAC_MOD_STR     "axxia_edac"
 
 #define APB2_PERSIST_SCRATCH 0xdc
 #define L3_PERSIST_SCRATCH_BIT (0x1 << 4)
 
 /* Private structure for common edac device */
-struct lsi_edac_dev_info {
+struct axxia_edac_dev_info {
 	struct platform_device *pdev;
 	char *ctl_name;
 	char *blk_name;
@@ -54,14 +54,14 @@ struct lsi_edac_dev_info {
 };
 
 /* Check for L3 Errors */
-static void lsi_l3_error_check(struct edac_device_ctl_info *edac_dev)
+static void axxia_l3_error_check(struct edac_device_ctl_info *edac_dev)
 {
 	unsigned long regVal1, regVal2;
 	unsigned count = 0;
 	int i, instance;
-	struct lsi_edac_dev_info *dev_info;
+	struct axxia_edac_dev_info *dev_info;
 
-	dev_info = (struct lsi_edac_dev_info *) edac_dev->pvt_info;
+	dev_info = (struct axxia_edac_dev_info *) edac_dev->pvt_info;
 
 	for (instance = 0; instance < 8; instance++) {
 		regVal1 = readl(dev_info->dickens_L3 + (instance * 0x10000));
@@ -89,9 +89,9 @@ static void lsi_l3_error_check(struct edac_device_ctl_info *edac_dev)
 	}
 }
 
-static int lsi_edac_l3_probe(struct platform_device *pdev)
+static int axxia_edac_l3_probe(struct platform_device *pdev)
 {
-	struct lsi_edac_dev_info *dev_info = NULL;
+	struct axxia_edac_dev_info *dev_info = NULL;
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *r;
 
@@ -113,7 +113,7 @@ static int lsi_edac_l3_probe(struct platform_device *pdev)
 	dev_info->dickens_L3 = devm_ioremap(&pdev->dev, r->start,
 					    resource_size(r));
 	if (!dev_info->dickens_L3) {
-		pr_err("LSI_L3 devm_ioremap error\n");
+		pr_err("AXXIA_L3 devm_ioremap error\n");
 		goto err1;
 	}
 
@@ -137,10 +137,10 @@ static int lsi_edac_l3_probe(struct platform_device *pdev)
 	dev_info->edac_dev->pvt_info = dev_info;
 	dev_info->edac_dev->dev = &dev_info->pdev->dev;
 	dev_info->edac_dev->ctl_name = dev_info->ctl_name;
-	dev_info->edac_dev->mod_name = LSI_EDAC_MOD_STR;
+	dev_info->edac_dev->mod_name = AXXIA_EDAC_MOD_STR;
 	dev_info->edac_dev->dev_name = dev_name(&dev_info->pdev->dev);
 	edac_op_state = EDAC_OPSTATE_POLL;
-	dev_info->edac_dev->edac_check = lsi_l3_error_check;
+	dev_info->edac_dev->edac_check = axxia_l3_error_check;
 
 	if (edac_device_add_device(dev_info->edac_dev) != 0) {
 		pr_info("Unable to add edac device for %s\n",
@@ -156,29 +156,29 @@ err1:
 	return 1;
 }
 
-static int lsi_edac_l3_remove(struct platform_device *pdev)
+static int axxia_edac_l3_remove(struct platform_device *pdev)
 {
 	platform_device_unregister(pdev);
 	return 0;
 }
 
-static struct of_device_id lsi_edac_l3_match[] = {
+static struct of_device_id axxia_edac_l3_match[] = {
 	{
-	.compatible = "lsi,ccn504-l3-cache",
+	.compatible = "axxia,ccn504-l3-cache",
 	},
 	{},
 };
 
-static struct platform_driver lsi_edac_l3_driver = {
-	.probe = lsi_edac_l3_probe,
-	.remove = lsi_edac_l3_remove,
+static struct platform_driver axxia_edac_l3_driver = {
+	.probe = axxia_edac_l3_probe,
+	.remove = axxia_edac_l3_remove,
 	.driver = {
-		.name = "lsi_edac_l3",
-		.of_match_table = lsi_edac_l3_match,
+		.name = "axxia_edac_l3",
+		.of_match_table = axxia_edac_l3_match,
 	}
 };
 
-module_platform_driver(lsi_edac_l3_driver);
+module_platform_driver(axxia_edac_l3_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sangeetha Rao <sangeetha.rao@avagotech.com>");

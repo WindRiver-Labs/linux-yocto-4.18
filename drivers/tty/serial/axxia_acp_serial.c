@@ -1,13 +1,13 @@
 /*
- *  drivers/tty/serial/lsi_acp_serial.c
+ *  drivers/tty/serial/axxia_acp_serial.c
  *
- *  Driver for AMBA serial ports on LSI's PPC based ACP.
+ *  Driver for AMBA serial ports on INTEL Axxia's PPC based ACP.
  *
  *  Based on drivers/char/serial.c, by Linus Torvalds, Theodore Ts'o.
  *
  *  Copyright 1999 ARM Limited
  *  Copyright (C) 2000 Deep Blue Solutions Ltd.
- *  Copyright 2009 LSI
+ *  Copyright (C) 2018 INTEL
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1010,7 +1010,7 @@ acp_serial_add_ports(struct uart_driver *driver)
 
 	if (!enabled) {
 		/*
-		  Older LSI U-Boot package (prior to 4.8.1.36).
+		  Older AXXIA U-Boot package (prior to 4.8.1.36).
 
 		  Only use UART0.  The timer registers are defined
 		  differently in the device tree.
@@ -1018,7 +1018,7 @@ acp_serial_add_ports(struct uart_driver *driver)
 		uap->timer_base = ioremap(0x002000408040ULL, 0x20);
 	} else {
 		/*
-		  Newer LSI U-Boot package (4.8.1.36 on).
+		  Newer AXXIA U-Boot package (4.8.1.36 on).
 
 		  Only use a serial port if it is enabled.
 		*/
@@ -1098,7 +1098,7 @@ acp_serial_add_ports(struct uart_driver *driver)
 		ret = -ENOMEM;
 	}
 
-	np = of_find_compatible_node(NULL, NULL, "lsi,acp3500");
+	np = of_find_compatible_node(NULL, NULL, "axxia,acp3500");
 
 	if (NULL == np) {
 		unsigned long divisor;
@@ -1242,6 +1242,6 @@ acp_serial_exit(void)
 }
 module_exit(acp_serial_exit);
 
-MODULE_AUTHOR("LSI Corporation");
+MODULE_AUTHOR("INTEL Corporation");
 MODULE_DESCRIPTION("ARM AMBA serial port on PPC476 driver");
 MODULE_LICENSE("GPL");

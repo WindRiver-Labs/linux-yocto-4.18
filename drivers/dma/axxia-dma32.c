@@ -1,10 +1,10 @@
 /*
- * Driver for the LSI DMA controller DMA-32.
+ * Driver for the INTEL Axxia DMA controller DMA-32.
  *
  * The driver is based on:
  *
- * lsi-dma32.c -
- * lsi-dma.c - Copyright 2011 Mentor Graphics
+ * axxia-dma32.c -
+ * axxia-dma.c - Copyright 2011 Mentor Graphics
  * acp_gpdma.c - Copyright (c) 2011, Ericsson AB
  *               Niclas Bengtsson <niklas.x.bengtsson@ericsson.com>
  *               Kerstin Jonsson <kerstin.jonsson@ericsson.com>
@@ -38,7 +38,7 @@
 #include <linux/atomic.h>
 #include <linux/sizes.h>
 #include "virt-dma.h"
-#include "lsi-dma32.h"
+#include "axxia-dma32.h"
 
 #ifdef DEBUG
 #define engine_dbg(engine, fmt, ...) \
@@ -107,7 +107,7 @@ static void soft_reset(struct gpdma_engine *engine)
 
 	cfg = (engine->pool.phys & 0xfff00000) | GEN_CONFIG_EXT_MEM;
 
-	if (engine->chip->flags & LSIDMA_EDGE_INT) {
+	if (engine->chip->flags & AXXIADMA_EDGE_INT) {
 		for (i = 0; i < engine->chip->num_channels; i++)
 			cfg |= GEN_CONFIG_INT_EDGE(i);
 		engine_dbg(engine, "Using edge-triggered interrupts\n");
@@ -129,7 +129,7 @@ static int alloc_desc_table(struct gpdma_engine *engine)
 	u32 order = 20 - PAGE_SHIFT;
 	int i;
 
-	if (engine->chip->flags & LSIDMA_NEXT_FULL) {
+	if (engine->chip->flags & AXXIADMA_NEXT_FULL) {
 		/*
 		 * Controller can do full descriptor addresses, then we need no
 		 * special alignment on the descriptor block.
@@ -228,7 +228,7 @@ static phys_addr_t desc_to_paddr(const struct gpdma_channel *dmac,
 	phys_addr_t paddr = virt_to_phys(&desc->hw);
 
 	WARN_ON(paddr & 0xf);
-	if (dmac->engine->chip->flags & LSIDMA_NEXT_FULL)
+	if (dmac->engine->chip->flags & AXXIADMA_NEXT_FULL)
 		paddr |= 0x8;
 	else
 		paddr &= 0xfffff;
@@ -280,7 +280,7 @@ static void gpdma_start(struct gpdma_channel *dmac)
 	desc = to_gpdma_desc(vdesc);
 	dmac->active = desc;
 
-	if (!(dmac->engine->chip->flags & LSIDMA_SEG_REGS)) {
+	if (!(dmac->engine->chip->flags & AXXIADMA_SEG_REGS)) {
 		/*
 		 * No segment registers -> descriptor address bits must match
 		 * running descriptor on any other channel.
@@ -293,7 +293,7 @@ static void gpdma_start(struct gpdma_channel *dmac)
 	paddr = desc_to_paddr(dmac, desc);
 	writel((u32)paddr, dmac->base + DMA_NXT_DESCR);
 
-	if (dmac->engine->chip->flags & LSIDMA_SEG_REGS) {
+	if (dmac->engine->chip->flags & AXXIADMA_SEG_REGS) {
 		/* Segment bits [39..32] of descriptor, src and dst addresses */
 		writel(paddr >> 32, dmac->base + DMA_DESCR_ADDR_SEG);
 		writel(desc->src >> 32, dmac->base + DMA_SRC_ADDR_SEG);
@@ -554,7 +554,7 @@ static int setup_channel(struct gpdma_channel *dmac, struct device_node *child)
 	dmac->irq = irq_of_parse_and_map(child, 0);
 	dev_dbg(engine->dev, "channel %d, irq %d\n", dmac->id, dmac->irq);
 	rc = devm_request_irq(engine->dev, dmac->irq, gpdma_isr, 0,
-			      "lsi-dma", dmac);
+			      "axxia-dma", dmac);
 	if (rc) {
 		dev_err(engine->dev, "failed to request_irq, error = %d\n", rc);
 		return rc;
@@ -566,15 +566,15 @@ static int setup_channel(struct gpdma_channel *dmac, struct device_node *child)
 	return 0;
 }
 
-static struct lsidma_hw lsi_dma32 = {
+static struct axxiadma_hw axxia_dma32 = {
 	.num_channels   = 2,
 	.chregs_offset  = 0x80,
 	.genregs_offset = 0xF00,
-	.flags          = (LSIDMA_NEXT_FULL |
-			   LSIDMA_SEG_REGS)
+	.flags          = (AXXIADMA_NEXT_FULL |
+			   AXXIADMA_SEG_REGS)
 };
 
-static struct lsidma_hw lsi_dma31 = {
+static struct axxiadma_hw axxia_dma31 = {
 	.num_channels   = 4,
 	.chregs_offset  = 0x40,
 	.genregs_offset = 0x400,
@@ -583,20 +583,20 @@ static struct lsidma_hw lsi_dma31 = {
 
 static const struct of_device_id gpdma_of_ids[] = {
 	{
-		.compatible = "lsi,dma32",
-		.data       = &lsi_dma32
+		.compatible = "axxia,dma32",
+		.data       = &axxia_dma32
 	},
 	{
-		.compatible = "lsi,dma31",
-		.data       = &lsi_dma31
+		.compatible = "axxia,dma31",
+		.data       = &axxia_dma31
 	},
 	{
 		.compatible = "gp-dma,acp-dma",
-		.data       = &lsi_dma31
+		.data       = &axxia_dma31
 	},
 	{
 		.compatible = "gp-dma,acp-gpdma",
-		.data       = &lsi_dma31
+		.data       = &axxia_dma31
 	},
 	{ }
 };
@@ -621,7 +621,7 @@ static int gpdma_of_probe(struct platform_device *op)
 
 	spin_lock_init(&engine->lock);
 	engine->dev = &op->dev;
-	engine->chip = (struct lsidma_hw *)match->data;
+	engine->chip = (struct axxiadma_hw *)match->data;
 
 	/* Initialize dma_device struct */
 	dma = &engine->dma_device;
@@ -658,7 +658,7 @@ static int gpdma_of_probe(struct platform_device *op)
 	engine->err_irq = platform_get_irq(op, 1);
 	if (engine->err_irq) {
 		rc = devm_request_irq(&op->dev, engine->err_irq,
-				      gpdma_isr_err, 0, "lsi-dma-err", engine);
+				      gpdma_isr_err, 0, "axxia-dma-err", engine);
 		if (rc) {
 			dev_err(engine->dev, "failed to request irq%d\n",
 				engine->err_irq);
@@ -720,7 +720,7 @@ static int gpdma_of_remove(struct platform_device *op)
 
 static struct platform_driver gpdma_of_driver = {
 	.driver = {
-		.name           = "lsi-dma32",
+		.name           = "axxia-dma32",
 		.owner          = THIS_MODULE,
 		.of_match_table = gpdma_of_ids,
 	},
@@ -730,5 +730,5 @@ static struct platform_driver gpdma_of_driver = {
 
 module_platform_driver(gpdma_of_driver);
 
-MODULE_DESCRIPTION("LSI DMA driver");
+MODULE_DESCRIPTION("INTEL Axxia DMA driver");
 MODULE_LICENSE("GPL");

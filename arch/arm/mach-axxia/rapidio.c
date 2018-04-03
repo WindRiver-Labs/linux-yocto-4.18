@@ -3,7 +3,7 @@
  *
  * Helper module for board specific RAPIDIO bus registration
  *
- * Copyright (C) 2013-2014 LSI Corporation.
+ * Copyright (C) 2013-2014 INTEL Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/lsi-ncr.h>
+#include <linux/axxia-ncr.h>
 #include <linux/signal.h>
 
 #include <mach/rio.h>

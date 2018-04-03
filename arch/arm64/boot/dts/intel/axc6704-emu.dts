@@ -16,7 +16,7 @@
 
 / {
 	model = "Lionfish Emulation";
-	compatible = "lsi,axc6732";
+	compatible = "axxia,axc6732";
 
 	memory {
 		device_type = "memory";
@@ -42,8 +42,8 @@
 
 &mdio0 {
 	status = "okay";
-	lsi,mdio-clk-offset = <0x5>;
-	lsi,mdio-clk-period = <0xc>;
+	axxia,mdio-clk-offset = <0x5>;
+	axxia,mdio-clk-period = <0xc>;
 
 	phy0: ethernet-phy@3 {
 		reg = <0x3>;
