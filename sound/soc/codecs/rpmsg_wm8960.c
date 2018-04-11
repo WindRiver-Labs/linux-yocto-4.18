@@ -220,6 +220,32 @@ static int wm8960_put_deemph(struct snd_kcontrol *kcontrol,
 	return wm8960_set_deemph(component);
 }
 
+/* enumerated controls */
+static const char * const wm8960_polarity[] = {"No Inversion", "Left Inverted",
+	"Right Inverted", "Stereo Inversion"};
+static const char * const wm8960_3d_upper_cutoff[] = {"High", "Low"};
+static const char * const wm8960_3d_lower_cutoff[] = {"Low", "High"};
+static const char * const wm8960_alcfunc[] = {"Off", "Right", "Left", "Stereo"};
+static const char * const wm8960_alcmode[] = {"ALC", "Limiter"};
+static const char * const wm8960_adc_data_output_sel[] = {
+	"Left Data = Left ADC;  Right Data = Right ADC",
+	"Left Data = Left ADC;  Right Data = Left ADC",
+	"Left Data = Right ADC; Right Data = Right ADC",
+	"Left Data = Right ADC; Right Data = Left ADC",
+};
+static const char * const wm8960_dmonomix[] = {"Stereo", "Mono"};
+
+static const struct soc_enum wm8960_enum[] = {
+	SOC_ENUM_SINGLE(WM8960_DACCTL1, 5, 4, wm8960_polarity),
+	SOC_ENUM_SINGLE(WM8960_DACCTL2, 5, 4, wm8960_polarity),
+	SOC_ENUM_SINGLE(WM8960_3D, 6, 2, wm8960_3d_upper_cutoff),
+	SOC_ENUM_SINGLE(WM8960_3D, 5, 2, wm8960_3d_lower_cutoff),
+	SOC_ENUM_SINGLE(WM8960_ALC1, 7, 4, wm8960_alcfunc),
+	SOC_ENUM_SINGLE(WM8960_ALC3, 8, 2, wm8960_alcmode),
+	SOC_ENUM_SINGLE(WM8960_ADDCTL1, 2, 4, wm8960_adc_data_output_sel),
+	SOC_ENUM_SINGLE(WM8960_ADDCTL1, 4, 2, wm8960_dmonomix),
+};
+
 static const DECLARE_TLV_DB_SCALE(adc_tlv, -9750, 50, 1);
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1725, 75, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12750, 50, 1);
@@ -1359,6 +1385,8 @@ static int rpmsg_wm8960_probe(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, WM8960_ROUT1, 0x100, 0x100);
 	snd_soc_update_bits(codec, WM8960_LOUT2, 0x100, 0x100);
 	snd_soc_update_bits(codec, WM8960_ROUT2, 0x100, 0x100);
+
+	snd_soc_update_bits(codec, WM8960_ADDCTL1, 0xC, 0x4);
 
 	return 0;
 }
