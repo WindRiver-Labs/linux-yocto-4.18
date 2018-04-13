@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 //
 // Copyright 2014-2016 Freescale Semiconductor, Inc.
+// Copyright 2018 NXP
 
 #include <dt-bindings/clock/imx6sx-clock.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -229,6 +230,15 @@
 			compatible = "fsl,mega-fast-sram";
 			reg = <0x00900000 0x20000>;
 			clocks = <&clks IMX6SX_CLK_OCRAM>;
+		};
+
+		ocram_optee {
+			compatible = "fsl,optee-lpm-sram";
+			reg = <0x008f8000 0x4000>;
+			overw_reg = <&ocrams_ddr 0x00904000 0x1000>,
+					<&ocram 0x00905000 0x1b000>,
+					<&ocrams 0x00900000 0x4000>;
+			overw_clock = <&ocrams &clks IMX6SX_CLK_OCRAM>;
 		};
 
 		L2: l2-cache@a02000 {
