@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 //
 // Copyright 2013-2015 Freescale Semiconductor, Inc.
+// Copyright 2018 NXP
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6dl-pinfunc.h"
@@ -112,6 +113,12 @@
 			compatible = "mmio-sram";
 			reg = <0x00905000 0x1B000>;
 			clocks = <&clks IMX6QDL_CLK_OCRAM>;
+		};
+
+		ocram_optee: sram@918000 {
+			compatible = "fsl,optee-lpm-sram";
+			reg = <0x00918000 0x8000>;
+			overw_reg = <&ocram 0x00905000 0x13000>;
 		};
 
 		aips1: aips-bus@2000000 {
