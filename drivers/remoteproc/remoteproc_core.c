@@ -1861,15 +1861,16 @@ EXPORT_SYMBOL(rproc_report_crash);
  * @rproc: rproc handle to which the new firmware is being assigned
  * @fw_name: new firmware name to be assigned
  *
- * This function allows remoteproc drivers to configure a custom firmware
- * name that is different from the default name used during remoteproc
+ * This function allows remoteproc drivers or clients to configure a custom
+ * firmware name that is different from the default name used during remoteproc
  * registration. The function does not trigger a remote processor boot,
  * only sets the firmware name used for a subsequent boot. This function
  * should also be called only when the remote processor is offline.
  *
  * This allows either the userspace to configure a different name through
- * sysfs or a kernel-level remoteproc driver to set a specific firmware
- * when it is controlling the boot and shutdown of the remote processor.
+ * sysfs or a kernel-level remoteproc or a remoteproc client driver to set
+ * a specific firmware when it is controlling the boot and shutdown of the
+ * remote processor.
  *
  * Returns 0 on success or a negative value upon failure
  */
