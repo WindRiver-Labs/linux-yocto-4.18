@@ -1663,6 +1663,7 @@ static void overlayfb_setup(struct mxsfb_layer *ofb)
 			break;
 		case 32: /* ARGB8888 */
 			format = 0x0;
+			global_alpha_en = 1;
 			break;
 		default:
 			return;
