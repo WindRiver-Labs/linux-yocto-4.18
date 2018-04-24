@@ -263,7 +263,7 @@ static int aead_set_sh_desc(struct crypto_aead *aead)
 				       ivsize, ctx->authsize, is_rfc3686, nonce,
 				       ctx1_iv_off, true, priv->sec_attr.era);
 
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -294,7 +294,7 @@ static int aead_set_sh_desc(struct crypto_aead *aead)
 			       ivsize, ctx->authsize, alg->caam.geniv,
 			       is_rfc3686, nonce, ctx1_iv_off, true,
 			       priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -795,7 +795,7 @@ static int tls_set_sh_desc(struct crypto_aead *tls)
 	cnstr_shdsc_tls_encap(desc, &ctx->cdata, &ctx->adata,
 			      assoclen, ivsize, ctx->authsize, blocksize,
 			      priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc);
+	flc->flc[1] = cpu_to_caam32(desc_len(desc));
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -812,7 +812,7 @@ static int tls_set_sh_desc(struct crypto_aead *tls)
 	desc = flc->sh_desc;
 	cnstr_shdsc_tls_decap(desc, &ctx->cdata, &ctx->adata, assoclen, ivsize,
 			      ctx->authsize, blocksize, priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -902,7 +902,7 @@ static int gcm_set_sh_desc(struct crypto_aead *aead)
 	flc = &ctx->flc[ENCRYPT];
 	desc = flc->sh_desc;
 	cnstr_shdsc_gcm_encap(desc, &ctx->cdata, ivsize, ctx->authsize, true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -922,7 +922,7 @@ static int gcm_set_sh_desc(struct crypto_aead *aead)
 	flc = &ctx->flc[DECRYPT];
 	desc = flc->sh_desc;
 	cnstr_shdsc_gcm_decap(desc, &ctx->cdata, ivsize, ctx->authsize, true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -990,7 +990,7 @@ static int rfc4106_set_sh_desc(struct crypto_aead *aead)
 	desc = flc->sh_desc;
 	cnstr_shdsc_rfc4106_encap(desc, &ctx->cdata, ivsize, ctx->authsize,
 				  true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1010,7 +1010,7 @@ static int rfc4106_set_sh_desc(struct crypto_aead *aead)
 	desc = flc->sh_desc;
 	cnstr_shdsc_rfc4106_decap(desc, &ctx->cdata, ivsize, ctx->authsize,
 				  true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1086,7 +1086,7 @@ static int rfc4543_set_sh_desc(struct crypto_aead *aead)
 	desc = flc->sh_desc;
 	cnstr_shdsc_rfc4543_encap(desc, &ctx->cdata, ivsize, ctx->authsize,
 				  true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1106,7 +1106,7 @@ static int rfc4543_set_sh_desc(struct crypto_aead *aead)
 	desc = flc->sh_desc;
 	cnstr_shdsc_rfc4543_decap(desc, &ctx->cdata, ivsize, ctx->authsize,
 				  true);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1203,7 +1203,7 @@ static int ablkcipher_setkey(struct crypto_ablkcipher *ablkcipher,
 	desc = flc->sh_desc;
 	cnstr_shdsc_ablkcipher_encap(desc, &ctx->cdata, ivsize,
 				     is_rfc3686, ctx1_iv_off);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1213,7 +1213,7 @@ static int ablkcipher_setkey(struct crypto_ablkcipher *ablkcipher,
 	desc = flc->sh_desc;
 	cnstr_shdsc_ablkcipher_decap(desc, &ctx->cdata, ivsize,
 				     is_rfc3686, ctx1_iv_off);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1223,7 +1223,7 @@ static int ablkcipher_setkey(struct crypto_ablkcipher *ablkcipher,
 	desc = flc->sh_desc;
 	cnstr_shdsc_ablkcipher_givencap(desc, &ctx->cdata,
 					ivsize, is_rfc3686, ctx1_iv_off);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[GIVENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1260,7 +1260,7 @@ static int xts_ablkcipher_setkey(struct crypto_ablkcipher *ablkcipher,
 	flc = &ctx->flc[ENCRYPT];
 	desc = flc->sh_desc;
 	cnstr_shdsc_xts_ablkcipher_encap(desc, &ctx->cdata);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[ENCRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -1269,7 +1269,7 @@ static int xts_ablkcipher_setkey(struct crypto_ablkcipher *ablkcipher,
 	flc = &ctx->flc[DECRYPT];
 	desc = flc->sh_desc;
 	cnstr_shdsc_xts_ablkcipher_decap(desc, &ctx->cdata);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(dev, ctx->flc_dma[DECRYPT],
 				   sizeof(flc->flc) + desc_bytes(desc),
 				   DMA_BIDIRECTIONAL);
@@ -3563,7 +3563,7 @@ static int ahash_set_sh_desc(struct crypto_ahash *ahash)
 	desc = flc->sh_desc;
 	cnstr_shdsc_ahash(desc, &ctx->adata, OP_ALG_AS_UPDATE, ctx->ctx_len,
 			  ctx->ctx_len, true, priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(ctx->dev, ctx->flc_dma[UPDATE],
 				   desc_bytes(desc), DMA_BIDIRECTIONAL);
 #ifdef DEBUG
@@ -3577,7 +3577,7 @@ static int ahash_set_sh_desc(struct crypto_ahash *ahash)
 	desc = flc->sh_desc;
 	cnstr_shdsc_ahash(desc, &ctx->adata, OP_ALG_AS_INIT, ctx->ctx_len,
 			  ctx->ctx_len, false, priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(ctx->dev, ctx->flc_dma[UPDATE_FIRST],
 				   desc_bytes(desc), DMA_BIDIRECTIONAL);
 #ifdef DEBUG
@@ -3591,7 +3591,7 @@ static int ahash_set_sh_desc(struct crypto_ahash *ahash)
 	desc = flc->sh_desc;
 	cnstr_shdsc_ahash(desc, &ctx->adata, OP_ALG_AS_FINALIZE, digestsize,
 			  ctx->ctx_len, true, priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(ctx->dev, ctx->flc_dma[FINALIZE],
 				   desc_bytes(desc), DMA_BIDIRECTIONAL);
 #ifdef DEBUG
@@ -3605,7 +3605,7 @@ static int ahash_set_sh_desc(struct crypto_ahash *ahash)
 	desc = flc->sh_desc;
 	cnstr_shdsc_ahash(desc, &ctx->adata, OP_ALG_AS_INITFINAL, digestsize,
 			  ctx->ctx_len, false, priv->sec_attr.era);
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	dma_sync_single_for_device(ctx->dev, ctx->flc_dma[DIGEST],
 				   desc_bytes(desc), DMA_BIDIRECTIONAL);
 #ifdef DEBUG
@@ -3666,7 +3666,7 @@ static int hash_digest_key(struct caam_hash_ctx *ctx, const u8 *key_in,
 	append_seq_store(desc, digestsize, LDST_CLASS_2_CCB |
 			 LDST_SRCDST_BYTE_CONTEXT);
 
-	flc->flc[1] = desc_len(desc); /* SDL */
+	flc->flc[1] = cpu_to_caam32(desc_len(desc)); /* SDL */
 	flc_dma = dma_map_single(ctx->dev, flc, sizeof(flc->flc) +
 				 desc_bytes(desc), DMA_TO_DEVICE);
 	if (dma_mapping_error(ctx->dev, flc_dma)) {
