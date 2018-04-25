@@ -49,7 +49,7 @@ struct i2c_dev {
 	struct list_head list;
 	struct i2c_adapter *adap;
 	struct device *dev;
-	struct cdev cdev;
+	struct cdev *cdev;
 };
 
 #define I2C_MINORS	MINORMASK
@@ -643,9 +643,15 @@ static int i2cdev_attach_adapter(struct device *dev, void *dummy)
 	if (IS_ERR(i2c_dev))
 		return PTR_ERR(i2c_dev);
 
-	cdev_init(&i2c_dev->cdev, &i2cdev_fops);
-	i2c_dev->cdev.owner = THIS_MODULE;
-	res = cdev_add(&i2c_dev->cdev, MKDEV(I2C_MAJOR, adap->nr), 1);
+	i2c_dev->cdev = cdev_alloc();
+	if (!i2c_dev->cdev) {
+		dev_err(i2c_dev->dev, "Error allocating cdev\n");
+		res = -ENOMEM;
+		goto error_cdev;
+	}
+	i2c_dev->cdev->ops = &i2cdev_fops;
+	i2c_dev->cdev->owner = THIS_MODULE;
+	res = cdev_add(i2c_dev->cdev, MKDEV(I2C_MAJOR, adap->nr), 1);
 	if (res)
 		goto error_cdev;
 
@@ -662,7 +668,7 @@ static int i2cdev_attach_adapter(struct device *dev, void *dummy)
 		 adap->name, adap->nr);
 	return 0;
 error:
-	cdev_del(&i2c_dev->cdev);
+	cdev_del(i2c_dev->cdev);
 error_cdev:
 	put_i2c_dev(i2c_dev);
 	return res;
@@ -681,7 +687,7 @@ static int i2cdev_detach_adapter(struct device *dev, void *dummy)
 	if (!i2c_dev) /* attach_adapter must have failed */
 		return 0;
 
-	cdev_del(&i2c_dev->cdev);
+	cdev_del(i2c_dev->cdev);
 	put_i2c_dev(i2c_dev);
 	device_destroy(i2c_dev_class, MKDEV(I2C_MAJOR, adap->nr));
 
