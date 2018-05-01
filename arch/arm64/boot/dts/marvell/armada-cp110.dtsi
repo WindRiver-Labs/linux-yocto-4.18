@@ -356,6 +356,18 @@
 				 <&CP110_LABEL(clk) 1 14>;
 		};
 
+		CP110_LABEL(uio_xor0) {
+			compatible = "marvell,uio-xor-v2";
+			xor_access = <&CP110_LABEL(xor0)>;
+			status = "okay";
+		};
+
+		CP110_LABEL(uio_xor1) {
+			compatible = "marvell,uio-xor-v2";
+			xor_access = <&CP110_LABEL(xor1)>;
+			status = "okay";
+		};
+
 		CP110_LABEL(spi0): spi@700600 {
 			compatible = "marvell,armada-380-spi";
 			reg = <0x700600 0x50>;
