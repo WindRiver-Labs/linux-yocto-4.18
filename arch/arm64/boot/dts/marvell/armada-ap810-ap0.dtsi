@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 /dts-v1/;
+#include "musdk-cma-mem-ap810.dtsi"
 
 / {
 	model = "Marvell Armada AP810";

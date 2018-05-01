@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #define AP_NAME		ap806
 #include "armada-ap80x.dtsi"
+#include "musdk-cma-mem-ap806.dtsi"
 
 / {
 	model = "Marvell Armada AP806";

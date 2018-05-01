@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Marvell Technology Group Ltd.
+ * Copyright (C) 2016 Marvell Technology Group Ltd.
  *
  * This file is dual-licensed: you can use it either under the terms
  * of the GPLv2 or the X11 license, at your option. Note that this dual
@@ -40,15 +40,18 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
- * Device Tree file for Marvell Armada AP807.
- */
-
-#include <dt-bindings/interrupt-controller/arm-gic.h>
-#define AP_NAME		ap807
-#include "armada-ap80x.dtsi"
-#include "musdk-cma-mem-ap807.dtsi"
-
 / {
-	model = "Marvell Armada AP807";
+	model = "Marvell Armada 37xx SoC";
+	compatible = "marvell,armada3700";
+	soc {
+		compatible = "simple-bus";
+		internal-regs {
+			compatible = "simple-bus";
+			musdk_cma {
+				compatible = "marvell,musdk-cma";
+				dma-coherent;
+				status = "okay";
+			};
+		};
+	};
 };

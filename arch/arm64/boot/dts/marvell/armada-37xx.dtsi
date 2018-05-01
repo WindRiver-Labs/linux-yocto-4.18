@@ -10,6 +10,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/phy/phy-utmi-mvebu.h>
+#include "musdk-cma-mem-37xx.dtsi"
 
 / {
 	model = "Marvell Armada 37xx SoC";
