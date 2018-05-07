@@ -45,10 +45,10 @@ __axxia_arch_wfe(void)
 EXPORT_SYMBOL(__axxia_arch_wfe);
 
 /*
-+ * Check if we need to enable cross-cluster SEV workaround for a bug in
-+ * revision 1.0 silicon (which could cause event signals (from SEV instruction)
-+ * to get lost between clusters). As a workaround, we set the bit 7 in CP15
-+ * ACTLR (enable WFE as a no-operation) for each core.
+ * Check if we need to enable cross-cluster SEV workaround for a bug in
+ * revision 1.0 silicon (which could cause event signals (from SEV instruction)
+ * to get lost between clusters). As a workaround, we set the bit 7 in CP15
+ * ACTLR (enable WFE as a no-operation) for each core.
  */
 static void __init check_fixup_sev(void __iomem *syscon)
 {
