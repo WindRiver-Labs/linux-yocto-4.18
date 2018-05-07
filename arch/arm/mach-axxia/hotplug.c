@@ -21,6 +21,8 @@
 #include "axxia_power_management.h"
 
 extern volatile int pen_release;
+static int axxia_cpu_die_flag;
+static DEFINE_SPINLOCK(axxia_cpu_die_lock);
 
 static inline void pm_cpu_logical_shutdown(u32 cpu)
 {
@@ -216,9 +218,29 @@ static void __ref platform_do_lowpower(unsigned int cpu, int *spurious)
 int axxia_platform_cpu_kill(unsigned int cpu)
 {
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
+	int ret, retry;
+
+	retry = 50;
+	while (1) {
+		spin_lock(&axxia_cpu_die_lock);
+		ret = axxia_cpu_die_flag & (1<<cpu);
+		spin_unlock(&axxia_cpu_die_lock);
+		if (ret != 0) {
+			break;
+		}
+		if (!retry)
+			return 0;
+		retry--;
+		msleep(100);
+	}
+	mdelay(50);
 	get_cpu();
 	pm_cpu_shutdown(cpu);
 	put_cpu();
+
+	spin_lock(&axxia_cpu_die_lock);
+	axxia_cpu_die_flag &= ~(1<<cpu);
+	spin_unlock(&axxia_cpu_die_lock);
 #endif
 	return 1;
 }
@@ -234,7 +256,11 @@ void axxia_platform_cpu_die(unsigned int cpu)
 #ifdef CONFIG_HOTPLUG_CPU_COMPLETE_POWER_DOWN
 	bool last_cpu;
 
+	spin_lock(&axxia_cpu_die_lock);
+	axxia_cpu_die_flag |= (1<<cpu);
+	spin_unlock(&axxia_cpu_die_lock);
 	last_cpu = pm_cpu_last_of_cluster(cpu);
+
 	if (last_cpu)
 		pm_L2_logical_shutdown(cpu);
 	else
