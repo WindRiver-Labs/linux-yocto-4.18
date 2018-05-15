@@ -531,6 +531,7 @@
 			dma-coherent;
 			status = "disabled";
 		};
+
 		CP110_LABEL(uio_sam): uio_sam@800000 {
 			compatible = "marvell,uio-sam";
 			eip_access = <&CP110_LABEL(crypto)>;
