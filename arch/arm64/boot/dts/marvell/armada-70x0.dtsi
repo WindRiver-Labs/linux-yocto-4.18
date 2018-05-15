@@ -72,3 +72,7 @@
 		};
 	};
 };
+
+&cp0_uio_sam {
+	status = "okay";
+};

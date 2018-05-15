@@ -203,3 +203,8 @@
 		reg = <4>;
 	};
 };
+
+&cp1_uio_sam {
+	status = "okay";
+};
+

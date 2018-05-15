@@ -149,3 +149,8 @@
 	usb-phy = <&cp2_usb3_0_phy1>;
 	phy-names = "usb";
 };
+
+&cp2_uio_sam {
+	status = "okay";
+};
+

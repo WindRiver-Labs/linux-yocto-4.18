@@ -287,6 +287,12 @@
 				cell-index = <AP810_EIP197_INDEX>;
 				status = "okay";
 			};
+
+			AP810_LABEL(uio_sam) {
+				compatible = "marvell,uio-sam";
+				eip_access = <&AP810_LABEL(crypto)>;
+				status = "okay";
+			};
 		};
 	};
 };
