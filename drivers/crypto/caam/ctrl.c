@@ -618,7 +618,8 @@ static int caam_probe(struct platform_device *pdev)
 
 	caam_imx = (bool)soc_device_match(imx_soc);
 
-	if (!of_machine_is_compatible("fsl,imx8mq") &&
+	if (!of_machine_is_compatible("fsl,imx8mm") &&
+		 !of_machine_is_compatible("fsl,imx8mq") &&
 	     !of_machine_is_compatible("fsl,imx8qm") &&
 	     !of_machine_is_compatible("fsl,imx8qxp")) {
 		ret = init_clocks(ctrlpriv);
@@ -691,7 +692,8 @@ static int caam_probe(struct platform_device *pdev)
 		goto disable_clocks;
 	}
 
-	if (!of_machine_is_compatible("fsl,imx8mq") &&
+	if (!of_machine_is_compatible("fsl,imx8mm") &&
+		!of_machine_is_compatible("fsl,imx8mq") &&
 		!of_machine_is_compatible("fsl,imx8qm") &&
 		!of_machine_is_compatible("fsl,imx8qxp")) {
 		ctrlpriv->sm_size = resource_size(&res_regs);
@@ -774,7 +776,8 @@ caam_remove:
 iounmap_ctrl:
 	iounmap(ctrl);
 disable_clocks:
-	if (!of_machine_is_compatible("fsl,imx8mq") &&
+	if (!of_machine_is_compatible("fsl,imx8mm") &&
+		!of_machine_is_compatible("fsl,imx8mq") &&
 		!of_machine_is_compatible("fsl,imx8qm") &&
 		!of_machine_is_compatible("fsl,imx8qxp")) {
 		if (ctrlpriv->caam_emi_slow)
