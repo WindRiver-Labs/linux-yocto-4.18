@@ -316,7 +316,6 @@ struct dpaa2_eth_ch_stats {
 	__u64 pull_err;
 };
 
-#define DPAA2_ETH_MAX_DPCONS		NR_CPUS
 #define DPAA2_ETH_MAX_TCS		8
 
 /* Maximum number of queues associated with a DPNI */
@@ -327,6 +326,8 @@ struct dpaa2_eth_ch_stats {
 					DPAA2_ETH_MAX_TX_QUEUES + \
 					DPAA2_ETH_MAX_RX_ERR_QUEUES)
 #define DPAA2_ETH_MAX_NETDEV_QUEUES	(DPNI_MAX_DIST_SIZE * DPAA2_ETH_MAX_TCS)
+
+#define DPAA2_ETH_MAX_DPCONS		16
 
 enum dpaa2_eth_fq_type {
 	DPAA2_RX_FQ = 0,
