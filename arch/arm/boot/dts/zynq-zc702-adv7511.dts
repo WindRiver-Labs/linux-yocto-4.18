@@ -647,3 +647,8 @@
 	pinctrl-0 = <&pinctrl_usb0_default>;
 	xlnx,phy-reset-gpio = <&gpio0 7 0>;
 };
+
+&watchdog0 {
+	status = "okay";
+	reset-on-timeout;
+};

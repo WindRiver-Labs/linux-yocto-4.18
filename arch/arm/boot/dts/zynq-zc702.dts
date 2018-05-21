@@ -460,3 +460,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb0_default>;
 };
+
+&watchdog0 {
+	status = "okay";
+	reset-on-timeout;
+};
