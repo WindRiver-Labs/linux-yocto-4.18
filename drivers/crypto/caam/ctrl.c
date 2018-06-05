@@ -28,16 +28,19 @@ EXPORT_SYMBOL(caam_imx);
 #include "qi.h"
 #endif
 
+/* Forward declarations of the functions in order of appearance */
+static inline struct clk *caam_drv_identify_clk(struct device *dev,
+						char *clk_name);
 static int caam_remove(struct platform_device *pdev);
 static void handle_imx6_err005766(struct caam_drv_private *ctrlpriv);
-static int caam_probe(struct platform_device *pdev);
-static void init_debugfs(struct caam_drv_private *ctrlpriv);
 static int init_clocks(struct caam_drv_private *ctrlpriv);
+static int caam_probe(struct platform_device *pdev);
 static void check_virt(struct caam_drv_private *ctrlpriv, u32 comp_params);
 static int enable_jobrings(struct caam_drv_private *ctrlpriv, int block_offset);
 static void enable_qi(struct caam_drv_private *ctrlpriv, int block_offset);
 static int read_first_jr_index(struct caam_drv_private *ctrlpriv);
 static int probe_w_seco(struct caam_drv_private *ctrlpriv);
+static void init_debugfs(struct caam_drv_private *ctrlpriv);
 
 /*
  * i.MX targets tend to have clock control subsystems that can
@@ -209,6 +212,12 @@ static void init_debugfs(struct caam_drv_private *ctrlpriv)
 {
 #ifdef CONFIG_DEBUG_FS
 	struct caam_perfmon *perfmon;
+	/* Read permission of the file created:
+	 *  - S_IRUSR (user): 0x400
+	 *  - S_IRGRP (group): 0x040
+	 *  - S_IROTH (other): 0x004
+	 */
+	umode_t perm = 0x400 | 0x040 | 0x004;
 
 	/*
 	 * FIXME: needs better naming distinction, as some amalgamation of
@@ -222,78 +231,68 @@ static void init_debugfs(struct caam_drv_private *ctrlpriv)
 
 	/* Controller-level - performance monitor counters */
 
-	ctrlpriv->ctl_rq_dequeued =
-		debugfs_create_file("rq_dequeued",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->req_dequeued,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ob_enc_req =
-		debugfs_create_file("ob_rq_encrypted",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ob_enc_req,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ib_dec_req =
-		debugfs_create_file("ib_rq_decrypted",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ib_dec_req,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ob_enc_bytes =
-		debugfs_create_file("ob_bytes_encrypted",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ob_enc_bytes,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ob_prot_bytes =
-		debugfs_create_file("ob_bytes_protected",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ob_prot_bytes,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ib_dec_bytes =
-		debugfs_create_file("ib_bytes_decrypted",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ib_dec_bytes,
-				    &caam_fops_u64_ro);
-	ctrlpriv->ctl_ib_valid_bytes =
-		debugfs_create_file("ib_bytes_validated",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->ib_valid_bytes,
-				    &caam_fops_u64_ro);
+	debugfs_create_file("rq_dequeued",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->req_dequeued,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ob_rq_encrypted",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ob_enc_req,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ib_rq_decrypted",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ib_dec_req,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ob_bytes_encrypted",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ob_enc_bytes,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ob_bytes_protected",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ob_prot_bytes,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ib_bytes_decrypted",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ib_dec_bytes,
+			    &caam_fops_u64_ro);
+	debugfs_create_file("ib_bytes_validated",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->ib_valid_bytes,
+			    &caam_fops_u64_ro);
 
 	/* Controller level - global status values */
-	ctrlpriv->ctl_faultaddr =
-		debugfs_create_file("fault_addr",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->faultaddr,
-				    &caam_fops_u32_ro);
-	ctrlpriv->ctl_faultdetail =
-		debugfs_create_file("fault_detail",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->faultdetail,
-				    &caam_fops_u32_ro);
-	ctrlpriv->ctl_faultstatus =
-		debugfs_create_file("fault_status",
-				    0444,
-				    ctrlpriv->ctl, &perfmon->status,
-				    &caam_fops_u32_ro);
+	debugfs_create_file("fault_addr",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->faultaddr,
+			    &caam_fops_u32_ro);
+	debugfs_create_file("fault_detail",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->faultdetail,
+			    &caam_fops_u32_ro);
+	debugfs_create_file("fault_status",
+			    perm,
+			    ctrlpriv->ctl, &perfmon->status,
+			    &caam_fops_u32_ro);
 
 	/* Internal covering keys (useful in non-secure mode only) */
-	ctrlpriv->ctl_kek_wrap.data = &ctrlpriv->ctrl->kek[0];
+	ctrlpriv->ctl_kek_wrap.data = (__force void *)&ctrlpriv->ctrl->kek[0];
 	ctrlpriv->ctl_kek_wrap.size = KEK_KEY_SIZE * sizeof(u32);
 	ctrlpriv->ctl_kek = debugfs_create_blob("kek",
-						0444,
+						perm,
 						ctrlpriv->ctl,
 						&ctrlpriv->ctl_kek_wrap);
 
-	ctrlpriv->ctl_tkek_wrap.data = &ctrlpriv->ctrl->tkek[0];
+	ctrlpriv->ctl_tkek_wrap.data = (__force void *)&ctrlpriv->ctrl->tkek[0];
 	ctrlpriv->ctl_tkek_wrap.size = KEK_KEY_SIZE * sizeof(u32);
 	ctrlpriv->ctl_tkek = debugfs_create_blob("tkek",
-						 0444,
+						 perm,
 						 ctrlpriv->ctl,
 						 &ctrlpriv->ctl_tkek_wrap);
 
-	ctrlpriv->ctl_tdsk_wrap.data = &ctrlpriv->ctrl->tdsk[0];
+	ctrlpriv->ctl_tdsk_wrap.data = (__force void *)&ctrlpriv->ctrl->tdsk[0];
 	ctrlpriv->ctl_tdsk_wrap.size = KEK_KEY_SIZE * sizeof(u32);
 	ctrlpriv->ctl_tdsk = debugfs_create_blob("tdsk",
-						 0444,
+						 perm,
 						 ctrlpriv->ctl,
 						 &ctrlpriv->ctl_tdsk_wrap);
 #endif
@@ -310,7 +309,7 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 	if (IS_ERR(clk)) {
 		ret = PTR_ERR(clk);
 		dev_err(dev, "can't identify CAAM ipg clk: %d\n", ret);
-		return ret;
+		goto exit;
 	}
 	ctrlpriv->caam_ipg = clk;
 
@@ -321,7 +320,7 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 			ret = PTR_ERR(clk);
 			dev_err(dev,
 				"can't identify CAAM mem clk: %d\n", ret);
-			return ret;
+			goto exit;
 		}
 		ctrlpriv->caam_mem = clk;
 	}
@@ -331,7 +330,7 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 		ret = PTR_ERR(clk);
 		dev_err(dev,
 			"can't identify CAAM aclk clk: %d\n", ret);
-		return ret;
+		goto exit;
 	}
 	ctrlpriv->caam_aclk = clk;
 
@@ -343,7 +342,7 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 			ret = PTR_ERR(clk);
 			dev_err(dev,
 				"can't identify CAAM emi_slow clk: %d\n", ret);
-			return ret;
+			goto exit;
 		}
 		ctrlpriv->caam_emi_slow = clk;
 	}
@@ -351,7 +350,7 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 	ret = clk_prepare_enable(ctrlpriv->caam_ipg);
 	if (ret < 0) {
 		dev_err(dev, "can't enable CAAM ipg clock: %d\n", ret);
-		return ret;
+		goto exit;
 	}
 
 	if (ctrlpriv->caam_mem) {
@@ -359,14 +358,14 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 		if (ret < 0) {
 			dev_err(dev, "can't enable CAAM secure mem clock: %d\n",
 				ret);
-			return ret;
+			goto disable_caam_ipg;
 		}
 	}
 
 	ret = clk_prepare_enable(ctrlpriv->caam_aclk);
 	if (ret < 0) {
 		dev_err(dev, "can't enable CAAM aclk clock: %d\n", ret);
-		return ret;
+		goto disable_caam_mem;
 	}
 
 	if (ctrlpriv->caam_emi_slow) {
@@ -374,10 +373,20 @@ static int init_clocks(struct caam_drv_private *ctrlpriv)
 		if (ret < 0) {
 			dev_err(dev, "can't enable CAAM emi slow clock: %d\n",
 				ret);
-			return ret;
+			goto disable_caam_aclk;
 		}
 	}
 
+	goto exit;
+
+disable_caam_aclk:
+	clk_disable_unprepare(ctrlpriv->caam_aclk);
+disable_caam_mem:
+	if (ctrlpriv->caam_mem)
+		clk_disable_unprepare(ctrlpriv->caam_mem);
+disable_caam_ipg:
+	clk_disable_unprepare(ctrlpriv->caam_ipg);
+exit:
 	return ret;
 }
 
@@ -580,7 +589,6 @@ static int caam_probe(struct platform_device *pdev)
 	struct caam_drv_private *ctrlpriv;
 
 	u32 comp_params;
-	u32 cha_vid_ls;
 	int pg_size;
 	int block_offset = 0;
 
@@ -640,11 +648,11 @@ static int caam_probe(struct platform_device *pdev)
 	else
 		block_offset = PG_SIZE_64K;
 
-	ctrlpriv->assure = (struct caam_assurance __force *)
-			   ((uint8_t *)ctrl +
+	ctrlpriv->assure = (struct caam_assurance __iomem __force *)
+			   ((__force uint8_t *)ctrl +
 			    block_offset * ASSURE_BLOCK_NUMBER);
-	ctrlpriv->deco = (struct caam_deco __force *)
-			 ((uint8_t *)ctrl +
+	ctrlpriv->deco = (struct caam_deco __iomem __force *)
+			 ((__force uint8_t *)ctrl +
 			 block_offset * DECO_BLOCK_NUMBER);
 
 	/* Get CAAM-SM node and of_iomap() and save */
@@ -723,14 +731,9 @@ static int caam_probe(struct platform_device *pdev)
 	/* Report "alive" for developer to see */
 	dev_info(dev, "device ID = 0x%016llx (Era %d)\n", caam_id,
 		 ctrlpriv->era);
-	dev_info(dev, "job rings = %d, qi = %d\n",
-		 ctrlpriv->total_jobrs, ctrlpriv->qi_present);
-
-	dev_info(dev, "device ID = 0x%016llx (Era %d)\n"
-			"job rings = %d, qi = %d\n",
-			caam_id,
-			ctrlpriv->era,
-			ctrlpriv->total_jobrs, ctrlpriv->qi_present);
+	dev_info(dev, "job rings = %d, qi = %d, dpaa2 = %s\n",
+		 ctrlpriv->total_jobrs, ctrlpriv->qi_present,
+		 caam_dpaa2 ? "yes" : "no");
 
 	init_debugfs(ctrlpriv);
 
