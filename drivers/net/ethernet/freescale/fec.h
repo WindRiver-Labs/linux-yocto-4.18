@@ -650,6 +650,7 @@ int fec_ptp_get(struct net_device *ndev, struct ifreq *ifr);
 void fec_enet_register_fixup(struct net_device *ndev);
 int of_fec_enet_parse_fixup(struct device_node *np);
 void fec_enet_get_mac_from_fuse(struct device_node *np, unsigned char *mac);
+void fec_enet_ipg_stop_misc_set(struct device_node *np, bool enabled);
 
 /****************************************************************************/
 #endif /* FEC_H */
