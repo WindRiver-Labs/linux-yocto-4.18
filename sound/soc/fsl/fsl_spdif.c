@@ -53,6 +53,7 @@ struct fsl_spdif_soc_data {
 	u32 rx_burst;
 	u32 interrupts;
 	u64 tx_formats;
+	u64 rx_rates;
 };
 
 /*
@@ -132,6 +133,7 @@ static struct fsl_spdif_soc_data fsl_spdif_vf610 = {
 	.rx_burst = FSL_SPDIF_RXFIFO_WML,
 	.interrupts = 1,
 	.tx_formats = FSL_SPDIF_FORMATS_PLAYBACK,
+	.rx_rates = FSL_SPDIF_RATES_CAPTURE,
 	.constrain_period_size = false,
 };
 
@@ -142,6 +144,7 @@ static struct fsl_spdif_soc_data fsl_spdif_imx35 = {
 	.rx_burst = FSL_SPDIF_RXFIFO_WML,
 	.interrupts = 1,
 	.tx_formats = FSL_SPDIF_FORMATS_PLAYBACK,
+	.rx_rates = FSL_SPDIF_RATES_CAPTURE,
 	.constrain_period_size = false,
 };
 
@@ -157,6 +160,7 @@ static struct fsl_spdif_soc_data fsl_spdif_imx8qxp_v1 = {
 	.rx_burst = 2,
 	.interrupts = 2,
 	.tx_formats = SNDRV_PCM_FMTBIT_S24_LE,
+	.rx_rates = FSL_SPDIF_RATES_CAPTURE,
 	.constrain_period_size = true,
 };
 
@@ -167,6 +171,7 @@ static struct fsl_spdif_soc_data fsl_spdif_imx8qm = {
 	.rx_burst = 2,
 	.interrupts = 2,
 	.tx_formats = SNDRV_PCM_FMTBIT_S24_LE,
+	.rx_rates = (FSL_SPDIF_RATES_CAPTURE | SNDRV_PCM_RATE_192000),
 	.constrain_period_size = true,
 };
 
@@ -1333,6 +1338,8 @@ static int fsl_spdif_probe(struct platform_device *pdev)
 	spdif_priv->cpu_dai_drv.name = dev_name(&pdev->dev);
 	spdif_priv->cpu_dai_drv.playback.formats =
 				spdif_priv->soc->tx_formats;
+	spdif_priv->cpu_dai_drv.capture.rates =
+				spdif_priv->soc->rx_rates;
 
 	/* Get the addresses and IRQ */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
