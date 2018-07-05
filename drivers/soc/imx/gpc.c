@@ -410,6 +410,7 @@ static struct imx_pm_domain imx_gpc_domains[] = {
 		},
 		.reg_offs = 0x200,
 		.cntr_pdn_bit = 6,
+		.flags = PGC_DOMAIN_FLAG_NO_PD,
 	},
 };
 
