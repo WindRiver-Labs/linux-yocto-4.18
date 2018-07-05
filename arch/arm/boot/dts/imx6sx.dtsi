@@ -1626,7 +1626,7 @@
 				 <&clks IMX6SX_CLK_DISPLAY_AXI>;
 			clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi";
 			pcie-phy-supply = <&reg_pcie_phy>;
-			power-domains = <&pd_pci>;
+			power-domains = <&pd_disp>;
 			fsl,max-link-speed = <2>;
 			status = "disabled";
 		};
