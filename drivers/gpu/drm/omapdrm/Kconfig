@@ -3,6 +3,7 @@ config DRM_OMAP
 	depends on DRM
 	depends on ARCH_OMAP2PLUS || ARCH_MULTIPLATFORM
 	select OMAP2_DSS
+	select DRM_VM
 	select DRM_KMS_HELPER
 	default n
 	help
