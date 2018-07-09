@@ -80,12 +80,17 @@ static int caam_remove(struct platform_device *pdev)
 	iounmap(ctrl);
 
 	/* shut clocks off before finalizing shutdown */
-	clk_disable_unprepare(ctrlpriv->caam_ipg);
-	if (ctrlpriv->caam_mem)
-		clk_disable_unprepare(ctrlpriv->caam_mem);
-	clk_disable_unprepare(ctrlpriv->caam_aclk);
-	if (ctrlpriv->caam_emi_slow)
-		clk_disable_unprepare(ctrlpriv->caam_emi_slow);
+	if (!of_machine_is_compatible("fsl,imx8mm") &&
+		!of_machine_is_compatible("fsl,imx8mq") &&
+		!of_machine_is_compatible("fsl,imx8qm") &&
+		!of_machine_is_compatible("fsl,imx8qxp")) {
+		clk_disable_unprepare(ctrlpriv->caam_ipg);
+		if (ctrlpriv->caam_mem)
+			clk_disable_unprepare(ctrlpriv->caam_mem);
+		clk_disable_unprepare(ctrlpriv->caam_aclk);
+		if (ctrlpriv->caam_emi_slow)
+			clk_disable_unprepare(ctrlpriv->caam_emi_slow);
+	}
 	return 0;
 }
 
@@ -136,8 +141,10 @@ static int caam_get_era_from_hw(struct caam_drv_private *ctrlpriv)
 		ccbvid = rd_reg32(&ctrlpriv->ctrl->perfmon.ccb_id);
 
 	era = (ccbvid & CCBVID_ERA_MASK) >> CCBVID_ERA_SHIFT;
-	if (era)	/* This is '0' prior to CAAM ERA-6 */
+	if (era) {	/* This is '0' prior to CAAM ERA-6 */
+		dev_info(dev, "ERA source: %s.\n", "CCBVID");
 		return era;
+	}
 
 	if (ctrlpriv->has_seco)
 		id_ms = rd_reg32(&ctrlpriv->jr[i]->perfmon.caam_id_ms);
@@ -148,7 +155,7 @@ static int caam_get_era_from_hw(struct caam_drv_private *ctrlpriv)
 
 	for (i = 0; i < ARRAY_SIZE(id); i++) {
 		if (id[i].ip_id == ip_id && id[i].maj_rev == maj_rev) {
-			dev_info(dev, "ERA source: %s.\n", era_source);
+			dev_info(dev, "ERA source: %s.\n", "CAAMVID");
 			return id[i].era;
 		}
 	}
@@ -174,8 +181,10 @@ static int caam_get_era(struct caam_drv_private *ctrlpriv)
 	ret = of_property_read_u32(caam_node, "fsl,sec-era", &prop);
 	of_node_put(caam_node);
 
-	if (!ret)
+	if (!ret) {
+		dev_info(ctrlpriv->dev, "ERA source: %s.\n", "device tree");
 		return prop;
+	}
 	else
 		return caam_get_era_from_hw(ctrlpriv);
 }
@@ -550,7 +559,7 @@ static int probe_w_seco(struct caam_drv_private *ctrlpriv)
 			  ((uint8_t *)ctrlpriv->ctrl +
 			   PG_SIZE_64K * DECO_BLOCK_NUMBER));
 
-	ctrlpriv->era = caam_get_era(ctrl);
+	ctrlpriv->era = caam_get_era(ctrlpriv);
 
 	/* Get CAAM-SM node and of_iomap() and save */
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-caam-sm");
@@ -619,8 +628,10 @@ static int caam_probe(struct platform_device *pdev)
 	int block_offset = 0;
 
 	ctrlpriv = devm_kzalloc(&pdev->dev, sizeof(*ctrlpriv), GFP_KERNEL);
-	if (!ctrlpriv)
-		return -ENOMEM;
+	if (!ctrlpriv) {
+		ret = -ENOMEM;
+		goto exit;
+	}
 
 	dev = &pdev->dev;
 	dev_set_drvdata(dev, ctrlpriv);
@@ -636,7 +647,7 @@ static int caam_probe(struct platform_device *pdev)
 	     !of_machine_is_compatible("fsl,imx8qxp")) {
 		ret = init_clocks(ctrlpriv);
 		if (ret)
-			goto disable_clocks;
+			goto exit;
 	}
 
 	/* Get configuration properties from device tree */
@@ -689,7 +700,7 @@ static int caam_probe(struct platform_device *pdev)
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-caam-sm");
 	if (!np) {
 		ret = -ENODEV;
-		goto disable_clocks;
+		goto iounmap_ctrl;
 	}
 
 	/* Get CAAM SM registers base address from device tree */
@@ -697,14 +708,14 @@ static int caam_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "failed to retrieve registers base from device tree\n");
 		ret = -ENODEV;
-		goto disable_clocks;
+		goto iounmap_ctrl;
 	}
 
 	ctrlpriv->sm_phy = res_regs.start;
 	ctrlpriv->sm_base = devm_ioremap_resource(dev, &res_regs);
 	if (IS_ERR(ctrlpriv->sm_base)) {
 		ret = PTR_ERR(ctrlpriv->sm_base);
-		goto disable_clocks;
+		goto iounmap_ctrl;
 	}
 
 	if (!of_machine_is_compatible("fsl,imx8mm") &&
@@ -734,7 +745,7 @@ static int caam_probe(struct platform_device *pdev)
 			      (sizeof(dma_addr_t) == sizeof(u64) ?
 			       MCFGR_LONG_PTR : 0));
 
-	ctrlpriv->era = caam_get_era(ctrl);
+	ctrlpriv->era = caam_get_era(ctrlpriv);
 
 	handle_imx6_err005766(ctrlpriv);
 
@@ -745,7 +756,7 @@ static int caam_probe(struct platform_device *pdev)
 		of_machine_is_compatible("fsl,imx8qxp") ||
 		of_machine_is_compatible("fsl,imx8mq")) {
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
-	} else if (sizeof(dma_addr_t) == sizeof(u64))
+	} else if (sizeof(dma_addr_t) == sizeof(u64)) {
 		if (caam_dpaa2)
 			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(49));
 		else if (of_device_is_compatible(nprop, "fsl,sec-v5.0"))
@@ -808,6 +819,7 @@ disable_clocks:
 		clk_disable_unprepare(ctrlpriv->caam_ipg);
 	}
 
+exit:
 	return ret;
 }
 

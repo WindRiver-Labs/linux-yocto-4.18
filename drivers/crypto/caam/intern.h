@@ -82,7 +82,6 @@ struct caam_drv_private {
 	 * -ENOTSUPP if no era version was supplied or detected.
 	 */
 #define IMX_ERR005766_ERA 4	/* ERA affected by i.mx AXI errata */
-	int era;
 
 	/* Physical-presence section */
 	struct caam_ctrl __iomem *ctrl; /* controller region */
