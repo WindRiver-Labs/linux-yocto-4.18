@@ -1312,15 +1312,11 @@ static int __test_skcipher(struct crypto_skcipher *tfm, int enc,
 	struct crypto_wait wait;
 	const char *input, *result;
 	void *data;
-	char *iv;
+	char iv[MAX_IVLEN];
 	char *xbuf[XBUFSIZE];
 	char *xoutbuf[XBUFSIZE];
 	int ret = -ENOMEM;
 	unsigned int ivsize = crypto_skcipher_ivsize(tfm);
-
-	iv = kmalloc(MAX_IVLEN, GFP_KERNEL);
-	if (!iv)
-		return ret;
 
 	if (testmgr_alloc_buf(xbuf))
 		goto out_nobuf;
@@ -1542,7 +1538,6 @@ out:
 		testmgr_free_buf(xoutbuf);
 out_nooutbuf:
 	testmgr_free_buf(xbuf);
-	kfree(iv);
 out_nobuf:
 	return ret;
 }
