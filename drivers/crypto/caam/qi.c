@@ -497,7 +497,11 @@ int caam_qi_shutdown(struct device *qidev)
 	int i, ret;
 	struct caam_qi_priv *priv = dev_get_drvdata(qidev);
 	const cpumask_t *cpus = qman_affine_cpus();
+#ifdef CONFIG_PREEMPT_RT_FULL
+	struct cpumask old_cpumask = current->cpus_mask;
+#else
 	struct cpumask old_cpumask = current->cpus_allowed;
+#endif
 
 	for_each_cpu(i, cpus) {
 		struct napi_struct *irqtask;
@@ -715,7 +719,11 @@ int caam_qi_init(struct platform_device *caam_pdev)
 	struct device *ctrldev = &caam_pdev->dev, *qidev;
 	struct caam_drv_private *ctrlpriv;
 	const cpumask_t *cpus = qman_affine_cpus();
+#ifdef CONFIG_PREEMPT_RT_FULL
+	struct cpumask old_cpumask = current->cpus_mask;
+#else
 	struct cpumask old_cpumask = current->cpus_allowed;
+#endif
 	static struct platform_device_info qi_pdev_info = {
 		.name = "caam_qi",
 		.id = PLATFORM_DEVID_NONE
