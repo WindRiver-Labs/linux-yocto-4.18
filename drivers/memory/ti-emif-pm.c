@@ -252,7 +252,7 @@ MODULE_DEVICE_TABLE(of, ti_emif_of_match);
 #ifdef CONFIG_PM_SLEEP
 static int ti_emif_resume(struct device *dev)
 {
-	unsigned long tmp =  __raw_readl((void *)ti_emif_sram_virt);
+	unsigned long tmp =  __raw_readl((void *)emif_instance->ti_emif_sram_virt);
 
 	/*
 	 * Check to see if what we are copying is already present in the
@@ -261,7 +261,7 @@ static int ti_emif_resume(struct device *dev)
 	 * the PM code
 	 */
 	if (tmp != ti_emif_sram)
-		ti_emif_push_sram(dev);
+		ti_emif_push_sram(dev, emif_instance);
 
 	return 0;
 }
