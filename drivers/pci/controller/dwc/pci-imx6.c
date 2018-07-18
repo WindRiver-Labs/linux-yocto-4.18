@@ -36,6 +36,7 @@
 #include <linux/regulator/consumer.h>
 
 #include "pcie-designware.h"
+#include "../../pci.h"
 
 #define to_imx_pcie(x)	dev_get_drvdata((x)->dev)
 
@@ -640,7 +641,7 @@ static int imx7d_pcie_wait_for_phy_pll_lock(struct imx_pcie *imx_pcie)
 static int imx8_pcie_wait_for_phy_pll_lock(struct imx_pcie *imx_pcie)
 {
 	u32 val, tmp, orig;
-	unsigned int retries;
+	unsigned int retries = 0;
 	struct dw_pcie *pci = imx_pcie->pci;
 	struct device *dev = pci->dev;
 
@@ -2151,7 +2152,7 @@ static int imx_pcie_local_dma_start(struct pcie_port *pp, bool dir,
 	return 0;
 }
 
-static int __init imx_pcie_probe(struct platform_device *pdev)
+static int imx_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct dw_pcie *pci;
@@ -2450,8 +2451,7 @@ static int __init imx_pcie_probe(struct platform_device *pdev)
 		dma_addr_t test_reg1_dma, test_reg2_dma;
 		void __iomem *pcie_arb_base_addr;
 		struct timeval tv1s, tv1e, tv2s, tv2e;
-		u32 val, tv_count1, tv_count2;
-		struct device_node *np = node;
+		u32 tv_count1, tv_count2;
 		struct pcie_port *pp = &pci->pp;
 		LIST_HEAD(res);
 		struct resource_entry *win, *tmp;
@@ -2462,7 +2462,7 @@ static int __init imx_pcie_probe(struct platform_device *pdev)
 		if (ret)
 			return -EINVAL;
 
-		ret = of_pci_get_host_bridge_resources(np, 0, 0xff, &res,
+		ret = devm_of_pci_get_host_bridge_resources(dev, 0, 0xff, &res,
 						       &pp->io_base);
 		if (ret)
 			return ret;
