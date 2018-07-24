@@ -333,6 +333,7 @@ static int am33xx_pm_probe(struct platform_device *pdev)
 	suspend_set_ops(&am33xx_pm_ops);
 #endif /* CONFIG_SUSPEND */
 
+#ifdef CONFIG_SUSPEND
 	/*
 	 * For a system suspend we must flush the caches, we want
 	 * the DDR in self-refresh, we want to save the context
@@ -343,6 +344,7 @@ static int am33xx_pm_probe(struct platform_device *pdev)
 	suspend_wfi_flags |= WFI_FLAG_SELF_REFRESH;
 	suspend_wfi_flags |= WFI_FLAG_SAVE_EMIF;
 	suspend_wfi_flags |= WFI_FLAG_WAKE_M3;
+#endif /* CONFIG_SUSPEND */
 
 	ret = pm_ops->init(am33xx_do_sram_idle);
 	if (ret) {
