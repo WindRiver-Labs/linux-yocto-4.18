@@ -143,6 +143,7 @@ static void wkup_m3_scale_data_fw_cb(const struct firmware *fw, void *context)
 	val |= ((aux_base + hdr.wake_offset) << 16);
 
 	m3_ipc->volt_scale_offsets = val;
+	dev_info(dev, "PM: Voltage Scale Data binary installed.\n");
 
 release_sd_fw:
 	release_firmware(fw);
