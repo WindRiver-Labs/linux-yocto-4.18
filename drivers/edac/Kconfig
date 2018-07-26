@@ -402,6 +402,13 @@ config EDAC_AXXIA_SYSMEM_6700
 	  the System Memory error detection. System Memory error
 	  detection is interrupt driven.
 
+config DEBUG_EDAC_AXXIA_SYSMEM
+	depends on ARCH_AXXIA
+	bool "AXXIA EDAC SYSMEM error injection interface."
+	help
+	  Support for configuration of SYSMEM edac tracing functionality.
+	  It works for both 5600 and 6700 board families.
+
 config EDAC_AXXIA_CMEM_5600
 	depends on ARCH_AXXIA
 	bool "AXXIA EDAC CMem Controller for 5600"

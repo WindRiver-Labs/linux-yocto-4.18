@@ -1,7 +1,7 @@
 /*
  * drivers/edac/axxia_edac-mc.c
  *
- * EDAC Driver for Intel's Axxia 5600 System Memory Controller
+ * EDAC Driver for Intel's Axxia 5600/6700 System Memory Controller
  *
  * Copyright (C) 2016 Intel Inc.
  *
@@ -28,6 +28,9 @@
 #include <linux/interrupt.h>
 #include "edac_module.h"
 #include "axxia_edac.h"
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/edac_mc.h>
 
 #define FMT "%s: syscon lookup failed hence using hardcoded register address\n"
 
@@ -91,15 +94,39 @@
 #define MPR_PAGE_BYTES 4
 #define MPR_ERRORS 2 /* CRC, CA Parity error */
 
-#define SM_INT_MASK_LOW (0xfbbfef01)
+#define INT_BIT_0  (0x00000001)
+#define INT_BIT_1  (0x00000002)
+#define INT_BIT_2  (0x00000004)
+#define INT_BIT_3  (0x00000008)
+#define INT_BIT_4  (0x00000010)
+#define INT_BIT_5  (0x00000020)
+#define INT_BIT_6  (0x00000040)
+#define INT_BIT_7  (0x00000080)
+#define INT_BIT_12 (0x00001000)
+#define INT_BIT_22 (0x00400000)
+#define INT_BIT_24 (0x01000000)
+#define INT_BIT_26 (0x04000000)
+
+
+#define SM_INT_MASK_LOW (~(\
+			INT_BIT_1 |\
+			INT_BIT_2 |\
+			INT_BIT_3 |\
+			INT_BIT_4 |\
+			INT_BIT_5 |\
+			INT_BIT_6 |\
+			INT_BIT_7 |\
+			INT_BIT_12 |\
+			INT_BIT_22 |\
+			INT_BIT_24 |\
+			INT_BIT_26))
+
 #define SM_INT_MASK_ALL_LOW (0xffffffff)
-#define SM_INT_MASK_HIGH (0x1)
-#define SM_INT_MASK_ALL_HIGH (0x7)
+#define SM_INT_MASK_HIGH (INT_BIT_0)
+#define SM_INT_MASK_ALL_HIGH (INT_BIT_0|INT_BIT_1|INT_BIT_2)
 #define ALIVE_NOTIFICATION_PERIOD (90*1000)
 
-static int log = 1;
-module_param(log, int, 0644);
-MODULE_PARM_DESC(log, "Log each error to kernel log.");
+static cpumask_t only_cpu_0 = { CPU_BITS_CPU0};
 
 static int force_restart = 1;
 module_param(force_restart, int, 0644);
@@ -158,7 +185,7 @@ static atomic64_t mc_counter = ATOMIC_INIT(0);
  *        has occurred.
  * Bit [0] = The memory reset is valid on the DFI bus.
  *
- * Of these 1, 2, 3, 4, 5, 6, 7, 12, 22 and 26 are of interest.
+ * Of these 1, 2, 3, 4, 5, 6, 7, 12, 22, 24 and 26 are of interest.
  */
 
 /*
@@ -559,15 +586,15 @@ static char *block_name[] = {
 
 
 static const u32 event_mask[NR_EVENTS] = {
-	[EV_ILLEGAL]			= 0x00000002,
-	[EV_MULT_ILLEGAL]		= 0x00000004,
-	[EV_CORR_ECC]			= 0x00000008,
-	[EV_MULT_CORR_ECC]		= 0x00000010,
-	[EV_UNCORR_ECC]			= 0x00000020,
-	[EV_MULT_UNCORR_ECC]		= 0x00000040,
-	[EV_PORT_ERROR]			= 0x00000080,
-	[EV_WRAP_ERROR]			= 0x00001000,
-	[EV_PARITY_ERROR]		= 0x00400000,
+	[EV_ILLEGAL]			= INT_BIT_1,
+	[EV_MULT_ILLEGAL]		= INT_BIT_2,
+	[EV_CORR_ECC]			= INT_BIT_3,
+	[EV_MULT_CORR_ECC]		= INT_BIT_4,
+	[EV_UNCORR_ECC]			= INT_BIT_5,
+	[EV_MULT_UNCORR_ECC]		= INT_BIT_6,
+	[EV_PORT_ERROR]			= INT_BIT_7,
+	[EV_WRAP_ERROR]			= INT_BIT_12,
+	[EV_PARITY_ERROR]		= INT_BIT_22,
 };
 
 static const struct event_logging {
@@ -833,8 +860,11 @@ update_alert_counters(struct intel_edac_dev_info *edac_dev, int cs)
 		(u8 (*)[MPR_PAGE_BYTES]) (&edac_dev->data->mpr.dram_0_page[0]);
 	int i;
 
-	for (i = 0; i < MAX_DQ; ++i)
+	for (i = 0; i < edac_dev->data->dram_count; ++i) {
 		inc_alert_counter(edac_dev->data->alerts, cs, i, dram[i][3]);
+		trace_edac_mc_dump_processed(edac_dev->sm_region >> 16,
+				cs, i, (int) dram[i][3]);
+	}
 
 }
 
@@ -845,6 +875,9 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 	unsigned long flags;
 	u32 regval;
 	int i;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+	u32 node = edac_dev->sm_region >> 16;
+#endif
 
 	mpr->mpr_page_id = page;
 
@@ -855,9 +888,25 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 			goto error_read;
 
 		mpr->dram_0_page[i] = regval & 0xff;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 0,
+						(int) mpr->dram_0_page[i]);
+#endif
 		mpr->dram_1_page[i] = ((regval & 0xff00) >> 8);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 1,
+						(int) mpr->dram_1_page[i]);
+#endif
 		mpr->dram_2_page[i] = ((regval & 0xff0000) >> 16);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 2,
+						(int) mpr->dram_2_page[i]);
+#endif
 		mpr->dram_3_page[i] = ((regval & 0xff000000) >> 24);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 3,
+						(int) mpr->dram_3_page[i]);
+#endif
 
 		if (ncr_read(edac_dev->sm_region,
 				(SM_56XX_DENALI_CTL_59 + (0x14 * i)),
@@ -865,9 +914,25 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 			goto error_read;
 
 		mpr->dram_4_page[i] = regval & 0xff;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 4,
+						(int) mpr->dram_4_page[i]);
+#endif
 		mpr->dram_5_page[i] = ((regval & 0xff00) >> 8);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 5,
+						(int) mpr->dram_5_page[i]);
+#endif
 		mpr->dram_6_page[i] = ((regval & 0xff0000) >> 16);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 6,
+						(int) mpr->dram_6_page[i]);
+#endif
 		mpr->dram_7_page[i] = ((regval & 0xff000000) >> 24);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 7,
+						(int) mpr->dram_7_page[i]);
+#endif
 
 		if (ncr_read(edac_dev->sm_region,
 				(SM_56XX_DENALI_CTL_60 + (0x14 * i)),
@@ -875,11 +940,27 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 			goto error_read;
 
 		mpr->dram_8_page[i] = regval & 0xff;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+		trace_edac_mc_dump_collected(node, cs, i, 8,
+						(int) mpr->dram_8_page[i]);
+#endif
 
 		if (edac_dev->data->dram_count == MAX_DQ) {
 			mpr->dram_9_page[i] = ((regval & 0xff00) >> 8);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 9,
+						(int) mpr->dram_9_page[i]);
+#endif
 			mpr->dram_10_page[i] = ((regval & 0xff0000) >> 16);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 10,
+						(int) mpr->dram_10_page[i]);
+#endif
 			mpr->dram_11_page[i] = ((regval & 0xff000000) >> 24);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 11,
+						(int) mpr->dram_11_page[i]);
+#endif
 
 			if (ncr_read(edac_dev->sm_region,
 						(SM_56XX_DENALI_CTL_60 +
@@ -887,9 +968,25 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 				goto error_read;
 
 			mpr->dram_12_page[i] = regval & 0xff;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 12,
+						(int) mpr->dram_12_page[i]);
+#endif
 			mpr->dram_13_page[i] = ((regval & 0xff00) >> 8);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 13,
+						(int) mpr->dram_13_page[i]);
+#endif
 			mpr->dram_14_page[i] = ((regval & 0xff0000) >> 16);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 14,
+						(int) mpr->dram_14_page[i]);
+#endif
 			mpr->dram_15_page[i] = ((regval & 0xff000000) >> 24);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 15,
+						(int) mpr->dram_15_page[i]);
+#endif
 
 			if (ncr_read(edac_dev->sm_region,
 						(SM_56XX_DENALI_CTL_61 +
@@ -897,7 +994,15 @@ collect_mpr_dump(struct intel_edac_dev_info *edac_dev, u8 page, int cs)
 				goto error_read;
 
 			mpr->dram_16_page[i] = regval & 0xff;
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 16,
+						(int) mpr->dram_16_page[i]);
+#endif
 			mpr->dram_17_page[i] = ((regval & 0xff00) >> 8);
+#ifdef CONFIG_DEBUG_EDAC_AXXIA_SYSMEM
+			trace_edac_mc_dump_collected(node, cs, i, 17,
+						(int) mpr->dram_17_page[i]);
+#endif
 		}
 	}
 	raw_spin_lock_irqsave(&edac_dev->data->mpr_data_lock, flags);
@@ -945,24 +1050,30 @@ smmon_isr_sw(int interrupt, void *device)
 				4, (u32 *) &denali_ctl_367))
 		goto error_read;
 
-	if (denali_ctl_367.int_status & 0x4) {
+	trace_edac_mc_int_status(dev_info->sm_region >> 16, 0,
+			denali_ctl_367.int_status);
+
+	if (denali_ctl_367.int_status & INT_BIT_2) {
 
 		if (ncr_read(dev_info->sm_region, SM_56XX_DENALI_CTL_366,
 			4, (u32 *) &denali_ctl_366))
 			goto error_read;
+
+		trace_edac_mc_int_status(dev_info->sm_region >> 16, 1,
+			denali_ctl_366.int_status);
 
 		handle_events(dev_info, &denali_ctl_366);
 		atomic_set(&dev_info->data->event_ready, 1);
 		wake_up(&dev_info->data->event_wq);
 
 		denali_ctl_368.int_ack =
-			(denali_ctl_366.int_status & 0xf8ffffff);
+			(denali_ctl_366.int_status & (~(INT_BIT_26)));
 
 		if (dev_info->is_ddr4) {
-			if (denali_ctl_366.int_status & 0x4000000) {
+			if (denali_ctl_366.int_status & INT_BIT_26) {
 				atomic_set(&dev_info->data->dump_ready, 1);
 				wake_up(&dev_info->data->dump_wq);
-				denali_ctl_368.int_ack |= 0x4000000;
+				denali_ctl_368.int_ack |= INT_BIT_26;
 			}
 		}
 		if (ncr_write(dev_info->sm_region, SM_56XX_DENALI_CTL_368,
@@ -970,12 +1081,12 @@ smmon_isr_sw(int interrupt, void *device)
 			goto error_write;
 	}
 
-	if (denali_ctl_367.int_status & 0x2) {
+	if (denali_ctl_367.int_status & INT_BIT_1) {
 		if (dev_info->is_ddr4) {
 			atomic_inc(&dev_info->data->dump_in_progress);
 			wake_up(&dev_info->data->dump_wq);
 		}
-		denali_ctl_369.int_ack = 0x2;
+		denali_ctl_369.int_ack = INT_BIT_1;
 		if (ncr_write(dev_info->sm_region, SM_56XX_DENALI_CTL_369,
 			4, (u32 *) &denali_ctl_369))
 			goto error_write;
@@ -1036,6 +1147,9 @@ start:
 			SM_56XX_DENALI_CTL_57,
 			4, (u32 *) &denali_ctl_57))
 			goto error_write;
+
+		trace_edac_mc_dump_triggered(dev_info->sm_region >> 16, i);
+
 		/* wait */
 		wait_event(dev_info->data->dump_wq,
 			   atomic_read(&dev_info->data->dump_ready));
@@ -1221,6 +1335,7 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	struct sm_56xx_denali_ctl_371 denali_ctl_371;
 	int cs_count = MAX_CS;
 	int dram_count = MAX_DQ;
+	struct irq_desc *desc;
 
 	count = atomic64_inc_return(&mc_counter);
 	if ((count - 1) == MEMORY_CONTROLLERS)
@@ -1402,14 +1517,14 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 			"%s-mon", dev_info->ctl_name);
 
 	dev_info->wq_events =
-		alloc_workqueue("%s-events", WQ_MEM_RECLAIM, 1,
+		alloc_workqueue("%s-events", 0, 1,
 				   (dev_info->ctl_name));
 	if (!dev_info->wq_events)
 		goto err_nosysfs;
 
 	if (dev_info->is_ddr4) {
 		dev_info->wq_alerts =
-		  alloc_workqueue("%s-alerts", WQ_MEM_RECLAIM, 1,
+		  alloc_workqueue("%s-alerts", 0, 1,
 				   (dev_info->ctl_name));
 
 		if (!dev_info->wq_alerts)
@@ -1421,8 +1536,9 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	INIT_WORK(&dev_info->offload_events, axxia_events_work);
 
 	if (dev_info->is_ddr4)
-		queue_work(dev_info->wq_alerts, &dev_info->offload_alerts);
-	queue_work(dev_info->wq_events, &dev_info->offload_events);
+		queue_work_on(0, dev_info->wq_alerts,
+				&dev_info->offload_alerts);
+	queue_work_on(0, dev_info->wq_events, &dev_info->offload_events);
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
@@ -1436,8 +1552,7 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 	if (dev_info->is_ddr4)
 		denali_ctl_370.int_mask = SM_INT_MASK_LOW;
 	else
-		denali_ctl_370.int_mask = SM_INT_MASK_LOW |
-			0x04000000;
+		denali_ctl_370.int_mask = SM_INT_MASK_LOW | INT_BIT_26;
 
 	if (ncr_write(dev_info->sm_region, SM_56XX_DENALI_CTL_370,
 		4, (u32 *) &denali_ctl_370)) {
@@ -1488,6 +1603,9 @@ static int intel_edac_mc_probe(struct platform_device *pdev)
 		}
 		goto err_noirq;
 	}
+	desc = irq_to_desc(irq);
+	sched_setaffinity(desc->action->thread->pid, &only_cpu_0);
+
 	return 0;
 
 err_noirq:

@@ -1,7 +1,7 @@
 /*
  * drivers/edac/axxia_edac-l2_cpu_56xx.c
  *
- * EDAC Driver for Intel's Axxia 5600 System Memory Controller
+ * EDAC Driver for Intel's Axxia 5600/6700 System Memory Controller
  *
  * Copyright (C) 2016 Intel Inc.
  *
