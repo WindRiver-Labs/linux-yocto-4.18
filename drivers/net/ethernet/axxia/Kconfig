@@ -1,9 +1,12 @@
 config AXXIA_NET
 	bool "INTEL Axxia ACP34XX Ethernet support"
+	depends on ARM || 44x
 	select MII
 	select PHYLIB
+	default y
 	help
-	  Network interface driver for INTEL Axxia's APP and AXXIA series boards.
+	  Network interface driver for INTEL Axxia's 3000 and 5500
+	  series boards.
 
 if AXXIA_NET
 

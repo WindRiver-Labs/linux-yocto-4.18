@@ -527,6 +527,7 @@ config AXXIA_PEI
 config AXXIA_MDIO
        bool "Axxia MDIO Driver"
        depends on ARCH_AXXIA
+       default y
        help
 	 Provide access to the Axxia MDIO bus.
 
