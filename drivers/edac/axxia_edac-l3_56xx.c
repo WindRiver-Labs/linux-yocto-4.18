@@ -522,10 +522,10 @@ static int intel_edac_l3_probe(struct platform_device *pdev)
 			ccn_irq_handler, ccn_irq_thread, IRQF_ONESHOT,
 			dev_name(&dev_info->pdev->dev), dev_info))
 			goto err2;
-	}
 
-	desc = irq_to_desc(r->start);
-	sched_setaffinity(desc->action->thread->pid, &only_cpu_0);
+		desc = irq_to_desc(r->start);
+		sched_setaffinity(desc->action->thread->pid, &only_cpu_0);
+	}
 
 	return 0;
 err2:
@@ -542,7 +542,7 @@ static int intel_edac_l3_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id intel_edac_l3_match[] = {
-#if defined(CONFIG_EDAC_AXXIA_L2_CPU_5600)
+#if defined(CONFIG_EDAC_AXXIA_L3_5600)
 
 	{
 	.compatible = "intel,ccn504-l3-cache",
@@ -550,7 +550,7 @@ static const struct of_device_id intel_edac_l3_match[] = {
 
 #endif
 
-#if defined(CONFIG_EDAC_AXXIA_L2_CPU_6700)
+#if defined(CONFIG_EDAC_AXXIA_L3_6700)
 
 	{
 	.compatible = "intel,ccn512-l3-cache",
