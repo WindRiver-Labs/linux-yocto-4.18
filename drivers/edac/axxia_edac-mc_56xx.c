@@ -104,7 +104,6 @@
 #define INT_BIT_7  (0x00000080)
 #define INT_BIT_12 (0x00001000)
 #define INT_BIT_22 (0x00400000)
-#define INT_BIT_24 (0x01000000)
 #define INT_BIT_26 (0x04000000)
 
 
@@ -118,7 +117,6 @@
 			INT_BIT_7 |\
 			INT_BIT_12 |\
 			INT_BIT_22 |\
-			INT_BIT_24 |\
 			INT_BIT_26))
 
 #define SM_INT_MASK_ALL_LOW (0xffffffff)
