@@ -33,6 +33,8 @@
 #include "pcie-axxia.h"
 #include "../pci.h"
 
+#define AXM_LEVEL_MSI
+
 #ifdef CONFIG_PCI_MSI
 #define AXXIA_GENERIC_MSI_DOMAIN_IRQ 1
 #endif	/* CONFIG_PCI_MSI */
@@ -107,6 +109,7 @@
 #define RADM_INTB_ASSERTED              (0x1 << 3)
 #define RADM_INTA_ASSERTED              (0x1 << 2)
 
+#define CC_GPREG_LVL_IRQ_STAT	0x200
 #define CC_GPREG_LVL_IRQ_MASK	0x204
 #define MSI_CNTRL_INT              (0x1 << 9)
 
@@ -846,11 +849,19 @@ static void axxia_pcie_enable_interrupts(struct pcie_port *pp)
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		/* unmask MSI */
 		if (pp->num_msi_irqs == 0) {
+#ifdef AXM_LEVEL_MSI
+			axxia_cc_gpreg_readl(pp,
+				CC_GPREG_LVL_IRQ_MASK, &val);
+			val |= MSI_CNTRL_INT;
+			axxia_cc_gpreg_writel(pp, val,
+				CC_GPREG_LVL_IRQ_MASK);
+#else
 			axxia_cc_gpreg_readl(pp,
 				CC_GPREG_EDG_IRQ_MASK_HI, &val);
 			val |= MSI_ASSERTED;
 			axxia_cc_gpreg_writel(pp, val,
 				CC_GPREG_EDG_IRQ_MASK_HI);
+#endif
 			axxia_axi_gpreg_readl(pp,
 				AXI_GPREG_EDG_IRQ_MASK_HI, &val);
 			val |= MSIX_ASSERTED;
@@ -1330,16 +1341,27 @@ static irqreturn_t axxia_pcie_irq_handler(int irq, void *arg)
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		if (pp->num_msi_irqs == 0) {
 			offset = irq - pp->msi_irqs[0];
+#ifdef AXM_LEVEL_MSI
+			axxia_cc_gpreg_readl(pp,
+				CC_GPREG_LVL_IRQ_STAT, &val);
+			if (val & MSI_CNTRL_INT) {
+#else
 			axxia_cc_gpreg_readl(pp,
 				CC_GPREG_EDG_IRQ_STAT_HI, &val);
 			if (val & MSI_ASSERTED) {
+#endif
 				axxia_pcie_rd_own_conf(pp,
 				PCIE_MSI_INTR0_STATUS, 4, (u32 *)&val1);
 				if (val1)
 					ret = axxia_dw_pcie_handle_msi_irq(pp,
 						 val1);
+#ifdef AXM_LEVEL_MSI
+				axxia_cc_gpreg_writel(pp, MSI_CNTRL_INT,
+					      CC_GPREG_LVL_IRQ_STAT);
+#else
 				axxia_cc_gpreg_writel(pp, MSI_ASSERTED,
 					      CC_GPREG_EDG_IRQ_STAT_HI);
+#endif
 				if (!ret)
 					return IRQ_NONE;
 			}
