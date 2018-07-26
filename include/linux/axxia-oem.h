@@ -31,4 +31,14 @@ void axxia_actlr_el3_set(unsigned long);
 unsigned long axxia_actlr_el2_get(void);
 void axxia_actlr_el2_set(unsigned long);
 
+/*
+  CCN504 (5600)
+  CCN512 (6700)
+
+  64 bit registers.
+*/
+
+unsigned long axxia_ccn_get(unsigned int);
+void axxia_ccn_set(unsigned int, unsigned long);
+
 #endif /* __DRIVERS_MISC_AXXIA_DSPC_H */
