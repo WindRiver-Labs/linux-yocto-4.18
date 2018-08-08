@@ -1,6 +1,9 @@
 /*
+ * Copyright 2018 NXP
  *
- * Copyright 2017 NXP
+ * Copyright 2007-11 Wolfson Microelectronics, plc
+ *
+ * Author: Liam Girdwood
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -11,13 +14,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
  * General Public License for more details.
  */
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/string.h>
+#include <linux/pm_runtime.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
+#include <sound/wm8960.h>
 #include "../fsl/fsl_rpmsg_i2s.h"
 #include "wm8960.h"
 
@@ -220,46 +226,78 @@ static int wm8960_put_deemph(struct snd_kcontrol *kcontrol,
 	return wm8960_set_deemph(component);
 }
 
-/* enumerated controls */
-static const char * const wm8960_polarity[] = {"No Inversion", "Left Inverted",
-	"Right Inverted", "Stereo Inversion"};
-static const char * const wm8960_3d_upper_cutoff[] = {"High", "Low"};
-static const char * const wm8960_3d_lower_cutoff[] = {"Low", "High"};
-static const char * const wm8960_alcfunc[] = {"Off", "Right", "Left", "Stereo"};
-static const char * const wm8960_alcmode[] = {"ALC", "Limiter"};
-static const char * const wm8960_adc_data_output_sel[] = {
-	"Left Data = Left ADC;  Right Data = Right ADC",
-	"Left Data = Left ADC;  Right Data = Left ADC",
-	"Left Data = Right ADC; Right Data = Right ADC",
-	"Left Data = Right ADC; Right Data = Left ADC",
-};
-static const char * const wm8960_dmonomix[] = {"Stereo", "Mono"};
-
-static const struct soc_enum wm8960_enum[] = {
-	SOC_ENUM_SINGLE(WM8960_DACCTL1, 5, 4, wm8960_polarity),
-	SOC_ENUM_SINGLE(WM8960_DACCTL2, 5, 4, wm8960_polarity),
-	SOC_ENUM_SINGLE(WM8960_3D, 6, 2, wm8960_3d_upper_cutoff),
-	SOC_ENUM_SINGLE(WM8960_3D, 5, 2, wm8960_3d_lower_cutoff),
-	SOC_ENUM_SINGLE(WM8960_ALC1, 7, 4, wm8960_alcfunc),
-	SOC_ENUM_SINGLE(WM8960_ALC3, 8, 2, wm8960_alcmode),
-	SOC_ENUM_SINGLE(WM8960_ADDCTL1, 2, 4, wm8960_adc_data_output_sel),
-	SOC_ENUM_SINGLE(WM8960_ADDCTL1, 4, 2, wm8960_dmonomix),
-};
-
 static const DECLARE_TLV_DB_SCALE(adc_tlv, -9750, 50, 1);
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1725, 75, 0);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -12750, 50, 1);
+static const DECLARE_TLV_DB_SCALE(bypass_tlv, -2100, 300, 0);
 static const DECLARE_TLV_DB_SCALE(out_tlv, -12100, 100, 1);
+static const DECLARE_TLV_DB_SCALE(lineinboost_tlv, -1500, 300, 1);
+static const SNDRV_CTL_TLVD_DECLARE_DB_RANGE(micboost_tlv,
+	0, 1, TLV_DB_SCALE_ITEM(0, 1300, 0),
+	2, 3, TLV_DB_SCALE_ITEM(2000, 900, 0),
+);
 
-static struct snd_kcontrol_new rpmsg_wm8960_ctrls[] = {
+static const struct snd_kcontrol_new wm8960_snd_controls[] = {
 SOC_DOUBLE_R_TLV("Capture Volume", WM8960_LINVOL, WM8960_RINVOL,
-							0, 63, 0, inpga_tlv),
+		 0, 63, 0, inpga_tlv),
+SOC_DOUBLE_R("Capture Volume ZC Switch", WM8960_LINVOL, WM8960_RINVOL,
+	6, 1, 0),
+SOC_DOUBLE_R("Capture Switch", WM8960_LINVOL, WM8960_RINVOL,
+	7, 1, 1),
+
+SOC_SINGLE_TLV("Left Input Boost Mixer LINPUT3 Volume",
+	       WM8960_INBMIX1, 4, 7, 0, lineinboost_tlv),
+SOC_SINGLE_TLV("Left Input Boost Mixer LINPUT2 Volume",
+	       WM8960_INBMIX1, 1, 7, 0, lineinboost_tlv),
+SOC_SINGLE_TLV("Right Input Boost Mixer RINPUT3 Volume",
+	       WM8960_INBMIX2, 4, 7, 0, lineinboost_tlv),
+SOC_SINGLE_TLV("Right Input Boost Mixer RINPUT2 Volume",
+	       WM8960_INBMIX2, 1, 7, 0, lineinboost_tlv),
+SOC_SINGLE_TLV("Right Input Boost Mixer RINPUT1 Volume",
+		WM8960_RINPATH, 4, 3, 0, micboost_tlv),
+SOC_SINGLE_TLV("Left Input Boost Mixer LINPUT1 Volume",
+		WM8960_LINPATH, 4, 3, 0, micboost_tlv),
+
 SOC_DOUBLE_R_TLV("Playback Volume", WM8960_LDAC, WM8960_RDAC,
-							0, 255, 0, dac_tlv),
+		 0, 255, 0, dac_tlv),
+
 SOC_DOUBLE_R_TLV("Headphone Playback Volume", WM8960_LOUT1, WM8960_ROUT1,
 		 0, 127, 0, out_tlv),
+SOC_DOUBLE_R("Headphone Playback ZC Switch", WM8960_LOUT1, WM8960_ROUT1,
+	7, 1, 0),
+
 SOC_DOUBLE_R_TLV("Speaker Playback Volume", WM8960_LOUT2, WM8960_ROUT2,
 		 0, 127, 0, out_tlv),
+SOC_DOUBLE_R("Speaker Playback ZC Switch", WM8960_LOUT2, WM8960_ROUT2,
+	7, 1, 0),
+SOC_SINGLE("Speaker DC Volume", WM8960_CLASSD3, 3, 5, 0),
+SOC_SINGLE("Speaker AC Volume", WM8960_CLASSD3, 0, 5, 0),
+
+SOC_SINGLE("PCM Playback -6dB Switch", WM8960_DACCTL1, 7, 1, 0),
+SOC_ENUM("ADC Polarity", wm8960_enum[0]),
+SOC_SINGLE("ADC High Pass Filter Switch", WM8960_DACCTL1, 0, 1, 0),
+
+SOC_ENUM("DAC Polarity", wm8960_enum[1]),
+SOC_SINGLE_BOOL_EXT("DAC Deemphasis Switch", 0,
+		    wm8960_get_deemph, wm8960_put_deemph),
+
+SOC_ENUM("3D Filter Upper Cut-Off", wm8960_enum[2]),
+SOC_ENUM("3D Filter Lower Cut-Off", wm8960_enum[3]),
+SOC_SINGLE("3D Volume", WM8960_3D, 1, 15, 0),
+SOC_SINGLE("3D Switch", WM8960_3D, 0, 1, 0),
+
+SOC_ENUM("ALC Function", wm8960_enum[4]),
+SOC_SINGLE("ALC Max Gain", WM8960_ALC1, 4, 7, 0),
+SOC_SINGLE("ALC Target", WM8960_ALC1, 0, 15, 1),
+SOC_SINGLE("ALC Min Gain", WM8960_ALC2, 4, 7, 0),
+SOC_SINGLE("ALC Hold Time", WM8960_ALC2, 0, 15, 0),
+SOC_ENUM("ALC Mode", wm8960_enum[5]),
+SOC_SINGLE("ALC Decay", WM8960_ALC3, 4, 15, 0),
+SOC_SINGLE("ALC Attack", WM8960_ALC3, 0, 15, 0),
+
+SOC_SINGLE("Noise Gate Threshold", WM8960_NOISEG, 3, 31, 0),
+SOC_SINGLE("Noise Gate Switch", WM8960_NOISEG, 0, 1, 0),
+
 SOC_DOUBLE_R_TLV("ADC PCM Capture Volume", WM8960_LADC, WM8960_RADC,
 	0, 255, 0, adc_tlv),
 
@@ -1265,22 +1303,34 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
 #define RPMSG_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
+static const struct snd_soc_dai_ops rpmsg_wm8960_dai_ops = {
+	.hw_params = wm8960_hw_params,
+	.hw_free = wm8960_hw_free,
+	.digital_mute = wm8960_mute,
+	.set_fmt = wm8960_set_dai_fmt,
+	.set_clkdiv = wm8960_set_dai_clkdiv,
+	.set_pll = wm8960_set_dai_pll,
+	.set_sysclk = wm8960_set_dai_sysclk,
+};
+
 static struct snd_soc_dai_driver rpmsg_wm8960_codec_dai = {
 	.name = "rpmsg-wm8960-hifi",
 	.playback = {
 		.stream_name = "Playback",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 		.rates = RPMSG_RATES,
 		.formats = RPMSG_FORMATS,
 	},
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 		.rates = RPMSG_RATES,
 		.formats = RPMSG_FORMATS,
 	},
+	.ops = &rpmsg_wm8960_dai_ops,
+	.symmetric_rates = 1,
 };
 
 static int rpmsg_wm8960_probe(struct snd_soc_component *component)
@@ -1309,32 +1359,36 @@ static int rpmsg_wm8960_read(void *context, unsigned int reg, unsigned int *val)
 	int err, reg_val;
 
 	mutex_lock(&i2s_info->i2c_lock);
+	rpmsg->param.audioindex = wm8960->audioindex;
 	rpmsg->param.buffer_addr = reg;
 	rpmsg->header.cmd = GET_CODEC_VALUE;
 	err = i2s_info->send_message(&i2s_info->rpmsg[GET_CODEC_VALUE], i2s_info);
 	reg_val = i2s_info->rpmsg[GET_CODEC_VALUE].recv_msg.param.reg_data;
 	mutex_unlock(&i2s_info->i2c_lock);
 	if (err)
-		return 0;
+		return -EIO;
 
-	return reg_val;
+	*val = reg_val;
+	return 0;
 }
 
-static int rpmsg_wm8960_write(struct snd_soc_codec *codec, unsigned int reg, unsigned int val)
+static int rpmsg_wm8960_write(void *context, unsigned int reg, unsigned int val)
 {
-	struct fsl_rpmsg_i2s *rpmsg_i2s = snd_soc_codec_get_drvdata(codec);
+	struct rpmsg_wm8960_priv *wm8960 = context;
+	struct fsl_rpmsg_i2s *rpmsg_i2s = wm8960->rpmsg_i2s;
 	struct i2s_info      *i2s_info =  &rpmsg_i2s->i2s_info;
 	struct i2s_rpmsg_s   *rpmsg = &i2s_info->rpmsg[SET_CODEC_VALUE].send_msg;
 	int err;
 
 	mutex_lock(&i2s_info->i2c_lock);
+	rpmsg->param.audioindex = wm8960->audioindex;
 	rpmsg->param.buffer_addr = reg;
 	rpmsg->param.buffer_size = val;
 	rpmsg->header.cmd = SET_CODEC_VALUE;
 	err = i2s_info->send_message(&i2s_info->rpmsg[SET_CODEC_VALUE], i2s_info);
 	mutex_unlock(&i2s_info->i2c_lock);
 	if (err)
-		return err;
+		return -EIO;
 
 	return 0;
 }
@@ -1373,51 +1427,93 @@ static int wm8960_runtime_resume(struct device *dev)
 	return 0;
 }
 
-static int rpmsg_wm8960_probe(struct snd_soc_codec *codec)
+static int wm8960_runtime_suspend(struct device *dev)
 {
-	snd_soc_update_bits(codec, WM8960_LINVOL, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_RINVOL, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_LADC, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_RADC, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_LDAC, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_RDAC, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_LOUT1, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_ROUT1, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_LOUT2, 0x100, 0x100);
-	snd_soc_update_bits(codec, WM8960_ROUT2, 0x100, 0x100);
+	struct rpmsg_wm8960_priv *wm8960 = dev_get_drvdata(dev);
 
-	snd_soc_update_bits(codec, WM8960_ADDCTL1, 0xC, 0x4);
+	clk_disable_unprepare(wm8960->mclk);
 
 	return 0;
 }
+#endif
 
-static struct snd_soc_codec_driver rpmsg_wm8960_codec = {
-	.probe = rpmsg_wm8960_probe,
-	.read = rpmsg_wm8960_read,
-	.write = rpmsg_wm8960_write,
-	.component_driver = {
-		.controls		= rpmsg_wm8960_ctrls,
-		.num_controls		= ARRAY_SIZE(rpmsg_wm8960_ctrls),
-	},
+static const struct dev_pm_ops wm8960_pm = {
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend, pm_runtime_force_resume)
+	SET_RUNTIME_PM_OPS(wm8960_runtime_suspend, wm8960_runtime_resume, NULL)
 };
 
 static int rpmsg_wm8960_codec_probe(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
 	struct fsl_rpmsg_i2s *rpmsg_i2s = dev_get_drvdata(pdev->dev.parent);
+	struct fsl_rpmsg_codec *pdata = pdev->dev.platform_data;
+	struct rpmsg_wm8960_priv *wm8960;
 	int ret;
+	int repeat_reset = 10;
 
-	ret = snd_soc_register_codec(dev,
-					&rpmsg_wm8960_codec,
-					&rpmsg_wm8960_codec_dai,
-					1);
-	if (ret) {
-		dev_err(dev, "%s: snd_soc_register_codec() failed (%d)\n",
-			__func__, ret);
-		return ret;
+	wm8960 = devm_kzalloc(&pdev->dev, sizeof(struct rpmsg_wm8960_priv),
+			      GFP_KERNEL);
+	if (wm8960 == NULL)
+		return -ENOMEM;
+
+	wm8960->rpmsg_i2s = rpmsg_i2s;
+
+	wm8960->mclk = devm_clk_get(pdev->dev.parent, "mclk");
+	if (IS_ERR(wm8960->mclk)) {
+		if (PTR_ERR(wm8960->mclk) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+		wm8960->mclk = NULL;
 	}
 
-	dev_set_drvdata(dev, rpmsg_i2s);
+	dev_set_drvdata(&pdev->dev, wm8960);
+
+	wm8960->regmap = devm_regmap_init(&pdev->dev, NULL, wm8960, &rpmsg_wm8960_regmap);
+	if (IS_ERR(wm8960->regmap))
+		return PTR_ERR(wm8960->regmap);
+
+	if (pdata) {
+		wm8960->pdata.shared_lrclk = pdata->shared_lrclk;
+		wm8960->pdata.capless = pdata->capless;
+		wm8960->audioindex = pdata->audioindex;
+	}
+
+	if (wm8960->mclk) {
+		do {
+			ret = wm8960_reset(wm8960->regmap);
+			repeat_reset--;
+		} while (repeat_reset > 0 && ret != 0);
+
+		if (ret != 0) {
+			dev_err(&pdev->dev, "Failed to issue reset\n");
+			return ret;
+		}
+
+		if (wm8960->pdata.shared_lrclk) {
+			ret = regmap_update_bits(wm8960->regmap, WM8960_ADDCTL2,
+						 0x4, 0x4);
+			if (ret != 0) {
+				dev_err(&pdev->dev, "Failed to enable LRCM: %d\n",
+					ret);
+				return ret;
+			}
+		}
+	}
+
+	/* Latch the update bits */
+	regmap_update_bits(wm8960->regmap, WM8960_LINVOL, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_RINVOL, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_LADC, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_RADC, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_LDAC, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_RDAC, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_LOUT1, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_ROUT1, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_LOUT2, 0x100, 0x100);
+	regmap_update_bits(wm8960->regmap, WM8960_ROUT2, 0x100, 0x100);
+
+	pm_runtime_enable(&pdev->dev);
+
+	if (!wm8960->mclk)
+		rpmsg_wm8960_codec_dai.ops = NULL;
 
 	ret = devm_snd_soc_register_component(&pdev->dev,
 			&rpmsg_wm8960_component, &rpmsg_wm8960_codec_dai, 1);
@@ -1427,7 +1523,8 @@ static int rpmsg_wm8960_codec_probe(struct platform_device *pdev)
 
 static struct platform_driver rpmsg_wm8960_codec_driver = {
 	.driver = {
-		.name = RPMSG_CODEC_DRV_NAME,
+		.name = RPMSG_CODEC_DRV_NAME_WM8960,
+		.pm = &wm8960_pm,
 	},
 	.probe = rpmsg_wm8960_codec_probe,
 };
