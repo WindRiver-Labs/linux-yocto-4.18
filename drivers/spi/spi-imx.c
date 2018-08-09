@@ -1548,11 +1548,24 @@ static int spi_imx_probe(struct platform_device *pdev)
 				master->cs_gpios[i] = mxc_platform_info->chipselect[i];
 		}
 	} else {
-		u32 num_cs;
+		u32 num_cs, cs_gpio;
 
 		if (!of_property_read_u32(np, "num-cs", &num_cs))
 			master->num_chipselect = num_cs;
+		else if (!of_property_read_u32(np, "fsl,spi-num-chipselects", &num_cs))
+			master->num_chipselect = num_cs;
+		
 		/* If not preset, default value of 1 is used */
+		master->cs_gpios = devm_kcalloc(&master->dev,
+				master->num_chipselect, sizeof(int),
+				GFP_KERNEL);
+		if (!master->cs_gpios)
+			return -ENOMEM;
+		
+		for (i = 0; i < master->num_chipselect; i++) {
+			cs_gpio = of_get_named_gpio(np, "cs-gpios", i);
+			master->cs_gpios[i] = cs_gpio;
+		}		
 	}
 
 	spi_imx->bitbang.chipselect = spi_imx_chipselect;
