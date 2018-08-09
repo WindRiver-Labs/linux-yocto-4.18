@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/io.h>
@@ -28,6 +29,7 @@
 
 #define READ_DMA_SIZE		0x200
 #define DUMMY_FRAMES_SIZE	0x64
+#define PCAP_READ_CLKFREQ	25000000
 
 static bool readback_type;
 module_param(readback_type, bool, 0644);
@@ -71,11 +73,15 @@ static struct zynqmp_configreg cfgreg[] = {
 /**
  * struct zynqmp_fpga_priv - Private data structure
  * @dev:	Device data structure
+ * @lock:	Mutex lock for device
+ * @clk:	Clock resource for pcap controller
  * @flags:	flags which is used to identify the bitfile type
  * @size:	Size of the Bit-stream used for readback
  */
 struct zynqmp_fpga_priv {
 	struct device *dev;
+	struct mutex lock;
+	struct clk *clk;
 	u32 flags;
 	u32 size;
 };
@@ -108,14 +114,23 @@ static int zynqmp_fpga_ops_write(struct fpga_manager *mgr,
 	priv = mgr->priv;
 	priv->size = size;
 
+	if (!mutex_trylock(&priv->lock))
+		return -EBUSY;
+
+	ret = clk_enable(priv->clk);
+	if (ret)
+		goto err_unlock;
+
 	if (mgr->flags & IXR_FPGA_ENCRYPTION_EN)
 		dma_size = size + ENCRYPTED_KEY_LEN;
 	else
 		dma_size = size;
 
 	kbuf = dma_alloc_coherent(priv->dev, dma_size, &dma_addr, GFP_KERNEL);
-	if (!kbuf)
-		return -ENOMEM;
+	if (!kbuf) {
+		ret = -ENOMEM;
+		goto disable_clk;
+	}
 
 	memcpy(kbuf, buf, size);
 
@@ -132,7 +147,10 @@ static int zynqmp_fpga_ops_write(struct fpga_manager *mgr,
 						mgr->flags);
 
 	dma_free_coherent(priv->dev, dma_size, kbuf, dma_addr);
-
+disable_clk:
+	clk_disable(priv->clk);
+err_unlock:
+	mutex_unlock(&priv->lock);
 	return ret;
 }
 
@@ -161,15 +179,22 @@ static int zynqmp_fpga_read_cfgreg(struct fpga_manager *mgr,
 				   struct seq_file *s)
 {
 	const struct zynqmp_eemi_ops *eemi_ops = zynqmp_pm_get_eemi_ops();
+	struct zynqmp_fpga_priv *priv = mgr->priv;
 	int ret, val;
 	unsigned int *buf;
 	dma_addr_t dma_addr;
 	struct zynqmp_configreg *p = cfgreg;
 
+	ret = clk_enable(priv->clk);
+	if (ret)
+		return ret;
+
 	buf = dma_zalloc_coherent(mgr->dev.parent, READ_DMA_SIZE,
 				  &dma_addr, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
+	if (!buf) {
+		ret = -ENOMEM;
+		goto disable_clk;
+	}
 
 	seq_puts(s, "zynqMP FPGA Configuration register contents are\n");
 
@@ -185,6 +210,8 @@ static int zynqmp_fpga_read_cfgreg(struct fpga_manager *mgr,
 free_dmabuf:
 	dma_free_coherent(mgr->dev.parent, READ_DMA_SIZE, buf,
 			  dma_addr);
+disable_clk:
+	clk_disable(priv->clk);
 
 	return ret;
 }
@@ -198,14 +225,35 @@ static int zynqmp_fpga_read_cfgdata(struct fpga_manager *mgr,
 	unsigned int *buf;
 	dma_addr_t dma_addr;
 	size_t size;
+	int clk_rate;
 
 	priv = mgr->priv;
 	size = priv->size + READ_DMA_SIZE + DUMMY_FRAMES_SIZE;
 
+	/*
+	 * There is no h/w flow control for pcap read
+	 * to prevent the FIFO from over flowing, reduce
+	 * the PCAP operating frequency.
+	 */
+	clk_rate = clk_get_rate(priv->clk);
+	clk_unprepare(priv->clk);
+	ret = clk_set_rate(priv->clk, PCAP_READ_CLKFREQ);
+	if (ret) {
+		dev_err(&mgr->dev, "Unable to reduce the PCAP freq %d\n", ret);
+		goto prepare_clk;
+	}
+	ret = clk_prepare_enable(priv->clk);
+	if (ret) {
+		dev_err(&mgr->dev, "Cannot enable clock.\n");
+		goto restore_pcap_clk;
+	}
+
 	buf = dma_zalloc_coherent(mgr->dev.parent, size, &dma_addr,
 				  GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
+	if (!buf) {
+		ret = -ENOMEM;
+		goto disable_clk;
+	}
 
 	seq_puts(s, "zynqMP FPGA Configuration data contents are\n");
 	ret = eemi_ops->fpga_read((priv->size + DUMMY_FRAMES_SIZE) / 4,
@@ -217,6 +265,12 @@ static int zynqmp_fpga_read_cfgdata(struct fpga_manager *mgr,
 
 free_dmabuf:
 	dma_free_coherent(mgr->dev.parent, size, buf, dma_addr);
+disable_clk:
+	clk_disable_unprepare(priv->clk);
+restore_pcap_clk:
+	clk_set_rate(priv->clk, clk_rate);
+prepare_clk:
+	clk_prepare(priv->clk);
 
 	return ret;
 }
@@ -224,16 +278,21 @@ free_dmabuf:
 static int zynqmp_fpga_ops_read(struct fpga_manager *mgr, struct seq_file *s)
 {
 	const struct zynqmp_eemi_ops *eemi_ops = zynqmp_pm_get_eemi_ops();
+	struct zynqmp_fpga_priv *priv = mgr->priv;
 	int ret;
 
 	if (!eemi_ops || !eemi_ops->fpga_read)
 		return -ENXIO;
+
+	if (!mutex_trylock(&priv->lock))
+		return -EBUSY;
 
 	if (readback_type)
 		ret = zynqmp_fpga_read_cfgdata(mgr, s);
 	else
 		ret = zynqmp_fpga_read_cfgreg(mgr, s);
 
+	mutex_unlock(&priv->lock);
 	return ret;
 }
 
@@ -257,9 +316,23 @@ static int zynqmp_fpga_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->dev = dev;
+	mutex_init(&priv->lock);
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(44));
 	if (ret < 0)
 		dev_err(dev, "no usable DMA configuration");
+
+	priv->clk = devm_clk_get(dev, "ref_clk");
+	if (IS_ERR(priv->clk)) {
+		ret = PTR_ERR(priv->clk);
+		dev_err(dev, "failed to to get pcp ref_clk (%d)\n", ret);
+		return ret;
+	}
+
+	ret = clk_prepare(priv->clk);
+	if (ret) {
+		dev_err(dev, "Cannot enable clock.\n");
+		return ret;
+	}
 
 	mgr = fpga_mgr_create(dev, "Xilinx ZynqMP FPGA Manager",
 				&zynqmp_fpga_ops, priv);
@@ -271,6 +344,7 @@ static int zynqmp_fpga_probe(struct platform_device *pdev)
 	err = fpga_mgr_register(mgr);
 	if (err) {
 		fpga_mgr_free(mgr);
+		clk_unprepare(priv->clk);
 		dev_err(dev, "unable to register FPGA manager");
 		return err;
 	}
@@ -281,8 +355,10 @@ static int zynqmp_fpga_probe(struct platform_device *pdev)
 static int zynqmp_fpga_remove(struct platform_device *pdev)
 {
 	struct fpga_manager *mgr = platform_get_drvdata(pdev);
+	struct zynqmp_fpga_priv *priv = mgr->priv;
 
 	fpga_mgr_unregister(mgr);
+	clk_unprepare(priv->clk);
 
 	return 0;
 }
