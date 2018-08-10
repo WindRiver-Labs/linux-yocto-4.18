@@ -378,12 +378,12 @@ struct dpaa2_eth_priv {
 
 	bool has_xdp_prog;
 
-       struct dpni_attr dpni_attrs;
-       u16 dpni_ver_major;
-       u16 dpni_ver_minor;
+        struct dpni_attr dpni_attrs;
+        u16 dpni_ver_major;
+        u16 dpni_ver_minor;
 	u16 tx_data_offset;
 
-       struct fsl_mc_device *dpbp_dev;
+        struct fsl_mc_device *dpbp_dev;
 	u16 bpid;
 	struct iommu_domain *iommu_domain;
 
@@ -392,25 +392,26 @@ struct dpaa2_eth_priv {
 
 	u16 tx_qdid;
 	u16 rx_buf_align;
-       struct fsl_mc_io *mc_io;
-       /* Cores which have an affine DPIO/DPCON.
-        * This is the cpu set on which Rx and Tx conf frames are processed
-        */
-       struct cpumask dpio_cpumask;
+        struct fsl_mc_io *mc_io;
+        /* Cores which have an affine DPIO/DPCON.
+         * This is the cpu set on which Rx and Tx conf frames are processed
+         */
+        struct cpumask dpio_cpumask;
 
 	/* Standard statistics */
 	struct rtnl_link_stats64 __percpu *percpu_stats;
 	/* Extra stats, in addition to the ones known by the kernel */
 	struct dpaa2_eth_drv_stats __percpu *percpu_extras;
 
-       u16 mc_token;
+        u16 mc_token;
 
-       struct dpni_link_state link_state;
-       bool do_link_poll;
-       struct task_struct *poll_thread;
+        struct dpni_link_state link_state;
+        bool do_link_poll;
+        struct task_struct *poll_thread;
 
-       /* enabled ethtool hashing bits */
-       u64 rx_hash_fields;
+        /* enabled ethtool hashing bits */
+        u64 rx_hash_fields;
+	u64 rx_cls_fields;
 	struct dpaa2_eth_cls_rule *cls_rule;
 	u8 rx_cls_enabled;
 #ifdef CONFIG_FSL_DPAA2_ETH_DEBUGFS
@@ -568,8 +569,10 @@ static inline int dpaa2_eth_ch_count(struct dpaa2_eth_priv *priv)
 }
 
 int dpaa2_eth_set_hash(struct net_device *net_dev, u64 flags);
-int dpaa2_eth_cls_key_size(void);
+int dpaa2_eth_set_cls(struct net_device *net_dev, u64 key);
+int dpaa2_eth_cls_key_size(u64 key);
 int dpaa2_eth_cls_fld_off(int prot, int field);
+void dpaa2_eth_cls_trim_rule(void *key_mem, u64 fields);
 
 int set_rx_taildrop(struct dpaa2_eth_priv *priv);
 
