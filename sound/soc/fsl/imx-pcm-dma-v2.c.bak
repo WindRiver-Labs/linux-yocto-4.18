@@ -290,7 +290,10 @@ static int imx_pcm_new(struct snd_soc_pcm_runtime *rtd)
 }
 
 static struct snd_soc_component_driver imx_soc_platform = {
+<<<<<<< HEAD
 	.name		= DRV_NAME,
+=======
+>>>>>>> 7e4f1a6... MLK-18947: ASoC: imx-pcm-dma: alloc buffer from IRAM
 	.ops		= &imx_pcm_ops,
 	.pcm_new	= imx_pcm_new,
 };
