@@ -21,7 +21,7 @@
  *
  * Copyright (C) 2010-2014 Freescale Semiconductor, Inc.
  *
- * Copyright 2017 NXP
+ * Copyright 2017-2018 NXP
  */
 
 #include <linux/module.h>
@@ -3355,7 +3355,7 @@ u16 fec_enet_select_queue(struct net_device *ndev, struct sk_buff *skb,
 	u16 vlan_tag;
 
 	if (!(id_entry->driver_data & FEC_QUIRK_HAS_AVB))
-		return skb_tx_hash(ndev, skb);
+		return fallback(ndev, skb);
 
 	vlan_tag = fec_enet_get_raw_vlan_tci(skb);
 	if (!vlan_tag)
@@ -3662,8 +3662,6 @@ fec_probe(struct platform_device *pdev)
 	int num_rx_qs;
 	char irq_name[8];
 	int irq_cnt;
-
-	of_dma_configure(&pdev->dev, np);
 
 	fec_enet_get_queue_num(pdev, &num_tx_qs, &num_rx_qs);
 
