@@ -12,6 +12,7 @@ obj-y				+= fsl/
 obj-$(CONFIG_ARCH_GEMINI)	+= gemini/
 obj-$(CONFIG_ARCH_MXC)		+= imx/
 obj-$(CONFIG_SOC_XWAY)		+= lantiq/
+obj-y				+= marvell/
 obj-y				+= mediatek/
 obj-$(CONFIG_ARCH_MESON)	+= amlogic/
 obj-y				+= qcom/
