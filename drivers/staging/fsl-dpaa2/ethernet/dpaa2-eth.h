@@ -103,7 +103,7 @@
 	(DPAA2_ETH_RX_BUF_SIZE + SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
 
 /* PTP nominal frequency 1GHz */
-#define DPAA2_PTP_CLK_PERIOD_NS		1
+#define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1
 
 /* Due to a limitation in WRIOP 1.0.0, the RX buffer data must be aligned
  * to 256B. For newer revisions, the requirement is only for 64B alignment
@@ -119,6 +119,7 @@
 
 /* Hardware annotation area in RX / TX  buffers */
 #define DPAA2_ETH_RX_HWA_SIZE		64
+#define DPAA2_ETH_TX_HWA_SIZE		128
 
 /* We store different information in the software annotation area of a Tx frame
  * based on what type of frame it is
@@ -140,7 +141,7 @@ struct dpaa2_eth_swa {
 			struct sk_buff *skb;
 			struct scatterlist *scl;
 			int num_sg;
-			int num_dma_bufs;
+			int sgt_size;
 		} sg;
 		struct {
 			int dma_size;
@@ -208,7 +209,7 @@ static inline struct dpaa2_fas *dpaa2_get_fas(void *buf_addr, bool swa)
 	return dpaa2_get_hwa(buf_addr, swa) + DPAA2_FAS_OFFSET;
 }
 
-static inline __le64 *dpaa2_get_ts(void *buf_addr, bool swa)
+static inline u64 *dpaa2_get_ts(void *buf_addr, bool swa)
 {
 	return dpaa2_get_hwa(buf_addr, swa) + DPAA2_TS_OFFSET;
 }
@@ -392,9 +393,12 @@ struct dpaa2_eth_priv {
 	struct rtnl_link_stats64 __percpu *percpu_stats;
 	/* Extra stats, in addition to the ones known by the kernel */
 	struct dpaa2_eth_drv_stats __percpu *percpu_extras;
+	bool ts_tx_en; /* Tx timestamping enabled */
+	bool ts_rx_en; /* Rx timestamping enabled */
 	u16 tx_data_offset;
 	u16 bpid;
 	u16 tx_qdid;
+	u16 rx_buf_align;
 	struct iommu_domain *iommu_domain;
 	int max_bufs_per_ch;
 	int refill_thresh;
@@ -416,10 +420,6 @@ struct dpaa2_eth_priv {
 
 	struct fsl_mc_device *dpbp_dev;
 
-	bool tx_tstamp; /* Tx timestamping enabled */
-	bool rx_tstamp; /* Rx timestamping enabled */
-
-	u16 rx_buf_align;
 	struct fsl_mc_io *mc_io;
 	/* Cores which have an affine DPIO/DPCON.
 	 * This is the cpu set on which Rx and Tx conf frames are processed
@@ -523,11 +523,17 @@ static inline unsigned int dpaa2_eth_buf_raw_size(struct dpaa2_eth_priv *priv)
 	return DPAA2_ETH_SKB_SIZE + priv->rx_buf_align;
 }
 
-static inline
-unsigned int dpaa2_eth_needed_headroom(struct dpaa2_eth_priv *priv,
-				       struct sk_buff *skb)
+/* Total headroom needed by the hardware in Tx frame buffers */
+static inline unsigned int
+dpaa2_eth_needed_headroom(struct dpaa2_eth_priv *priv, struct sk_buff *skb)
 {
 	unsigned int headroom = DPAA2_ETH_SWA_SIZE;
+
+	/* If we don't have an skb (e.g. XDP buffer), we only need space for
+	 * the software annotation area
+	 */
+	if (!skb)
+		return headroom;
 
 	/* For non-linear skbs we have no headroom requirement, as we build a
 	 * SG frame with a newly allocated SGT buffer
@@ -536,7 +542,7 @@ unsigned int dpaa2_eth_needed_headroom(struct dpaa2_eth_priv *priv,
 		return 0;
 
 	/* If we have Tx timestamping, need 128B hardware annotation */
-	if (priv->tx_tstamp && skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)
+	if (priv->ts_tx_en && skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)
 		headroom += DPAA2_ETH_TX_HWA_SIZE;
 
 	return headroom;
@@ -545,7 +551,7 @@ unsigned int dpaa2_eth_needed_headroom(struct dpaa2_eth_priv *priv,
 /* Extra headroom space requested to hardware, in order to make sure there's
  * no realloc'ing in forwarding scenarios
  */
-static inline unsigned int dpaa2_eth_rx_head_room(struct dpaa2_eth_priv *priv)
+static inline unsigned int dpaa2_eth_rx_headroom(struct dpaa2_eth_priv *priv)
 {
 	return priv->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN -
 	       DPAA2_ETH_RX_HWA_SIZE;
