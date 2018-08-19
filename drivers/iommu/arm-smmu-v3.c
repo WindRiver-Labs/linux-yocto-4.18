@@ -572,6 +572,7 @@ struct arm_smmu_device {
 	int				gerr_irq;
 	int				combined_irq;
 	u32				sync_nr;
+	u8				prev_cmd_opcode;
 
 	unsigned long			ias; /* IPA */
 	unsigned long			oas; /* PA */
@@ -927,6 +928,8 @@ static void arm_smmu_cmdq_insert_cmd(struct arm_smmu_device *smmu, u64 *cmd)
 			dev_err(smmu->dev, "command drain timeout\n");
 	}
 
+	smmu->prev_cmd_opcode = FIELD_GET(CMDQ_0_OP, cmd[0]);
+
 	while (queue_insert_raw(q, cmd) == -ENOSPC) {
 		if (queue_poll_cons(q, false, wfe))
 			dev_err_ratelimited(smmu->dev, "CMDQ timeout\n");
@@ -979,9 +982,16 @@ static int __arm_smmu_cmdq_issue_sync_msi(struct arm_smmu_device *smmu)
 	};
 
 	spin_lock_irqsave(&smmu->cmdq.lock, flags);
-	ent.sync.msidata = ++smmu->sync_nr;
-	arm_smmu_cmdq_build_cmd(cmd, &ent);
-	arm_smmu_cmdq_insert_cmd(smmu, cmd);
+
+	/* Piggy-back on the previous command if it's a SYNC */
+	if (smmu->prev_cmd_opcode == CMDQ_OP_CMD_SYNC) {
+		ent.sync.msidata = smmu->sync_nr;
+	} else {
+		ent.sync.msidata = ++smmu->sync_nr;
+		arm_smmu_cmdq_build_cmd(cmd, &ent);
+		arm_smmu_cmdq_insert_cmd(smmu, cmd);
+	}
+
 	spin_unlock_irqrestore(&smmu->cmdq.lock, flags);
 
 	return __arm_smmu_sync_poll_msi(smmu, ent.sync.msidata);
