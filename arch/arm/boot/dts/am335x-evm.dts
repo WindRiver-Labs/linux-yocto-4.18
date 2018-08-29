@@ -775,7 +775,7 @@
 	dmas = <&edma_xbar 12 0 1
 		&edma_xbar 13 0 2>;
 	dma-names = "tx", "rx";
-	status = "disabled";
+	status = "okay";
 	vmmc-supply = <&wlan_en_reg>;
 	bus-width = <4>;
 	pinctrl-names = "default";
@@ -788,10 +788,11 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	wlcore: wlcore@0 {
-		compatible = "ti,wl1835";
+		compatible = "ti,wl1835","ti,wl1271";
 		reg = <2>;
 		interrupt-parent = <&gpio3>;
 		interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+		ref-clock-frequency = <38400000>;
 	};
 };
 
