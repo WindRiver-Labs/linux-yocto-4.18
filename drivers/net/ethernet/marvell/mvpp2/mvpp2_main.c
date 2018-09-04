@@ -2648,7 +2648,7 @@ handled:
 	return IRQ_HANDLED;
 }
 
-static void mvpp2_timer_set(struct mvpp2_port_pcpu *port_pcpu)
+static void mvpp2_tx_done_timer_set(struct mvpp2_port_pcpu *port_pcpu)
 {
 	ktime_t interval;
 
@@ -2660,7 +2660,7 @@ static void mvpp2_timer_set(struct mvpp2_port_pcpu *port_pcpu)
 	}
 }
 
-static void mvpp2_tx_proc_cb(unsigned long data)
+static void mvpp2_tx_done_proc_cb(unsigned long data)
 {
 	struct net_device *dev = (struct net_device *)data;
 	struct mvpp2_port *port = netdev_priv(dev);
@@ -2681,10 +2681,10 @@ static void mvpp2_tx_proc_cb(unsigned long data)
 
 	/* Set the timer in case not all the packets were processed */
 	if (tx_todo)
-		mvpp2_timer_set(port_pcpu);
+		mvpp2_tx_done_timer_set(port_pcpu);
 }
 
-static enum hrtimer_restart mvpp2_hr_timer_cb(struct hrtimer *timer)
+static enum hrtimer_restart mvpp2_tx_done_timer_cb(struct hrtimer *timer)
 {
 	struct mvpp2_port_pcpu *port_pcpu = container_of(timer,
 							 struct mvpp2_port_pcpu,
@@ -3547,7 +3547,7 @@ out:
 	    txq_pcpu->count > 0) {
 		struct mvpp2_port_pcpu *port_pcpu = per_cpu_ptr(port->pcpu, thread);
 
-		mvpp2_timer_set(port_pcpu);
+		mvpp2_tx_done_timer_set(port_pcpu);
 	}
 
 	if (test_bit(thread, &port->priv->lock_map))
@@ -5420,11 +5420,12 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 
 			hrtimer_init(&port_pcpu->tx_done_timer, CLOCK_MONOTONIC,
 				     HRTIMER_MODE_REL_PINNED);
-			port_pcpu->tx_done_timer.function = mvpp2_hr_timer_cb;
+			port_pcpu->tx_done_timer.function =
+							mvpp2_tx_done_timer_cb;
 			port_pcpu->tx_done_timer_scheduled = false;
 
 			tasklet_init(&port_pcpu->tx_done_tasklet,
-				     mvpp2_tx_proc_cb,
+				     mvpp2_tx_done_proc_cb,
 				     (unsigned long)dev);
 		}
 	}
