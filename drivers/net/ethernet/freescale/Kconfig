@@ -95,6 +95,12 @@ config GIANFAR
 	  and MPC86xx family of chips, the eTSEC on LS1021A and the FEC
 	  on the 8540.
 
+config FSL_ENETC_MDIO
+	tristate "External MDIO PCI endpoint for ENETC"
+	depends on PCI
+	---help---
+	  TBD
+
 source "drivers/net/ethernet/freescale/dpaa/Kconfig"
 source "drivers/net/ethernet/freescale/enetc/Kconfig"
 

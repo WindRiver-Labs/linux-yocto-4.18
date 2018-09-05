@@ -22,3 +22,4 @@ ucc_geth_driver-objs := ucc_geth.o ucc_geth_ethtool.o
 obj-$(CONFIG_FSL_FMAN) += fman/
 obj-$(CONFIG_FSL_DPAA_ETH) += dpaa/
 obj-$(CONFIG_FSL_ENETC) += enetc/
+obj-$(CONFIG_FSL_ENETC_MDIO) += enetc_mdio.o
