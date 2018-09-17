@@ -73,6 +73,9 @@
 #define AK4458_MODE_TDM256	(2 << AK4458_MODE_SHIFT)
 #define AK4458_MODE_TDM512	(3 << AK4458_MODE_SHIFT)
 
+#define AK4458_DSDSEL_MASK		(0x1 << 0)
+#define AK4458_DP_MASK			(0x1 << 7)
+
 /* DAC Digital attenuator transition time setting
  * Table 19
  * Mode	ATS1	ATS2	ATT speed
