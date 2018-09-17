@@ -848,7 +848,7 @@ static struct sk_buff *a010022_realign_skb(struct sk_buff *skb,
 	 *
 	 * Make sure the new linearized buffer will not exceed a page's size.
 	 */
-	nsize = headroom + skb->len +
+	nsize = SMP_CACHE_BYTES + DPA_SKB_SIZE(headroom + skb->len) +
 		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
 	if (unlikely(nsize > 4096))
 		goto err;
