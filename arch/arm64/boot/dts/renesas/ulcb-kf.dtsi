@@ -1230,7 +1230,7 @@
 	no-1-8-v;
 	non-removable;
 	cap-power-off-card;
-	max-frequency = <26000000>;
+	max-frequency = <50000000>;
 	status = "okay";
 
 	#address-cells = <1>;
