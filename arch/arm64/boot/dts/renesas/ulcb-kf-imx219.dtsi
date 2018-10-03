@@ -1,0 +1,58 @@
+/*
+ * Device Tree Source for the Kingfisher (ULCB extension) board:
+ *  this overrides OV5647 RPI cameras with IMX219
+ *
+ * Copyright (C) 2018 Renesas Electronics Corp.
+ * Copyright (C) 2018 Cogent Embedded, Inc.
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+/delete-node/ &rpi_camera_in;
+/delete-node/ &rpi_camera;
+
+&csi20_ep {
+	csi-rate = <860>;
+};
+
+&gpio_exp_76 {
+	/* pin 11 - CAM_GPIO - assume pwdn */
+	rpi_cam_io_0 {
+		gpio-hog;
+		gpios = <11 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "RaspB_IO0";
+	};
+
+	/* pin 12 - CAM_CLK */
+	/* pin12 is output from camera to CPU, so it should be input */
+	rpi_cam_io_1 {
+		gpio-hog;
+		gpios = <10 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "RaspB_IO1";
+	};
+};
+
+&i2cswitch4 {
+	i2c@4 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <4>;
+
+		rpi_camera: imx219@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+
+			port@0 {
+				rpi_camera_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+					remote-endpoint = <&vin4ep0>;
+				};
+			};
+		};
+	};
+};
