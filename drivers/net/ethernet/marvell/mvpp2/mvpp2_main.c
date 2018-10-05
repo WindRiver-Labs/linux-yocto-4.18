@@ -17,6 +17,7 @@
 #include <linux/mbus.h>
 #include <linux/module.h>
 #include <linux/mfd/syscon.h>
+#include <linux/if_vlan.h>
 #include <linux/interrupt.h>
 #include <linux/cpumask.h>
 #include <linux/of.h>
