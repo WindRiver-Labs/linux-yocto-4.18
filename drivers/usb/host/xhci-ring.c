@@ -1589,6 +1589,11 @@ static void handle_port_status(struct xhci_hcd *xhci,
 	}
 
 	hcd = port->rhub->hcd;
+	if (!hcd) {
+		bogus_port_status = true;
+		goto cleanup;
+	}
+
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
 	hcd_portnum = port->hcd_portnum;
 	portsc = readl(port->addr);
