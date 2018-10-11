@@ -122,7 +122,7 @@ struct mbox_chan {
 	void *active_req;
 	unsigned msg_count, msg_free;
 	void *msg_data[MBOX_TX_QUEUE_LEN];
-	spinlock_t lock; /* Serialise access to the channel */
+	raw_spinlock_t lock; /* Serialise access to the channel */
 	void *con_priv;
 };
 

@@ -444,13 +444,13 @@ struct mbox_chan *omap_mbox_request_channel(struct mbox_client *cl,
 		return ERR_PTR(-ENOENT);
 
 	chan = mbox->chan;
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 	chan->msg_free = 0;
 	chan->msg_count = 0;
 	chan->active_req = NULL;
 	chan->cl = cl;
 	init_completion(&chan->tx_complete);
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 
 	ret = chan->mbox->ops->startup(chan);
 	if (ret) {

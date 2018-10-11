@@ -31,11 +31,11 @@ static int add_to_rbuf(struct mbox_chan *chan, void *mssg)
 	int idx;
 	unsigned long flags;
 
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 
 	/* See if there is any space left */
 	if (chan->msg_count == MBOX_TX_QUEUE_LEN) {
-		spin_unlock_irqrestore(&chan->lock, flags);
+		raw_spin_unlock_irqrestore(&chan->lock, flags);
 		return -ENOBUFS;
 	}
 
@@ -48,7 +48,7 @@ static int add_to_rbuf(struct mbox_chan *chan, void *mssg)
 	else
 		chan->msg_free++;
 
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 
 	return idx;
 }
@@ -60,7 +60,7 @@ static void msg_submit(struct mbox_chan *chan)
 	void *data;
 	int err = -EBUSY;
 
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 
 	if (!chan->msg_count || chan->active_req)
 		goto exit;
@@ -83,7 +83,7 @@ static void msg_submit(struct mbox_chan *chan)
 		chan->msg_count--;
 	}
 exit:
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 
 	if (!err && (chan->txdone_method & TXDONE_BY_POLL))
 		/* kick start the timer immediately to avoid delays */
@@ -95,10 +95,10 @@ static void tx_tick(struct mbox_chan *chan, int r)
 	unsigned long flags;
 	void *mssg;
 
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 	mssg = chan->active_req;
 	chan->active_req = NULL;
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 
 	/* Submit next message */
 	msg_submit(chan);
@@ -343,7 +343,7 @@ struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
 		return ERR_PTR(-EBUSY);
 	}
 
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 	chan->msg_free = 0;
 	chan->msg_count = 0;
 	chan->active_req = NULL;
@@ -353,7 +353,7 @@ struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
 	if (chan->txdone_method	== TXDONE_BY_POLL && cl->knows_txdone)
 		chan->txdone_method = TXDONE_BY_ACK;
 
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 
 	if (chan->mbox->ops->startup) {
 		ret = chan->mbox->ops->startup(chan);
@@ -415,14 +415,14 @@ void mbox_free_channel(struct mbox_chan *chan)
 		chan->mbox->ops->shutdown(chan);
 
 	/* The queued TX requests are simply aborted, no callbacks are made */
-	spin_lock_irqsave(&chan->lock, flags);
+	raw_spin_lock_irqsave(&chan->lock, flags);
 	chan->cl = NULL;
 	chan->active_req = NULL;
 	if (chan->txdone_method == TXDONE_BY_ACK)
 		chan->txdone_method = TXDONE_BY_POLL;
 
 	module_put(chan->mbox->dev->driver->owner);
-	spin_unlock_irqrestore(&chan->lock, flags);
+	raw_spin_unlock_irqrestore(&chan->lock, flags);
 }
 EXPORT_SYMBOL_GPL(mbox_free_channel);
 
@@ -477,7 +477,7 @@ int mbox_controller_register(struct mbox_controller *mbox)
 		chan->cl = NULL;
 		chan->mbox = mbox;
 		chan->txdone_method = txdone;
-		spin_lock_init(&chan->lock);
+		raw_spin_lock_init(&chan->lock);
 	}
 
 	if (!mbox->of_xlate)
