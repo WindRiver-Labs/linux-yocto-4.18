@@ -566,13 +566,7 @@ config MARVELL_OTX_BPHY_CTR
 	  The purpose of this is to handle some BPHY Interrupts in
 	  user space directly without kernel's intervention.
 
-config MVEBU_SOC_INFO
-	bool "Marvell Aramda-8K SoC information driver"
-	depends on ARCH_MVEBU
-	default y
-	help
-	  Marvell A8K SoC information driver
-
+source "drivers/misc/mvebu/Kconfig"
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
