@@ -569,7 +569,7 @@ static inline struct rproc *vdev_to_rproc(struct virtio_device *vdev)
 void rproc_add_subdev(struct rproc *rproc,
 		      struct rproc_subdev *subdev,
 		      int (*probe)(struct rproc_subdev *subdev),
-		      void (*remove)(struct rproc_subdev *subdev, bool crashed));
+		      void (*remove)(struct rproc_subdev *subdev, bool graceful));
 
 void rproc_remove_subdev(struct rproc *rproc, struct rproc_subdev *subdev);
 
