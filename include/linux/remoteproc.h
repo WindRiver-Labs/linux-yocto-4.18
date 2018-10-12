@@ -406,6 +406,7 @@ enum rproc_crash_type {
  * @index: index of this rproc device
  * @crash_handler: workqueue for handling a crash
  * @crash_cnt: crash counter
+ * @crash_comp: completion used to sync crash handler and the rproc reload
  * @recovery_disabled: flag that state if recovery was disabled
  * @max_notifyid: largest allocated notify id.
  * @table_ptr: pointer to the resource table in effect
@@ -436,6 +437,7 @@ struct rproc {
 	int index;
 	struct work_struct crash_handler;
 	unsigned int crash_cnt;
+	struct completion crash_comp;
 	bool recovery_disabled;
 	int max_notifyid;
 	struct resource_table *table_ptr;
