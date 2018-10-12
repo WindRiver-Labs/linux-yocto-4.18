@@ -733,7 +733,7 @@ static rproc_handle_resource_t rproc_loading_handlers[RSC_LAST] = {
 };
 
 /* handle firmware resource entries before booting the remote processor */
-static int rproc_handle_resources(struct rproc *rproc,
+static int rproc_handle_resources(struct rproc *rproc, int len,
 				  rproc_handle_resource_t handlers[RSC_LAST])
 {
 	struct device *dev = &rproc->dev;
@@ -743,7 +743,7 @@ static int rproc_handle_resources(struct rproc *rproc,
 	for (i = 0; i < rproc->table_ptr->num; i++) {
 		int offset = rproc->table_ptr->offset[i];
 		struct fw_rsc_hdr *hdr = (void *)rproc->table_ptr + offset;
-		int avail = rproc->table_sz - offset - sizeof(*hdr);
+		int avail = len - offset - sizeof(*hdr);
 		void *rsc = (void *)hdr + sizeof(*hdr);
 
 		/* make sure table isn't truncated */
@@ -866,9 +866,16 @@ static void rproc_resource_cleanup(struct rproc *rproc)
 
 static int rproc_start(struct rproc *rproc, const struct firmware *fw)
 {
-	struct resource_table *loaded_table;
+	struct resource_table *table, *loaded_table;
 	struct device *dev = &rproc->dev;
-	int ret;
+	int ret, tablesz;
+
+	/* look for the resource table */
+	table = rproc_find_rsc_table(rproc, fw, &tablesz);
+	if (!table) {
+		dev_err(dev, "Resource table look up failed\n");
+		return -EINVAL;
+	}
 
 	/* load the ELF segments to memory */
 	ret = rproc_load_segments(rproc, fw);
@@ -887,7 +894,7 @@ static int rproc_start(struct rproc *rproc, const struct firmware *fw)
 	 */
 	loaded_table = rproc_find_loaded_rsc_table(rproc, fw);
 	if (loaded_table) {
-		memcpy(loaded_table, rproc->cached_table, rproc->table_sz);
+		memcpy(loaded_table, rproc->cached_table, tablesz);
 		rproc->table_ptr = loaded_table;
 	}
 
@@ -961,13 +968,12 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 		goto clean_up;
 
 	rproc->table_ptr = rproc->cached_table;
-	rproc->table_sz = tablesz;
 
 	/* reset max_notifyid */
 	rproc->max_notifyid = -1;
 
 	/* handle fw resources which are required to boot rproc */
-	ret = rproc_handle_resources(rproc, rproc_loading_handlers);
+	ret = rproc_handle_resources(rproc, tablesz, rproc_loading_handlers);
 	if (ret) {
 		dev_err(dev, "Failed to process resources: %d\n", ret);
 		goto clean_up_resources;
