@@ -57,7 +57,9 @@ int rproc_trigger_recovery(struct rproc *rproc);
 int rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw);
 u32 rproc_elf_get_boot_addr(struct rproc *rproc, const struct firmware *fw);
 int rproc_elf_load_segments(struct rproc *rproc, const struct firmware *fw);
-int rproc_elf_load_rsc_table(struct rproc *rproc, const struct firmware *fw);
+struct resource_table *rproc_elf_find_rsc_table(struct rproc *rproc,
+						const struct firmware *fw,
+						int *tablesz);
 struct resource_table *rproc_elf_find_loaded_rsc_table(struct rproc *rproc,
 						       const struct firmware *fw);
 
@@ -88,13 +90,15 @@ int rproc_load_segments(struct rproc *rproc, const struct firmware *fw)
 	return -EINVAL;
 }
 
-static inline int rproc_load_rsc_table(struct rproc *rproc,
-				       const struct firmware *fw)
+static inline
+struct resource_table *rproc_find_rsc_table(struct rproc *rproc,
+					    const struct firmware *fw,
+					    int *tablesz)
 {
-	if (rproc->ops->load_rsc_table)
-		return rproc->ops->load_rsc_table(rproc, fw);
+	if (rproc->ops->find_rsc_table)
+		return rproc->ops->find_rsc_table(rproc, fw, tablesz);
 
-	return 0;
+	return NULL;
 }
 
 static inline

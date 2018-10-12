@@ -924,7 +924,8 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 {
 	struct device *dev = &rproc->dev;
 	const char *name = rproc->firmware;
-	int ret;
+	struct resource_table *table;
+	int ret, tablesz;
 
 	ret = rproc_fw_sanity_check(rproc, fw);
 	if (ret)
@@ -943,11 +944,27 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 	}
 
 	rproc->bootaddr = rproc_get_boot_addr(rproc, fw);
+	ret = -EINVAL;
 
-	/* load resource table */
-	ret = rproc_load_rsc_table(rproc, fw);
-	if (ret)
-		goto disable_iommu;
+	/* look for the resource table */
+	table = rproc_find_rsc_table(rproc, fw, &tablesz);
+	if (!table) {
+		dev_err(dev, "Failed to find resource table\n");
+		goto clean_up;
+	}
+
+	/*
+	 * Create a copy of the resource table. When a virtio device starts
+	 * and calls vring_new_virtqueue() the address of the allocated vring
+	 * will be stored in the cached_table. Before the device is started,
+	 * cached_table will be copied into device memory.
+	 */
+	rproc->cached_table = kmemdup(table, tablesz, GFP_KERNEL);
+	if (!rproc->cached_table)
+		goto clean_up;
+
+	rproc->table_ptr = rproc->cached_table;
+	rproc->table_sz = tablesz;
 
 	/* reset max_notifyid */
 	rproc->max_notifyid = -1;
@@ -967,10 +984,11 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 
 clean_up_resources:
 	rproc_resource_cleanup(rproc);
+clean_up:
 	kfree(rproc->cached_table);
 	rproc->cached_table = NULL;
 	rproc->table_ptr = NULL;
-disable_iommu:
+
 	rproc_disable_iommu(rproc);
 	return ret;
 }
@@ -1552,7 +1570,7 @@ struct rproc *rproc_alloc(struct device *dev, const char *name,
 	/* Default to ELF loader if no load function is specified */
 	if (!rproc->ops->load) {
 		rproc->ops->load = rproc_elf_load_segments;
-		rproc->ops->load_rsc_table = rproc_elf_load_rsc_table;
+		rproc->ops->find_rsc_table = rproc_elf_find_rsc_table;
 		rproc->ops->find_loaded_rsc_table = rproc_elf_find_loaded_rsc_table;
 		rproc->ops->sanity_check = rproc_elf_sanity_check;
 		rproc->ops->get_boot_addr = rproc_elf_get_boot_addr;
