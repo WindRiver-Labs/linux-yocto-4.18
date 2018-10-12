@@ -320,6 +320,8 @@ struct mx6s_csi_dev {
 	void __iomem *regbase;
 	int irq;
 
+	u32      nextfb;
+	u32      skipframe;
 	u32	 type;
 	u32 bytesperline;
 	v4l2_std_id std;
@@ -749,6 +751,7 @@ static int mx6s_csi_enable(struct mx6s_csi_dev *csi_dev)
 	unsigned long val;
 	int timeout, timeout2;
 
+	csi_dev->skipframe = 0;
 	csisw_reset(csi_dev);
 
 	if (pix->field == V4L2_FIELD_INTERLACED)
@@ -943,6 +946,8 @@ static int mx6s_start_streaming(struct vb2_queue *vq, unsigned int count)
 	mx6s_update_csi_buf(csi_dev, phys, buf->internal.bufnum);
 	list_move_tail(csi_dev->capture.next, &csi_dev->active_bufs);
 
+	csi_dev->nextfb = 0;
+
 	spin_unlock_irqrestore(&csi_dev->slock, flags);
 
 	return mx6s_csi_enable(csi_dev);
@@ -1048,6 +1053,7 @@ static void mx6s_csi_frame_done(struct mx6s_csi_dev *csi_dev,
 	}
 
 	csi_dev->frame_count++;
+	csi_dev->nextfb = (bufnum == 0 ? 1: 0);
 
 	/* Config discard buffer to active_bufs */
 	if (list_empty(&csi_dev->capture)) {
@@ -1130,6 +1136,7 @@ static irqreturn_t mx6s_csi_irq_handler(int irq, void *data)
 		cr18 |= BIT_CSI_ENABLE;
 		csi_write(csi_dev, cr18, CSI_CSICR18);
 
+		csi_dev->skipframe = 1;
 		pr_debug("base address switching Change Err.\n");
 	}
 
@@ -1144,9 +1151,22 @@ static irqreturn_t mx6s_csi_irq_handler(int irq, void *data)
 		 * PDM TKT230775 */
 		pr_debug("Skip two frames\n");
 	} else if (status & BIT_DMA_TSF_DONE_FB1) {
-		mx6s_csi_frame_done(csi_dev, 0, false);
+		if (csi_dev->nextfb == 0) {
+			if (csi_dev->skipframe > 0)
+				csi_dev->skipframe--;
+			else
+				mx6s_csi_frame_done(csi_dev, 0, false);
+		} else
+			pr_warn("skip frame 0 \n");
+
 	} else if (status & BIT_DMA_TSF_DONE_FB2) {
-		mx6s_csi_frame_done(csi_dev, 1, false);
+		if (csi_dev->nextfb == 1) {
+			if (csi_dev->skipframe > 0)
+				csi_dev->skipframe--;
+			else
+				mx6s_csi_frame_done(csi_dev, 1, false);
+		} else
+			pr_warn("skip frame 1 \n");
 	}
 
 	spin_unlock(&csi_dev->slock);
@@ -1592,7 +1612,7 @@ static int mx6s_vidioc_g_parm(struct file *file, void *priv,
 	struct mx6s_csi_dev *csi_dev = video_drvdata(file);
 	struct v4l2_subdev *sd = csi_dev->sd;
 
-	return v4l2_subdev_call(sd, video, g_parm, a);
+	return v4l2_g_parm_cap(video_devdata(file), sd, a);
 }
 
 static int mx6s_vidioc_s_parm(struct file *file, void *priv,
@@ -1601,7 +1621,7 @@ static int mx6s_vidioc_s_parm(struct file *file, void *priv,
 	struct mx6s_csi_dev *csi_dev = video_drvdata(file);
 	struct v4l2_subdev *sd = csi_dev->sd;
 
-	return v4l2_subdev_call(sd, video, s_parm, a);
+	return v4l2_g_parm_cap(video_devdata(file), sd, a);
 }
 
 static int mx6s_vidioc_enum_framesizes(struct file *file, void *priv,
@@ -1706,7 +1726,7 @@ static int subdev_notifier_bound(struct v4l2_async_notifier *notifier,
 	struct mx6s_csi_dev *csi_dev = notifier_to_mx6s_dev(notifier);
 
 	/* Find platform data for this sensor subdev */
-	if (csi_dev->asd.match.fwnode.fwnode == dev_fwnode(subdev->dev))
+	if (csi_dev->asd.match.fwnode == dev_fwnode(subdev->dev))
 		csi_dev->sd = subdev;
 
 	if (subdev == NULL)
@@ -1775,6 +1795,10 @@ static int mx6s_csi_two_8bit_sensor_mode_sel(struct mx6s_csi_dev *csi_dev)
 	return 0;
 }
 
+static const struct v4l2_async_notifier_operations subdev_notifier_ops = {
+	.bound = subdev_notifier_bound,
+};
+
 static int mx6sx_register_subdevs(struct mx6s_csi_dev *csi_dev)
 {
 	struct device_node *parent = csi_dev->dev->of_node;
@@ -1800,7 +1824,7 @@ static int mx6sx_register_subdevs(struct mx6s_csi_dev *csi_dev)
 		}
 
 		csi_dev->asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
-		csi_dev->asd.match.fwnode.fwnode = of_fwnode_handle(rem);
+		csi_dev->asd.match.fwnode = of_fwnode_handle(rem);
 		csi_dev->async_subdevs[0] = &csi_dev->asd;
 
 		of_node_put(rem);
@@ -1809,7 +1833,7 @@ static int mx6sx_register_subdevs(struct mx6s_csi_dev *csi_dev)
 
 	csi_dev->subdev_notifier.subdevs = csi_dev->async_subdevs;
 	csi_dev->subdev_notifier.num_subdevs = 1;
-	csi_dev->subdev_notifier.bound = subdev_notifier_bound;
+	csi_dev->subdev_notifier.ops = &subdev_notifier_ops;
 
 	ret = v4l2_async_notifier_register(&csi_dev->v4l2_dev,
 					&csi_dev->subdev_notifier);
