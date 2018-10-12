@@ -39,7 +39,8 @@
  *
  * Make sure this fw image is sane.
  */
-int rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw)
+static int
+rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw)
 {
 	const char *name = rproc->firmware;
 	struct device *dev = &rproc->dev;
@@ -97,7 +98,6 @@ int rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw)
 
 	return 0;
 }
-EXPORT_SYMBOL(rproc_elf_sanity_check);
 
 /**
  * rproc_elf_get_boot_addr() - Get rproc's boot address.
@@ -110,13 +110,13 @@ EXPORT_SYMBOL(rproc_elf_sanity_check);
  * Note that the boot address is not a configurable property of all remote
  * processors. Some will always boot at a specific hard-coded address.
  */
+static
 u32 rproc_elf_get_boot_addr(struct rproc *rproc, const struct firmware *fw)
 {
 	struct elf32_hdr *ehdr  = (struct elf32_hdr *)fw->data;
 
 	return ehdr->e_entry;
 }
-EXPORT_SYMBOL(rproc_elf_get_boot_addr);
 
 /**
  * rproc_elf_load_segments() - load firmware segments to memory
@@ -142,7 +142,8 @@ EXPORT_SYMBOL(rproc_elf_get_boot_addr);
  * directly allocate memory for every segment/resource. This is not yet
  * supported, though.
  */
-int rproc_elf_load_segments(struct rproc *rproc, const struct firmware *fw)
+static int
+rproc_elf_load_segments(struct rproc *rproc, const struct firmware *fw)
 {
 	struct device *dev = &rproc->dev;
 	struct elf32_hdr *ehdr;
@@ -206,7 +207,6 @@ int rproc_elf_load_segments(struct rproc *rproc, const struct firmware *fw)
 
 	return ret;
 }
-EXPORT_SYMBOL(rproc_elf_load_segments);
 
 static struct elf32_shdr *
 find_table(struct device *dev, struct elf32_hdr *ehdr, size_t fw_size)
@@ -282,9 +282,9 @@ find_table(struct device *dev, struct elf32_hdr *ehdr, size_t fw_size)
  * size into @tablesz. If a valid table isn't found, NULL is returned
  * (and @tablesz isn't set).
  */
-struct resource_table *rproc_elf_find_rsc_table(struct rproc *rproc,
-						const struct firmware *fw,
-						int *tablesz)
+static struct resource_table *
+rproc_elf_find_rsc_table(struct rproc *rproc, const struct firmware *fw,
+			 int *tablesz)
 {
 	struct elf32_hdr *ehdr;
 	struct elf32_shdr *shdr;
@@ -303,7 +303,6 @@ struct resource_table *rproc_elf_find_rsc_table(struct rproc *rproc,
 
 	return table;
 }
-EXPORT_SYMBOL(rproc_elf_find_rsc_table);
 
 /**
  * rproc_elf_find_loaded_rsc_table() - find the loaded resource table
@@ -316,8 +315,8 @@ EXPORT_SYMBOL(rproc_elf_find_rsc_table);
  * Returns the pointer to the resource table if it is found or NULL otherwise.
  * If the table wasn't loaded yet the result is unspecified.
  */
-struct resource_table *rproc_elf_find_loaded_rsc_table(struct rproc *rproc,
-						       const struct firmware *fw)
+static struct resource_table *
+rproc_elf_find_loaded_rsc_table(struct rproc *rproc, const struct firmware *fw)
 {
 	struct elf32_hdr *ehdr = (struct elf32_hdr *)fw->data;
 	struct elf32_shdr *shdr;
@@ -328,4 +327,11 @@ struct resource_table *rproc_elf_find_loaded_rsc_table(struct rproc *rproc,
 
 	return rproc_da_to_va(rproc, shdr->sh_addr, shdr->sh_size);
 }
-EXPORT_SYMBOL(rproc_elf_find_loaded_rsc_table);
+
+const struct rproc_fw_ops rproc_elf_fw_ops = {
+	.load = rproc_elf_load_segments,
+	.find_rsc_table = rproc_elf_find_rsc_table,
+	.find_loaded_rsc_table = rproc_elf_find_loaded_rsc_table,
+	.sanity_check = rproc_elf_sanity_check,
+	.get_boot_addr = rproc_elf_get_boot_addr
+};
