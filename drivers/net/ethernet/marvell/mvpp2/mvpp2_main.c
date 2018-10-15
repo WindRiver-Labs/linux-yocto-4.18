@@ -5187,7 +5187,7 @@ static int mvpp2_port_init(struct mvpp2_port *port)
 		/* Map this Rx queue to a physical queue */
 		rxq->id = port->first_rxq + queue;
 		rxq->port = port->id;
-		rxq->logic_rxq = queue;
+		rxq->logic_rxq = (u8)queue;
 
 		port->rxqs[queue] = rxq;
 	}
