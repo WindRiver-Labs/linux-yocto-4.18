@@ -571,8 +571,7 @@ static dma_addr_t mvpp2_buf_alloc(struct mvpp2_port *port,
 		return (dma_addr_t)data;
 
 	dma_addr = dma_map_single(port->dev->dev.parent, data,
-				  MVPP2_RX_BUF_SIZE(bm_pool->pkt_size),
-				  DMA_FROM_DEVICE);
+				  bm_pool->buf_size, DMA_FROM_DEVICE);
 	if (unlikely(dma_mapping_error(port->dev->dev.parent, dma_addr))) {
 		mvpp2_frag_free(bm_pool, data);
 		dma_addr = 0;
@@ -3331,8 +3330,7 @@ static struct sk_buff *mvpp2_recycle_get(struct mvpp2_port *port,
 
 	/* refill the buffer into BM */
 	dma_addr = dma_map_single(port->dev->dev.parent, frag,
-				  MVPP2_RX_BUF_SIZE(bm_pool->pkt_size),
-				  DMA_FROM_DEVICE);
+				  bm_pool->buf_size, DMA_FROM_DEVICE);
 	if (unlikely(dma_mapping_error(port->dev->dev.parent, dma_addr))) {
 		pcpu->idx[bm_pool->id]++; /* Return back to recycle */
 		netdev_err(port->dev, "failed to refill BM pool-%d (%d:%p)\n",
@@ -3352,8 +3350,7 @@ static struct sk_buff *mvpp2_recycle_get(struct mvpp2_port *port,
 
 	if (!skb) {
 		dma_unmap_single(port->dev->dev.parent, dma_addr,
-				 MVPP2_RX_BUF_SIZE(bm_pool->pkt_size),
-				 DMA_FROM_DEVICE);
+				 bm_pool->buf_size, DMA_FROM_DEVICE);
 		mvpp2_frag_free(bm_pool, frag);
 		return NULL;
 	}
