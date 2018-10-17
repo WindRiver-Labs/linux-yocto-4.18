@@ -82,6 +82,8 @@ struct bgx {
 static struct bgx *bgx_vnic[MAX_BGX_THUNDER];
 static int lmac_count; /* Total no of LMACs in system */
 
+static int (*bgx_port_ctx_set)(int node, int bgx, int lmac,
+			       int ctx, int dp_idx);
 static int bgx_xaui_check_link(struct lmac *lmac);
 
 /* Supported devices */
@@ -416,6 +418,17 @@ void bgx_reset_xcast_mode(int node, int bgx_idx, int lmacid, u8 vf_id)
 }
 EXPORT_SYMBOL(bgx_reset_xcast_mode);
 
+void bgx_init_ctx_set_cb(const void *cb)
+{
+	bgx_port_ctx_set = cb;
+}
+
+void bgx_switch_ctx(int node, int bgx_idx, int lmacid, int ctx, int dp_idx)
+{
+	if (bgx_port_ctx_set)
+		bgx_port_ctx_set(node, bgx_idx, lmacid, ctx, dp_idx);
+}
+
 void bgx_lmac_rx_tx_enable(int node, int bgx_idx, int lmacid, bool enable)
 {
 	struct bgx *bgx = get_bgx(node, bgx_idx);
@@ -680,6 +693,8 @@ struct thunder_bgx_com_s thunder_bgx_com = {
 	.set_mac_addr = bgx_set_lmac_mac,
 	.enable = bgx_enable_rx_tx,
 	.disable = bgx_disable_rx_tx,
+	.init_ctx_set_cb = bgx_init_ctx_set_cb,
+	.switch_ctx = bgx_switch_ctx,
 };
 EXPORT_SYMBOL(thunder_bgx_com);
 
@@ -1712,7 +1727,6 @@ static struct pci_driver bgx_driver = {
 static int __init bgx_init_module(void)
 {
 	pr_info("%s, ver %s\n", DRV_NAME, DRV_VERSION);
-
 	return pci_register_driver(&bgx_driver);
 }
 
