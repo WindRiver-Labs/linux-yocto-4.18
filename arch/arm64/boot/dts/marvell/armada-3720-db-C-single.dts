@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device Tree file for Marvell Armada 3720 development board
+ * This board file supports the C configuration of the board
+ * Where Eth1 is user-space and Eth0 is kernel-space
+ */
+
+#include "armada-3720-db-C.dts"
+
+/* Set Eth0 as Kernel port */
+&eth0 {
+	/delete-property/musdk-status;
+};

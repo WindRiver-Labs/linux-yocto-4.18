@@ -318,6 +318,7 @@
 				   interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
 				   clocks = <&sb_periph_clk 8>;
 				   status = "disabled";
+				   musdk-status = "private";
 			};
 
 			mdio: mdio@32004 {
@@ -333,6 +334,21 @@
 				interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&sb_periph_clk 7>;
 				status = "disabled";
+				musdk-status = "private";
+			};
+
+			uio_neta_0 {
+				compatible = "generic-uio";
+				reg = <0x30000 0x4000>;
+				reg-names = "neta_regs";
+				status = "okay";
+			};
+
+			uio_neta_1 {
+				compatible = "generic-uio";
+				reg = <0x40000 0x4000>;
+				reg-names = "neta_regs";
+				status = "okay";
 			};
 
 			usb3: usb@58000 {
