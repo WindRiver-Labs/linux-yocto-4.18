@@ -863,11 +863,19 @@ static int pko_mac_init(struct pkopf *pko, int mac_num, int mac_mode)
 	} else {
 		return -EINVAL;
 	}
-	reg = fifo | (skid << 5) | (0x0 << 15) | (0x1 << 16);
+	reg = fifo | (skid << 5) | (0x0 << 15) | (min_pad << 16);
 	pko_reg_write(pko, PKO_PF_MACX_CFG(mac_num), reg);
 
-	reg = bgx_txfifo_sz / 16; /* MAX_CRED_LIM */
-	pko_reg_write(pko, PKO_PF_MCI1_MAX_CREDX(mac_num), reg);
+	if (mac_num == SDP_MAC_NUM) { /* SDP MAC specific configuration */
+		/* SDP bug #28683 in mcbuggin  */
+		reg = 32; /* MAX_CRED_LIM */
+		dev_dbg(&pko->pdev->dev, "  write %016llx PKO_MCI1_MAX_CRED%d\n",
+			reg, mac_num);
+		pko_reg_write(pko, PKO_PF_MCI1_MAX_CREDX(mac_num), reg);
+	} else {  /* BGX MAC specific configuration */
+		reg = bgx_txfifo_sz / 16; /* MAX_CRED_LIM */
+		pko_reg_write(pko, PKO_PF_MCI1_MAX_CREDX(mac_num), reg);
+	}
 
 	reg = (rate << 3) | size;
 	pko_reg_write(pko, PKO_PF_PTGFX_CFG(ptgf), reg);
