@@ -59,3 +59,4 @@ obj-$(CONFIG_PCI_ENDPOINT_TEST)	+= pci_endpoint_test.o
 obj-$(CONFIG_OCXL)		+= ocxl/
 obj-$(CONFIG_MISC_RTSX)		+= cardreader/
 obj-$(CONFIG_CAVIUM_TDM)	+= cavium-tdm.o
+obj-$(CONFIG_MARVELL_OTX_BPHY_CTR)	+= otx_bphy_ctr.o
