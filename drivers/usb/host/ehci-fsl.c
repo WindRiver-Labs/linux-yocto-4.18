@@ -26,7 +26,6 @@
 #include <linux/io.h>
 
 #ifdef CONFIG_PM
-#include <asm/fsl_pm.h>
 #include <linux/suspend.h>
 #endif
 
@@ -519,10 +518,10 @@ static int ehci_fsl_setup(struct usb_hcd *hcd)
 	return retval;
 }
 
-
 #ifdef CONFIG_PM
 void __iomem *phy_reg;
 
+#ifdef CONFIG_PPC
 /* save usb registers */
 static int ehci_fsl_save_context(struct usb_hcd *hcd)
 {
@@ -568,6 +567,7 @@ static int ehci_fsl_restore_context(struct usb_hcd *hcd)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_PPC_MPC512x
 static int ehci_fsl_mpc512x_drv_suspend(struct device *dev)
@@ -723,6 +723,7 @@ static int ehci_fsl_drv_suspend(struct device *dev)
 	struct usb_bus host = hcd->self;
 #endif
 
+#ifdef CONFIG_PPC
 	suspend_state_t pm_state;
 	/* FIXME:Need to port fsl_pm.h before enable below code. */
 	/*pm_state = pm_suspend_state();*/
@@ -730,6 +731,7 @@ static int ehci_fsl_drv_suspend(struct device *dev)
 
 if (pm_state == PM_SUSPEND_MEM)
 	ehci_fsl_save_context(hcd);
+#endif
 
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
@@ -768,6 +770,7 @@ static int ehci_fsl_drv_resume(struct device *dev)
 	struct usb_bus host = hcd->self;
 #endif
 
+#ifdef CONFIG_PPC
 	suspend_state_t pm_state;
 	/* FIXME:Need to port fsl_pm.h before enable below code.*/
 	/* pm_state = pm_suspend_state(); */
@@ -775,6 +778,7 @@ static int ehci_fsl_drv_resume(struct device *dev)
 
 	if (pm_state == PM_SUSPEND_MEM)
 		ehci_fsl_restore_context(hcd);
+#endif
 
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
