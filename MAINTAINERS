@@ -9570,7 +9570,7 @@ M:	Subrahmanya Lingappa <l.subrahmanya@mobiveil.co.in>
 L:	linux-pci@vger.kernel.org
 S:	Supported
 F:	Documentation/devicetree/bindings/pci/mobiveil-pcie.txt
-F:	drivers/pci/controller/pcie-mobiveil.c
+F:	drivers/pci/controller/mobiveil/pcie-mobiveil*
 
 MODULE SUPPORT
 M:	Jessica Yu <jeyu@kernel.org>
