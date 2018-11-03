@@ -288,14 +288,28 @@ static struct cpufreq_driver imx6q_cpufreq_driver = {
 static int imx6_cpufreq_pm_notify(struct notifier_block *nb,
 	unsigned long event, void *dummy)
 {
+	int ret;
+
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		if (!IS_ERR(dc_reg) && !ignore_dc_reg)
-			regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MAX, 0);
+		if (!IS_ERR(dc_reg) && !ignore_dc_reg) {
+			ret = regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MAX, 0);
+			if (ret) {
+				dev_err(cpu_dev,
+					"failed to scale dc_reg to max: %d\n", ret);
+				return ret;
+			}
+		}
 		break;
 	case PM_POST_SUSPEND:
-		if (!IS_ERR(dc_reg) && !ignore_dc_reg)
-			regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
+		if (!IS_ERR(dc_reg) && !ignore_dc_reg) {
+			ret = regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
+			if (ret) {
+				dev_err(cpu_dev,
+					"failed to scale dc_reg to min: %d\n", ret);
+				return ret;
+			}
+		}
 		break;
 	default:
 		break;
@@ -527,8 +541,14 @@ static int imx6q_cpufreq_probe(struct platform_device *pdev)
 	 */
 	if (freq_table[num - 1].frequency > FREQ_528_MHZ)
 		ignore_dc_reg = true;
-	if (!IS_ERR(dc_reg) && !ignore_dc_reg)
-		regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
+	if (!IS_ERR(dc_reg) && !ignore_dc_reg) {
+		ret = regulator_set_voltage_tol(dc_reg, DC_VOLTAGE_MIN, 0);
+		if (ret) {
+			dev_err(cpu_dev,
+				"failed to scale dc_reg to min: %d\n", ret);
+			return ret;
+		}
+	}
 
 	/* Make imx6_soc_volt array's size same as arm opp number */
 	imx6_soc_volt = devm_kcalloc(cpu_dev, num, sizeof(*imx6_soc_volt),
