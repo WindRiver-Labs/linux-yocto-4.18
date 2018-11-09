@@ -63,6 +63,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
+#include <linux/dma-direct.h>
 
 #define _GC_OBJ_ZONE    gcvZONE_OS
 

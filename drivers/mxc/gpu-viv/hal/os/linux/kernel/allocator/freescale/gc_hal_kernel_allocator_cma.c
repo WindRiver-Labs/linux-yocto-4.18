@@ -63,6 +63,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
+#include <linux/dma-direct.h>
 
 #define _GC_OBJ_ZONE    gcvZONE_OS
 
@@ -144,9 +145,9 @@ _CMAFSLAlloc(
 
     gcmkHEADER_ARG("Mdl=%p NumPages=0x%zx", Mdl, NumPages);
 
-    if (os->allocatorLimitMarker)
+    if (os->allocatorLimitMarker && !(Flags & gcvALLOC_FLAG_CMA_PREEMPT))
     {
-        if ((Flags & gcvALLOC_FLAG_CMA_LIMIT) && !(Flags & gcvALLOC_FLAG_CMA_PREEMPT))
+        if (Flags & gcvALLOC_FLAG_CMA_LIMIT)
         {
             priv->cmaLimitRequest = gcvTRUE;
         }
@@ -585,8 +586,9 @@ _CMAFSLAlloctorInit(
     if (Os->allocatorLimitMarker)
     {
         allocator->capability |= gcvALLOC_FLAG_CMA_LIMIT;
-        allocator->capability |= gcvALLOC_FLAG_CMA_PREEMPT;
     }
+
+    allocator->capability |= gcvALLOC_FLAG_CMA_PREEMPT;
 
     *Allocator = allocator;
 
