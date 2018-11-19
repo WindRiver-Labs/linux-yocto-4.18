@@ -27,6 +27,8 @@ Optional properties:
 - num-cs :  Number of total chip selects, see spi-bus.txt.
 - dmas: DMA specifiers for tx and rx dma. See the DMA client binding,
 Documentation/devicetree/bindings/dma/dma.txt.
+	For the description of the second cell of dma phandle, see this document,
+		Documentation/devicetree/bindings/dma/fsl-imx-sdma.txt
 - dma-names: DMA request names, if present, should include "tx" and "rx".
 - fsl,spi-rdy-drctl: Integer, representing the value of DRCTL, the register
 controlling the SPI_READY handling. Note that to enable the DRCTL consideration,
