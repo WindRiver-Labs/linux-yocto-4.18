@@ -25,6 +25,7 @@
 
 #include <linux/types.h>
 #include <linux/hdmi.h>
+#include <drm/drm_crtc.h>
 
 struct drm_device;
 struct i2c_adapter;
@@ -441,6 +442,21 @@ static inline int drm_eld_size(const uint8_t *eld)
 static inline u8 drm_eld_get_spk_alloc(const uint8_t *eld)
 {
 	return eld[DRM_ELD_SPEAKER] & DRM_ELD_SPEAKER_MASK;
+}
+
+/**
+ * drm_connector_get_edid - Get current EDID from the given connector
+ * @connector: pointer to the connector stucture
+ *
+ * This is a helper for accessing the drm blob buffered in the connector
+ * struct (if any)
+ */
+static inline struct edid *drm_connector_get_edid(struct drm_connector *connector)
+{
+	if (!connector->edid_blob_ptr)
+		return NULL;
+
+	return (struct edid *)connector->edid_blob_ptr->data;
 }
 
 /**
