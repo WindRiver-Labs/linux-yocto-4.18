@@ -43,6 +43,7 @@ struct cs42xx8_priv {
 	struct clk *clk;
 
 	bool slave_mode[2];
+	bool is_tdm;
 	unsigned long sysclk;
 	u32 tx_channels;
 	int rate[2];
@@ -200,6 +201,8 @@ static int cs42xx8_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	struct cs42xx8_priv *cs42xx8 = snd_soc_component_get_drvdata(component);
 	u32 val;
 
+	cs42xx8->is_tdm = false;
+
 	/* Set DAI format */
 	switch (format & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_LEFT_J:
@@ -213,6 +216,7 @@ static int cs42xx8_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 		val = CS42XX8_INTF_DAC_DIF_TDM | CS42XX8_INTF_ADC_DIF_TDM;
+		cs42xx8->is_tdm = true;
 		break;
 	default:
 		dev_err(component->dev, "unsupported dai format\n");
@@ -315,6 +319,16 @@ static int cs42xx8_hw_params(struct snd_pcm_substream *substream,
 
 	cs42xx8->rate[tx] = params_rate(params);
 
+	if (cs42xx8->is_tdm && !cs42xx8->slave_mode[tx]) {
+		dev_err(component->dev, "TDM mode is unsupported in master mode\n");
+		return -EINVAL;
+	}
+
+	if (cs42xx8->is_tdm && (cs42xx8->sysclk < 256 * cs42xx8->rate[tx])) {
+		dev_err(component->dev, "unsupported sysclk for TDM mode\n");
+		return -EINVAL;
+	}
+
 	mask = CS42XX8_FUNCMOD_MFREQ_MASK;
 	val = cs42xx8_ratios[i].mfreq;
 
@@ -328,9 +342,8 @@ static int cs42xx8_hw_params(struct snd_pcm_substream *substream,
 static int cs42xx8_hw_free(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec;
-	struct cs42xx8_priv *cs42xx8 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component = dai->component;
+	struct cs42xx8_priv *cs42xx8 = snd_soc_component_get_drvdata(component);
 	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
 
 	cs42xx8->rate[tx] = 0;
