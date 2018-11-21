@@ -36,6 +36,8 @@
 #define MAX_IRQNAME	16	/* big enough for "QMan portal %d" */
 #define QMAN_POLL_LIMIT 32
 #define QMAN_PIRQ_DQRR_ITHRESH 12
+#define QMAN_DQRR_IT_MAX 15
+#define QMAN_ITP_MAX 0xFFF
 #define QMAN_PIRQ_MR_ITHRESH 4
 #define QMAN_PIRQ_IPERIOD 100
 
@@ -727,9 +729,15 @@ static inline void qm_dqrr_vdqcr_set(struct qm_portal *portal, u32 vdqcr)
 	qm_out(portal, QM_REG_DQRR_VDQCR, vdqcr);
 }
 
-static inline void qm_dqrr_set_ithresh(struct qm_portal *portal, u8 ithresh)
+static inline int qm_dqrr_set_ithresh(struct qm_portal *portal, u8 ithresh)
 {
+
+	if (ithresh > QMAN_DQRR_IT_MAX)
+		return -EINVAL;
+
 	qm_out(portal, QM_REG_DQRR_ITR, ithresh);
+
+	return 0;
 }
 
 /* --- MR API --- */
