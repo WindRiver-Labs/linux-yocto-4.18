@@ -218,6 +218,7 @@ struct fpavf {
 	/* VA of pool memory */
 	u64                     vhpool_memvec_size;
 	struct memvec           *vhpool_memvec;
+	struct device           *vhpool_owner;
 	atomic_t		alloc_count;
 	u32			stack_ln_ptrs;
 	void			*pool_addr;
@@ -232,7 +233,7 @@ struct fpavf {
 
 struct fpavf_com_s {
 	struct fpavf* (*get)(u16, u16, struct octeontx_master_com_t *, void *);
-	int (*setup)(struct fpavf *, u64, u32);
+	int (*setup)(struct fpavf *, u64, u32, struct device *);
 	void (*free)(struct fpavf*, u32, u64, u32);
 	u64 (*alloc)(struct fpavf*, u32);
 	void (*add_alloc)(struct fpavf *fpa, int count);

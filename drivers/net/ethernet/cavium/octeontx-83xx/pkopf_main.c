@@ -1252,7 +1252,10 @@ static int setup_dpfi(struct pkopf *pko)
 		symbol_put(fpavf_com);
 		return -ENODEV;
 	}
-	err = fpavf->setup(fpa, PKO_BUFFERS, pko->pdm_buf_size);
+	dev_notice(&pko->pdev->dev, "Setup PKO_DPFI_DOMAIN: pdm_buffers %d, pdm_buf_size %d\n",
+		   PKO_BUFFERS, pko->pdm_buf_size);
+	err = fpavf->setup(fpa, PKO_BUFFERS, pko->pdm_buf_size,
+			   &pko->pdev->dev);
 	if (err) {
 		dev_err(&pko->pdev->dev, "failed to setup fpavf\n");
 		symbol_put(fpapf_com);
@@ -1302,6 +1305,7 @@ static int teardown_dpfi(struct pkopf *pko)
 	pko_reg_write(pko, PKO_PF_DPFI_GMCTL, 0);
 	pko_reg_write(pko, PKO_PF_DPFI_ENA, 0);
 
+	dev_notice(&pko->pdev->dev, "Destroy PKO_DPFI_DOMAIN\n");
 	fpavf->teardown(fpa);
 	fpavf->put(fpa);
 	fpapf->destroy_domain(pko->id, FPA_PKO_DPFI_GMID, NULL);

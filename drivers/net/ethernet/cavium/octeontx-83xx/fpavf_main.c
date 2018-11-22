@@ -105,7 +105,8 @@ static int fpa_vf_do_test(struct fpavf *fpa, u64 num_buffers)
 	return 0;
 }
 
-static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
+static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
+			    struct device *owner)
 {
 	dma_addr_t iova,  first_addr = -1, last_addr = 0;
 	u32 buffs_per_chunk, chunk_size;
@@ -132,10 +133,17 @@ static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 	}
 	memset(fpa->vhpool_memvec, 0, PAGE_SIZE);
 
+	/* Use given memory owner to setup IOMMU translation context.
+	 * If memory owner is not specified then use FPA VF.
+	 */
+	if (!owner)
+		owner = &fpa->pdev->dev;
+
+	fpa->vhpool_owner = owner;
 	for (i = 0; i < fpa->vhpool_memvec_size; i++) {
 		fpa->vhpool_memvec[i].size = chunk_size;
 		fpa->vhpool_memvec[i].addr =
-			dma_zalloc_coherent(&fpa->pdev->dev,
+			dma_zalloc_coherent(fpa->vhpool_owner,
 					    fpa->vhpool_memvec[i].size,
 					    &fpa->vhpool_memvec[i].iova,
 					    GFP_KERNEL);
@@ -145,6 +153,10 @@ static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 			ret = -ENOMEM;
 			goto err_unlock;
 		}
+
+		dev_notice(fpa->vhpool_owner, "Alloc IO memory: iova [%llx-%llx]\n",
+			   fpa->vhpool_memvec[i].iova,
+			   fpa->vhpool_memvec[i].iova + chunk_size - 1);
 
 		fpa->vhpool_memvec[i].in_use = true;
 		if (fpa->vhpool_memvec[i].iova > last_addr)
@@ -156,6 +168,9 @@ static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 	fpavf_reg_write(fpa, FPA_VF_VHPOOL_START_ADDR(0), first_addr);
 	fpavf_reg_write(fpa, FPA_VF_VHPOOL_END_ADDR(0),
 			last_addr + chunk_size - 1);
+
+	dev_notice(&fpa->pdev->dev, "Setup IO memory: iova [%llx-%llx]\n",
+		   first_addr, last_addr + chunk_size - 1);
 
 	for (i = 0; i < fpa->vhpool_memvec_size && num_buffers > 0; i++) {
 		iova = fpa->vhpool_memvec[i].iova;
@@ -174,7 +189,7 @@ err_unlock:
 
 	for (i = 0; i < fpa->vhpool_memvec_size; i++)
 		if (fpa->vhpool_memvec[i].in_use) {
-			dma_free_coherent(&fpa->pdev->dev,
+			dma_free_coherent(fpa->vhpool_owner,
 					  fpa->vhpool_memvec[i].size,
 					  fpa->vhpool_memvec[i].addr,
 					  fpa->vhpool_memvec[i].iova);
@@ -185,7 +200,8 @@ err_unlock:
 	return ret;
 }
 
-static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
+static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
+			struct device *owner)
 {
 	struct mbox_fpa_cfg cfg;
 	struct mbox_hdr hdr;
@@ -234,7 +250,7 @@ static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 	if (ret || hdr.res_code)
 		return -EINVAL;
 
-	fpa_vf_addmemory(fpa, num_buffers, buf_len);
+	fpa_vf_addmemory(fpa, num_buffers, buf_len, owner);
 
 	req.data = 0;
 	hdr.coproc = FPA_COPROC;
@@ -281,7 +297,11 @@ static int fpa_vf_teardown(struct fpavf *fpa)
 	/* Free buffers memory */
 	for (i = 0; i < fpa->vhpool_memvec_size; i++) {
 		if (fpa->vhpool_memvec[i].in_use) {
-			dma_free_coherent(&fpa->pdev->dev,
+			dev_notice(fpa->vhpool_owner, "Free IO memory: iova [%llx-%llx]\n",
+				   fpa->vhpool_memvec[i].iova,
+				   fpa->vhpool_memvec[i].iova +
+				   fpa->vhpool_memvec[i].size - 1);
+			dma_free_coherent(fpa->vhpool_owner,
 					  fpa->vhpool_memvec[i].size,
 					  fpa->vhpool_memvec[i].addr,
 					  fpa->vhpool_memvec[i].iova);

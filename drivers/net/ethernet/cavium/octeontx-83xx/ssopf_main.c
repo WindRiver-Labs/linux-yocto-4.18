@@ -1203,7 +1203,10 @@ static int sso_init(struct ssopf *sso)
 	xaq_buffers = (max_events + xae_waes - 1) / xae_waes;
 	xaq_buffers = (nr_grps * 2) + 48 + xaq_buffers;
 
-	err = fpavf->setup(fpa, xaq_buffers, xaq_buf_size);
+	dev_notice(&sso->pdev->dev, "Setup SSO_XAQ_DOMAIN: xaq_buffers %d, xaq_buf_size %d\n",
+		   xaq_buffers, xaq_buf_size);
+	err = fpavf->setup(fpa, xaq_buffers, xaq_buf_size,
+			   &sso->pdev->dev);
 	if (err) {
 		dev_err(&sso->pdev->dev, "failed to setup fpavf\n");
 		symbol_put(fpapf_com);
@@ -1388,6 +1391,8 @@ static void sso_remove(struct pci_dev *pdev)
 		if (addr)
 			fpavf->free(fpa, FPA_SSO_XAQ_AURA, addr, 0);
 	}
+
+	dev_notice(&sso->pdev->dev, "Destroy SSO_XAQ_DOMAIN\n");
 	fpavf->teardown(fpa);
 	fpavf->put(fpa);
 	fpapf->destroy_domain(sso->id, FPA_SSO_XAQ_GMID, NULL);
