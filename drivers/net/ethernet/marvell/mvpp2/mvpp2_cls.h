@@ -73,7 +73,7 @@ enum mvpp2_cls_field_id {
 
 enum mvpp2_cls_lkp_type {
 	MVPP2_CLS_LKP_HASH = 0,
-	MVPP2_CLS_LKP_DEFAULT,
+	MVPP2_CLS_LKP_DEFAULT = 3,
 	MVPP2_CLS_LKP_MAX,
 };
 enum mvpp2_cls_flow_seq {
