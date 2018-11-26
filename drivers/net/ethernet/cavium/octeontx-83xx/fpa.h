@@ -224,9 +224,6 @@ struct fpavf {
 	dma_addr_t		pool_iova;
 	u64			pool_size;
 	u64			buf_len;
-#define FPA_VF_FLAG_CONT_MEM	0x1
-#define FPA_VF_FLAG_DISC_MEM	0x2
-	u32			flags;
 	struct iommu_domain	*iommu_domain;
 
 	struct octeontx_master_com_t *master;
@@ -235,10 +232,9 @@ struct fpavf {
 
 struct fpavf_com_s {
 	struct fpavf* (*get)(u16, u16, struct octeontx_master_com_t *, void *);
-	int (*setup)(struct fpavf *, u64, u32, u32);
+	int (*setup)(struct fpavf *, u64, u32);
 	void (*free)(struct fpavf*, u32, u64, u32);
 	u64 (*alloc)(struct fpavf*, u32);
-	int (*refill)(struct fpavf *fpa);
 	void (*add_alloc)(struct fpavf *fpa, int count);
 	int (*teardown)(struct fpavf *fpa);
 	void (*put)(struct fpavf *);

@@ -105,35 +105,6 @@ static int fpa_vf_do_test(struct fpavf *fpa, u64 num_buffers)
 	return 0;
 }
 
-static int fpa_vf_addbuffers(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
-{
-	dma_addr_t iova, first_addr = -1, last_addr = 0;
-	void *addr;
-	struct page *p;
-
-	while (num_buffers) {
-		p = alloc_page(GFP_KERNEL | __GFP_NOWARN);
-		if (!p) {
-			dev_err(&fpa->pdev->dev, "failed to allocate vhpool buffers\n");
-			return -ENOMEM;
-		}
-		addr = page_address(p);
-		/*TODO: add dma mappings here if needed.*/
-		iova = dma_map_single(&fpa->pdev->dev, addr, PAGE_SIZE,
-				      DMA_BIDIRECTIONAL);
-		fpa_vf_free(fpa, 0, iova, 0);
-		num_buffers--;
-		if (iova > last_addr)
-			last_addr = iova;
-		if (iova < first_addr)
-			first_addr = iova;
-	}
-	fpavf_reg_write(fpa, FPA_VF_VHPOOL_START_ADDR(0), first_addr);
-	fpavf_reg_write(fpa, FPA_VF_VHPOOL_END_ADDR(0),
-			last_addr + PAGE_SIZE - 1);
-	return 0;
-}
-
 static int fpa_vf_addmemory(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 {
 	dma_addr_t iova,  first_addr = -1, last_addr = 0;
@@ -214,8 +185,7 @@ err_unlock:
 	return ret;
 }
 
-static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
-			u32 flags)
+static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len)
 {
 	struct mbox_fpa_cfg cfg;
 	struct mbox_hdr hdr;
@@ -243,7 +213,6 @@ static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
 	fpa->alloc_count = ((atomic_t) { (0) });
 	fpa->alloc_thold = (num_buffers * 10) / 100;
 	fpa->buf_len = buf_len;
-	fpa->flags = flags;
 
 	req.data = 0;
 	hdr.coproc = FPA_COPROC;
@@ -265,10 +234,7 @@ static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
 	if (ret || hdr.res_code)
 		return -EINVAL;
 
-	if (flags & FPA_VF_FLAG_CONT_MEM)
-		fpa_vf_addmemory(fpa, num_buffers, buf_len);
-	else
-		fpa_vf_addbuffers(fpa, num_buffers, buf_len);
+	fpa_vf_addmemory(fpa, num_buffers, buf_len);
 
 	req.data = 0;
 	hdr.coproc = FPA_COPROC;
@@ -294,10 +260,7 @@ static int fpa_vf_teardown(struct fpavf *fpa)
 	union mbox_data resp;
 	struct mbox_hdr hdr;
 	union mbox_data req;
-	struct memvec *memvec;
-	u64 av, iova, *buf;
 	int ret, i;
-	bool found;
 
 	if (!fpa)
 		return -ENODEV;
@@ -314,68 +277,19 @@ static int fpa_vf_teardown(struct fpavf *fpa)
 	/* Remove limits on the aura */
 	fpavf_reg_write(fpa, FPA_VF_VHAURA_CNT_THRESHOLD(0), -1);
 	fpavf_reg_write(fpa, FPA_VF_VHAURA_CNT_LIMIT(0), -1);
-	/* There can be two types of memory allocation for FPA VF:
-	 * contiguous (FPA_VF_FLAG_CONT_MEM) or not (FPA_VF_FLAG_DISC_MEM).
-	 * If contiguous memory was requested, then a segment of memory was
-	 * allocated at address fpa->vhpool_addr of size fpa->vhpool_size.
-	 * For each address from that region taken out of the pool, do not
-	 * free it, instead free the whole segment at the end.
-	 * In other case (or if fpa->refill() was called) each buffer is a
-	 * single page. For that case, free each buffer as it's taken out of the
-	 * pool.
-	 */
-	av = fpavf_reg_read(fpa, FPA_VF_VHPOOL_AVAILABLE(0));
-	while (av) {
-		found = false;
-		iova = fpa_vf_alloc(fpa, 0);
-		for (i = 0; i < fpa->vhpool_memvec_size; i++) {
-			memvec = &fpa->vhpool_memvec[i];
-			if (iova >= memvec->iova &&
-			    iova < memvec->iova + memvec->size &&
-			    fpa->flags & FPA_VF_FLAG_CONT_MEM) {
-				av = fpavf_reg_read(fpa,
-						    FPA_VF_VHPOOL_AVAILABLE(0));
-				found = true;
-				break;
-			}
+
+	/* Free buffers memory */
+	for (i = 0; i < fpa->vhpool_memvec_size; i++) {
+		if (fpa->vhpool_memvec[i].in_use) {
+			dma_free_coherent(&fpa->pdev->dev,
+					  fpa->vhpool_memvec[i].size,
+					  fpa->vhpool_memvec[i].addr,
+					  fpa->vhpool_memvec[i].iova);
+			fpa->vhpool_memvec[i].in_use = false;
 		}
 
-		if (found)
-			continue;
-
-		/* If there is a NAT_ALIGN bug here, it means that we'll get a
-		 * different address from FPA than the beginning of the page.
-		 * Therefore we're aligning the address to page size.
-		 */
-		if (iova == 0) {
-			dev_err(&fpa->pdev->dev,
-				"NULL buffer in pool %d of domain %d\n",
-				fpa->subdomain_id, fpa->domain_id);
-			av = fpavf_reg_read(fpa, FPA_VF_VHPOOL_AVAILABLE(0));
-			continue;
-		}
-		iova = PAGE_ALIGN(iova);
-		dma_unmap_single(&fpa->pdev->dev, iova, PAGE_SIZE,
-				 DMA_BIDIRECTIONAL);
-		buf = phys_to_virt(fpa_vf_iova_to_phys(fpa, iova));
-		free_page((u64)buf);
-		av = fpavf_reg_read(fpa, FPA_VF_VHPOOL_AVAILABLE(0));
-	}
-
-	/* If allocation was contiguous, free that region */
-	if (fpa->flags & FPA_VF_FLAG_CONT_MEM) {
-		for (i = 0; i < fpa->vhpool_memvec_size; i++) {
-			if (fpa->vhpool_memvec[i].in_use) {
-				dma_free_coherent(&fpa->pdev->dev,
-						  fpa->vhpool_memvec[i].size,
-						  fpa->vhpool_memvec[i].addr,
-						  fpa->vhpool_memvec[i].iova);
-				fpa->vhpool_memvec[i].in_use = false;
-			}
-
-			fpa->vhpool_memvec_size = 0x0;
-			free_page((unsigned long)fpa->vhpool_memvec);
-		}
+		fpa->vhpool_memvec_size = 0x0;
+		free_page((unsigned long)fpa->vhpool_memvec);
 	}
 
 	req.data = 0;
@@ -484,20 +398,6 @@ static struct fpavf *fpa_vf_get(u16 domain_id, u16 subdomain_id,
 	return fpa;
 }
 
-static int fpa_vf_refill(struct fpavf *fpa)
-{
-	u64 alloc_count;
-
-	mutex_lock(&octeontx_fpavf_alloc_lock);
-	alloc_count = atomic_read(&fpa->alloc_count);
-	if (alloc_count >= fpa->alloc_thold)
-		fpa_vf_addbuffers(fpa, alloc_count, fpa->buf_len);
-
-	atomic_sub_return(alloc_count, &fpa->alloc_count);
-	mutex_unlock(&octeontx_fpavf_alloc_lock);
-	return alloc_count;
-}
-
 static void fpa_vf_add_alloc(struct fpavf *fpa, int count)
 {
 	atomic_add_return(count, &fpa->alloc_count);
@@ -508,7 +408,6 @@ struct fpavf_com_s fpavf_com = {
 	.setup = fpa_vf_setup,
 	.free = fpa_vf_free,
 	.alloc = fpa_vf_alloc,
-	.refill = fpa_vf_refill,
 	.add_alloc = fpa_vf_add_alloc,
 	.teardown = fpa_vf_teardown,
 	.put = fpa_vf_put,

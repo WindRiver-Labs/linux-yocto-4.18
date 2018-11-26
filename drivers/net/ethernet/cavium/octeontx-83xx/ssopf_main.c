@@ -1203,8 +1203,7 @@ static int sso_init(struct ssopf *sso)
 	xaq_buffers = (max_events + xae_waes - 1) / xae_waes;
 	xaq_buffers = (nr_grps * 2) + 48 + xaq_buffers;
 
-	err = fpavf->setup(fpa, xaq_buffers, xaq_buf_size,
-			FPA_VF_FLAG_CONT_MEM);
+	err = fpavf->setup(fpa, xaq_buffers, xaq_buf_size);
 	if (err) {
 		dev_err(&sso->pdev->dev, "failed to setup fpavf\n");
 		symbol_put(fpapf_com);
