@@ -136,7 +136,7 @@ config OCTEONTX_SSO_PF
 
 config OCTEONTX_SSOW_PF
 	tristate "OcteonTX SSOW physical function driver(SSOW_PF)"
-	depends on 64BIT
+	depends on 64BIT && OCTEONTX_SSO_PF
 	default y
 	help
 	  Select this option to enable SSOW Physical function.
