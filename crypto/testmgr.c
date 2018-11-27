@@ -639,6 +639,8 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 		j++;
 
+		pr_err("alg: aead%s: Running test %d for %s\n", d, j, algo);
+
 		/* some templates have no input data but they will
 		 * touch input
 		 */
@@ -751,6 +753,8 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 		if (!template[i].np)
 			continue;
+
+		pr_err("alg: aead%s: Running test %d for %s\n", d, j, algo);
 
 		j++;
 
@@ -1119,6 +1123,8 @@ static int __test_skcipher(struct crypto_skcipher *tfm, int enc,
 		if (fips_enabled && template[i].fips_skip)
 			continue;
 
+		pr_err("alg: skcipher%s: Running test %d for %s\n", d, j, algo);
+
 		if (template[i].iv && !(template[i].generates_iv && enc))
 			memcpy(iv, template[i].iv, ivsize);
 		else
@@ -1197,6 +1203,8 @@ static int __test_skcipher(struct crypto_skcipher *tfm, int enc,
 
 		if (fips_enabled && template[i].fips_skip)
 			continue;
+
+		pr_err("alg: skcipher%s: Running test %d for %s\n", d, j, algo);
 
 		if (template[i].iv && !(template[i].generates_iv && enc))
 			memcpy(iv, template[i].iv, ivsize);
