@@ -21,6 +21,8 @@ Optional properties:
    please refer to mmc.txt within this directory
  - cavium,cmd-clk-skew : number of coprocessor clocks before sampling command
  - cavium,dat-clk-skew : number of coprocessor clocks before sampling data
+ - cavium,drv-strength : eMMC bus pin output drive strength
+ - cavium,clk-slew     : eMMC bus pins output slew rate control
 
 Deprecated properties:
 - spi-max-frequency : use max-frequency instead
