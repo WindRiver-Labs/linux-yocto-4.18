@@ -1,0 +1,18 @@
+// overlay dts file.
+/dts-v1/;
+/plugin/;
+  
+/ {
+	fragment@0 {
+		target-path = "/fpga-full";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			firmware-name = "Bitstream.bin";
+		};
+	};
+};
