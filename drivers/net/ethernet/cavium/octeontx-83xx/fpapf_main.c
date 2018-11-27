@@ -130,6 +130,14 @@ static int fpa_pf_receive_message(u32 id, u16 domain_id,
 	case FPA_CONFIGSET:
 		cfg = add_data;
 
+		dev_dbg(&fpa->pdev->dev, "Setup vf[%u] stack:[%llx-%llx] cfg:%llx\n",
+			vf->hardware_pool, cfg->pool_stack_base,
+			cfg->pool_stack_end - 1, cfg->pool_cfg);
+
+		/* Disable pool before configuration update */
+		fpa_reg_write(fpa, FPA_PF_POOLX_CFG(vf->hardware_pool), 0x0);
+
+		/* Update pool configuration and enable if required */
 		fpa_reg_write(fpa, FPA_PF_AURAX_CFG((vf->hardware_aura_set *
 				FPA_AURA_SET_SIZE) + cfg->aid),
 				cfg->aura_cfg);

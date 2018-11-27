@@ -236,6 +236,9 @@ static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
 		return -ENOMEM;
 	}
 
+	dev_dbg(&fpa->pdev->dev, "Alloc stack memory: iova [%llx-%llx]\n",
+		fpa->pool_iova, fpa->pool_iova + fpa->pool_size - 1);
+
 	fpa->num_buffers = num_buffers;
 	fpa->alloc_count = ((atomic_t) { (0) });
 	fpa->alloc_thold = (num_buffers * 10) / 100;
