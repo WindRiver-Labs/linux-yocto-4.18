@@ -186,7 +186,8 @@ union mio_emm_int {
 	u64 val;
 	struct mio_emm_int_s {
 #ifdef __BIG_ENDIAN_BITFIELD
-		u64 :57;
+		u64:56;
+		u64 ncb_flt:1;
 		u64 switch_err:1;
 		u64 switch_done:1;
 		u64 dma_err:1;
@@ -202,7 +203,8 @@ union mio_emm_int {
 		u64 dma_err:1;
 		u64 switch_done:1;
 		u64 switch_err:1;
-		u64 :57;
+		u64 ncb_flt:1;
+		u64:56;
 #endif
 	} s;
 };
