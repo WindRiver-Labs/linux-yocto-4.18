@@ -182,6 +182,23 @@ union mio_emm_dma_cfg {
 	} s;
 };
 
+union mio_emm_io_ctl {
+	u64 val;
+	struct mio_emm_io_ctl_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		u64:60;
+		u64 drive:2;
+		u64:1;
+		u64 slew:1;
+#else
+		u64 slew:1;
+		u64:1;
+		u64 drive:2;
+		u64:60;
+#endif
+	} s;
+};
+
 union mio_emm_int {
 	u64 val;
 	struct mio_emm_int_s {
