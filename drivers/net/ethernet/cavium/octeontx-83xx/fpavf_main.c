@@ -290,6 +290,7 @@ static int fpa_vf_setup(struct fpavf *fpa, u64 num_buffers, u32 buf_len,
 
 static int fpa_vf_teardown(struct fpavf *fpa)
 {
+	struct mbox_fpa_cfg cfg;
 	union mbox_data resp;
 	struct mbox_hdr hdr;
 	union mbox_data req;
@@ -376,6 +377,23 @@ static int fpa_vf_teardown(struct fpavf *fpa)
 			free_page((unsigned long)fpa->vhpool_memvec);
 		}
 	}
+
+	req.data = 0;
+	hdr.coproc = FPA_COPROC;
+	hdr.msg = FPA_CONFIGSET;
+	hdr.vfid = fpa->subdomain_id;
+
+	/* Reset pool configuration */
+	cfg.aid = 0;
+	cfg.pool_cfg = 0;
+	cfg.pool_stack_base = 0;
+	cfg.pool_stack_end = 0;
+	cfg.aura_cfg = 0;
+
+	ret = fpa->master->send_message(&hdr, &req, &resp, fpa->master_data,
+					&cfg);
+	if (ret || hdr.res_code)
+		return -EFAULT;
 
 	/* Finally free the stack */
 	dma_free_coherent(&fpa->pdev->dev, fpa->pool_size,
