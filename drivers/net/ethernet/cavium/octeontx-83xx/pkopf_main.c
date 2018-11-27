@@ -1304,6 +1304,7 @@ static int teardown_dpfi(struct pkopf *pko)
 	pko_reg_write(pko, PKO_PF_DPFI_ENA, 0);
 
 	fpavf->teardown(fpa);
+	fpavf->put(fpa);
 	fpapf->destroy_domain(pko->id, FPA_PKO_DPFI_GMID, NULL);
 
 	return 0;

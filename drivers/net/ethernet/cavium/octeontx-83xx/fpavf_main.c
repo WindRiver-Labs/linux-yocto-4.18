@@ -380,6 +380,17 @@ static int fpa_vf_teardown(struct fpavf *fpa)
 	return 0;
 }
 
+static void fpa_vf_put(struct fpavf *fpa)
+{
+	mutex_lock(&octeontx_fpavf_devices_lock);
+	fpa->ref_count -= 1;
+	if (!fpa->ref_count) {
+		fpa->domain_id = 0;
+		fpa->subdomain_id = 0;
+	}
+	mutex_unlock(&octeontx_fpavf_devices_lock);
+}
+
 static struct fpavf *fpa_vf_get(u16 domain_id, u16 subdomain_id,
 				struct octeontx_master_com_t *master,
 				void *master_data)
@@ -398,6 +409,7 @@ static struct fpavf *fpa_vf_get(u16 domain_id, u16 subdomain_id,
 		if (curr->domain_id == domain_id &&
 		    curr->subdomain_id == subdomain_id) {
 			fpa = curr;
+			fpa->ref_count += 1;
 			break;
 		}
 	}
@@ -433,17 +445,19 @@ static struct fpavf *fpa_vf_get(u16 domain_id, u16 subdomain_id,
 				break;
 			}
 		}
-		mutex_unlock(&octeontx_fpavf_devices_lock);
-	}
 
-	if (fpa) {
-		reg = fpavf_reg_read(fpa,
-				     FPA_VF_VHPOOL_THRESHOLD(0));
-		fpa->domain_id = domain_id;
-		fpa->subdomain_id = subdomain_id;
-		fpa->master = master;
-		fpa->master_data = master_data;
-		fpa->stack_ln_ptrs = reg;
+		if (fpa) {
+			reg = fpavf_reg_read(fpa,
+					     FPA_VF_VHPOOL_THRESHOLD(0));
+			fpa->domain_id = domain_id;
+			fpa->subdomain_id = subdomain_id;
+			fpa->master = master;
+			fpa->master_data = master_data;
+			fpa->stack_ln_ptrs = reg;
+			fpa->ref_count = 1;
+		}
+
+		mutex_unlock(&octeontx_fpavf_devices_lock);
 	}
 
 	return fpa;
@@ -476,6 +490,7 @@ struct fpavf_com_s fpavf_com = {
 	.refill = fpa_vf_refill,
 	.add_alloc = fpa_vf_add_alloc,
 	.teardown = fpa_vf_teardown,
+	.put = fpa_vf_put,
 };
 EXPORT_SYMBOL(fpavf_com);
 

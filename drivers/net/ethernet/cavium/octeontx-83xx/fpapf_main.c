@@ -408,9 +408,9 @@ static int fpa_pf_destroy_domain(u32 id, u16 domain_id, struct kobject *kobj)
 						  &pool_redcnt_attr.attr);
 				sysfs_remove_link(kobj, virtfn->dev.kobj.name);
 			}
-			dev_info(&fpa->pdev->dev,
-				 "Free vf[%d] from domain:%d subdomain_id:%d\n",
-				 i, fpa->vf[i].domain.domain_id, vf_idx);
+			dev_dbg(&fpa->pdev->dev,
+				"Free vf[%d] from domain:%d subdomain_id:%d\n",
+				i, fpa->vf[i].domain.domain_id, vf_idx);
 			memset(&fpa->vf[i], 0, sizeof(struct octeontx_pf_vf));
 			reg = FPA_MAP_VALID(0) | FPA_MAP_VHAURASET(i)
 				| FPA_MAP_GAURASET(0)
@@ -531,6 +531,9 @@ static u64 fpa_pf_create_domain(u32 id, u16 domain_id,
 
 			fpa_reg_write(fpa, FPA_PF_VFX_GMCTL(i), reg);
 
+			dev_dbg(&fpa->pdev->dev, "Alloc vf[%u] domain:%u subdomain_id:%u\n",
+				i, domain_id, vf_idx);
+
 			fpa->vf[i].domain.in_use = true;
 			set_bit(i, &aura_set);
 			identify(&fpa->vf[i], domain_id, vf_idx,
@@ -627,6 +630,9 @@ int fpa_reset_domain(u32 id, u16 domain_id)
 			}
 
 empty:
+			dev_dbg(&fpa->pdev->dev, "Reset vf[%u] domain:%u subdomain_id:%u\n",
+				i, domain_id, fpa->vf[i].domain.subdomain_id);
+
 			if (domain_id != FPA_SSO_XAQ_AURA &&
 			    domain_id != FPA_PKO_DPFI_AURA)
 				reg = (0xff & (i + 1)) << 24 |

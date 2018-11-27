@@ -207,6 +207,7 @@ struct fpavf {
 	void __iomem		*reg_base;
 	struct msix_entry	*msix_entries;
 	struct list_head	list;
+	u32			ref_count;
 
 	bool			setup_done;
 	u16			domain_id;
@@ -240,6 +241,7 @@ struct fpavf_com_s {
 	int (*refill)(struct fpavf *fpa);
 	void (*add_alloc)(struct fpavf *fpa, int count);
 	int (*teardown)(struct fpavf *fpa);
+	void (*put)(struct fpavf *);
 };
 
 extern struct fpavf_com_s fpavf_com;

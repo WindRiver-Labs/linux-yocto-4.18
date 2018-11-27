@@ -1390,6 +1390,7 @@ static void sso_remove(struct pci_dev *pdev)
 			fpavf->free(fpa, FPA_SSO_XAQ_AURA, addr, 0);
 	}
 	fpavf->teardown(fpa);
+	fpavf->put(fpa);
 	fpapf->destroy_domain(sso->id, FPA_SSO_XAQ_GMID, NULL);
 	sso_irq_free(sso);
 	sso_sriov_configure(pdev, 0);
