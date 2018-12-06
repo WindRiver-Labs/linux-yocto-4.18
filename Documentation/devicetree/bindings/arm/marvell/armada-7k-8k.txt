@@ -63,6 +63,9 @@ Boards:
    - "marvell,armada8040-mcbin-single-shot"
       when the board being used is the MACCHIATOBin single shot community board
 
+   - "marvell,armada8040-ucpe"
+      when the board being used is the Cybertan UCPE switch
+
 Example:
 
 compatible = "marvell,armada7040-db", "marvell,armada7040",
