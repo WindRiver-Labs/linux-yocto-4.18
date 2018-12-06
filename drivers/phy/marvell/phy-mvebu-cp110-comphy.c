@@ -258,6 +258,10 @@ static int mvebu_comphy_eth_power_on(struct phy *phy)
 		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
 				 lane->id,
 				 COMPHY_FW_MODE_FORMAT(COMPHY_RXAUI_MODE));
+
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id + 1,
+				 COMPHY_FW_MODE_FORMAT(COMPHY_RXAUI_MODE));
 		break;
 	default:
 		dev_err(priv->dev, "unsupported PHY submode (%d)\n",
