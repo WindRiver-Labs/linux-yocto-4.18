@@ -416,6 +416,10 @@ static int xlnx_platform_remove(struct platform_device *pdev)
 
 static void xlnx_platform_shutdown(struct platform_device *pdev)
 {
+	struct xlnx_drm *xlnx_drm = dev_get_drvdata(&pdev->dev);
+	struct drm_device *drm = xlnx_drm->drm;
+
+	drm_atomic_helper_shutdown(drm);
 	component_master_del(&pdev->dev, &xlnx_master_ops);
 }
 
