@@ -2197,13 +2197,6 @@ static int xilinx_dpdma_probe(struct platform_device *pdev)
 		return irq;
 	}
 
-	ret = devm_request_irq(xdev->dev, irq, xilinx_dpdma_irq_handler,
-			       IRQF_SHARED, dev_name(xdev->dev), xdev);
-	if (ret) {
-		dev_err(xdev->dev, "failed to request IRQ\n");
-		return ret;
-	}
-
 	INIT_LIST_HEAD(&xdev->common.channels);
 	dma_cap_set(DMA_SLAVE, ddev->cap_mask);
 	dma_cap_set(DMA_PRIVATE, ddev->cap_mask);
@@ -2234,6 +2227,13 @@ static int xilinx_dpdma_probe(struct platform_device *pdev)
 			ret = PTR_ERR(chan);
 			goto error;
 		}
+	}
+
+	ret = devm_request_irq(xdev->dev, irq, xilinx_dpdma_irq_handler,
+			       IRQF_SHARED, dev_name(xdev->dev), xdev);
+	if (ret) {
+		dev_err(xdev->dev, "failed to request IRQ\n");
+		goto error;
 	}
 
 	xdev->ext_addr = sizeof(dma_addr_t) > 4;
