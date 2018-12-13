@@ -1711,7 +1711,6 @@ int zynqmp_dp_bind(struct device *dev, struct device *master, void *data)
 		dev_err(dp->dev, "failed to initialize DP aux");
 		goto error_prop;
 	}
-	INIT_DELAYED_WORK(&dp->hpd_work, zynqmp_dp_hpd_work_func);
 
 	return 0;
 
@@ -1864,6 +1863,8 @@ int zynqmp_dp_probe(struct platform_device *pdev)
 		dev_err(dp->dev, "failed to initialize DP aux\n");
 		goto error;
 	}
+
+	INIT_DELAYED_WORK(&dp->hpd_work, zynqmp_dp_hpd_work_func);
 
 out:
 	irq = platform_get_irq(pdev, 0);
