@@ -12,26 +12,33 @@
 &lvds {
 	compatible = "panel-lvds";
 
-	width-mm = <210>;
-	height-mm = <158>;
+	width-mm = <291>;
+	height-mm = <109>;
 
 	data-mapping = "jeida-24";
 
 	panel-timing {
-		/* 1280x800 @60Hz Boundary Devices BD101LCC1 compatible panel */
-		clock-frequency = <65000000>;
+		/* 1280x480 @60Hz KOE TX31D200VM0BAA compatible panel */
+		clock-frequency = <43200000>;
 		hactive = <1280>;
-		vactive = <800>;
-		hsync-len = <40>;
-		hfront-porch = <80>;
+		vactive = <480>;
+		hsync-len = <20>;
+		hfront-porch = <20>;
 		hback-porch = <40>;
-		vfront-porch = <14>;
-		vback-porch = <14>;
-		vsync-len = <4>;
+		vsync-len = <15>;
+		vfront-porch = <15>;
+		vback-porch = <20>;
 	};
 };
 
 &gpio2 {
+	sd {
+		gpio-hog;
+		gpios = <2 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "Scan Direction Normal";
+	};
+
 	bl_pwm {
 		gpio-hog;
 		gpios = <3 GPIO_ACTIVE_HIGH>;
