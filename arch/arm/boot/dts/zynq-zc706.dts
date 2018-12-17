@@ -366,5 +366,6 @@
 };
 
 &watchdog0 {
+	status = "okay";
 	reset-on-timeout;
 };
