@@ -735,6 +735,7 @@
 			slew-rate = <SLEW_RATE_SLOW>;
 			io-standard = <IO_STANDARD_LVCMOS18>;
 			bias-disable;
+			drive-strength = <2>;
 		};
 
 		mux-cd {
