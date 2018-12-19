@@ -876,8 +876,7 @@ static void mvpp2_interrupts_unmask(void *arg)
 	if (port->flags & MVPP22_F_IF_MUSDK)
 		return;
 
-	val = MVPP2_CAUSE_MISC_SUM_MASK |
-		MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(port->priv->hw_version);
+	val = MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(port->priv->hw_version);
 	if (port->has_tx_irqs)
 		val |= MVPP2_CAUSE_TXQ_OCCUP_DESC_ALL_MASK;
 
@@ -3886,23 +3885,12 @@ out:
 	return NETDEV_TX_OK;
 }
 
-static inline void mvpp2_cause_error(struct net_device *dev, int cause)
-{
-	if (cause & MVPP2_CAUSE_FCS_ERR_MASK)
-		netdev_err(dev, "FCS error\n");
-	if (cause & MVPP2_CAUSE_RX_FIFO_OVERRUN_MASK)
-		netdev_err(dev, "rx fifo overrun error\n");
-	if (cause & MVPP2_CAUSE_TX_FIFO_UNDERRUN_MASK)
-		netdev_err(dev, "tx fifo underrun error\n");
-}
-
 static int mvpp2_poll(struct napi_struct *napi, int budget)
 {
-	u32 cause_rx_tx, cause_rx, cause_tx, cause_misc;
+	u32 cause_rx_tx, cause_rx, cause_tx;
 	int rx_done = 0;
 	struct mvpp2_port *port = netdev_priv(napi->dev);
 	struct mvpp2_queue_vector *qv;
-	unsigned int thread = mvpp2_cpu_to_thread(port->priv, smp_processor_id());
 
 	qv = container_of(napi, struct mvpp2_queue_vector, napi);
 
@@ -3918,17 +3906,6 @@ static int mvpp2_poll(struct napi_struct *napi, int budget)
 	 */
 	cause_rx_tx = mvpp2_thread_read_relaxed(port->priv, qv->sw_thread_id,
 						MVPP2_ISR_RX_TX_CAUSE_REG(port->id));
-
-	cause_misc = cause_rx_tx & MVPP2_CAUSE_MISC_SUM_MASK;
-	if (cause_misc) {
-		mvpp2_cause_error(port->dev, cause_misc);
-
-		/* Clear the cause register */
-		mvpp2_write(port->priv, MVPP2_ISR_MISC_CAUSE_REG, 0);
-		mvpp2_thread_write(port->priv, thread,
-				   MVPP2_ISR_RX_TX_CAUSE_REG(port->id),
-				   cause_rx_tx & ~MVPP2_CAUSE_MISC_SUM_MASK);
-	}
 
 	if (port->has_tx_irqs) {
 		cause_tx = cause_rx_tx & MVPP2_CAUSE_TXQ_OCCUP_DESC_ALL_MASK;
