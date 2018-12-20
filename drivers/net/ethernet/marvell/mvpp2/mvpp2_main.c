@@ -6117,7 +6117,9 @@ static void mvpp2_axi_init(struct mvpp2 *priv)
 	mvpp2_write(priv, MVPP22_AXI_RXQ_DESCR_WR_ATTR_REG, wrval);
 
 	/* Buffer Data */
-	mvpp2_write(priv, MVPP22_AXI_TX_DATA_RD_ATTR_REG, rdval);
+	/* Force TX FIFO transactions priority on the AXI QOS bus */
+	mvpp2_write(priv, MVPP22_AXI_TX_DATA_RD_ATTR_REG,
+		    rdval | MVPP22_AXI_TX_DATA_RD_QOS_ATTRIBUTE);
 	mvpp2_write(priv, MVPP22_AXI_RX_DATA_WR_ATTR_REG, wrval);
 
 	val = MVPP22_AXI_CODE_CACHE_NON_CACHE
