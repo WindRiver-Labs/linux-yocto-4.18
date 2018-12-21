@@ -305,6 +305,40 @@ static void _edac_mc_free(struct mem_ctl_info *mci)
 	kfree(mci);
 }
 
+static void _edac_mc_free_unregister(struct mem_ctl_info *mci)
+{
+	int i, chn, row;
+	struct csrow_info *csr;
+	const unsigned int tot_dimms = mci->tot_dimms;
+	const unsigned int tot_channels = mci->num_cschannel;
+	const unsigned int tot_csrows = mci->nr_csrows;
+
+	if (mci->dimms) {
+		for (i = 0; i < tot_dimms; i++) {
+			struct dimm_info *dimm = mci->dimms[i];
+
+			/* Only expose populated DIMMs */
+			if (!dimm->nr_pages)
+				kfree(mci->dimms[i]);
+		}
+		kfree(mci->dimms);
+	}
+	if (mci->csrows) {
+		for (row = 0; row < tot_csrows; row++) {
+			csr = mci->csrows[row];
+			if (csr && !nr_pages_per_csrow(csr)) {
+				if (csr->channels) {
+					for (chn = 0; chn < tot_channels; chn++)
+						kfree(csr->channels[chn]);
+					kfree(csr->channels);
+				}
+				kfree(csr);
+			}
+		}
+		kfree(mci->csrows);
+	}
+}
+
 struct mem_ctl_info *edac_mc_alloc(unsigned mc_num,
 				   unsigned n_layers,
 				   struct edac_mc_layer *layers,
@@ -513,6 +547,9 @@ void edac_mc_free(struct mem_ctl_info *mci)
 		_edac_mc_free(mci);
 		return;
 	}
+
+	/*the unregistered mci intstance is freed here*/
+	_edac_mc_free_unregister(mci);
 
 	/* the mci instance is freed here, when the sysfs object is dropped */
 	edac_unregister_sysfs(mci);
