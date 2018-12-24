@@ -1464,19 +1464,48 @@ static inline void mvpp2_xlg_max_rx_size_set(struct mvpp2_port *port)
 	writel(val, port->base + MVPP22_XLG_CTRL1_REG);
 }
 
+static void mvpp2_gmac_tx_fifo_configure(struct mvpp2_port *port,
+					 phy_interface_t phy_interface)
+{
+	u32 val, tx_fifo_min_th;
+	u8 low_wm, hi_wm;
+
+	if (phy_interface == PHY_INTERFACE_MODE_2500BASEX) {
+		tx_fifo_min_th = MVPP2_GMAC_TX_FIFO_MIN_TH_2500;
+		low_wm = MVPP2_GMAC_TX_FIFO_LOW_WM_2500;
+		hi_wm = MVPP2_GMAC_TX_FIFO_HI_WM_2500;
+	} else {
+		tx_fifo_min_th = MVPP2_GMAC_TX_FIFO_MIN_TH_1000;
+		low_wm = MVPP2_GMAC_TX_FIFO_LOW_WM_1000;
+		hi_wm = MVPP2_GMAC_TX_FIFO_HI_WM_1000;
+	}
+
+	/* Update TX FIFO MIN Threshold */
+	val = readl(port->base + MVPP2_GMAC_PORT_FIFO_CFG_1_REG);
+	val &= ~MVPP2_GMAC_TX_FIFO_MIN_TH_ALL_MASK;
+	val |= tx_fifo_min_th;
+	writel(val, port->base + MVPP2_GMAC_PORT_FIFO_CFG_1_REG);
+
+	/* Update TX FIFO levels of assertion/deassertion
+	 * of p2mem_ready_signal, which indicates readiness
+	 * for fetching the data from DRAM.
+	 */
+	val = readl(port->base + MVPP2_GMAC_PORT_FIFO_CFG_0_REG);
+	val &= ~MVPP2_GMAC_TX_FIFO_WM_MASK;
+	val |= (low_wm << MVPP2_GMAC_TX_FIFO_WM_LOW_OFFSET) | hi_wm;
+	writel(val, port->base + MVPP2_GMAC_PORT_FIFO_CFG_0_REG);
+}
+
 /* Set defaults to the MVPP2 port */
 static void mvpp2_defaults_set(struct mvpp2_port *port)
 {
 	int tx_port_num, val, queue, ptxq, lrxq;
 
-	if (port->priv->hw_version == MVPP21) {
-		/* Update TX FIFO MIN Threshold */
-		val = readl(port->base + MVPP2_GMAC_PORT_FIFO_CFG_1_REG);
-		val &= ~MVPP2_GMAC_TX_FIFO_MIN_TH_ALL_MASK;
-		/* Min. TX threshold must be less than minimal packet length */
-		val |= MVPP2_GMAC_TX_FIFO_MIN_TH_MASK(64 - 4 - 2);
-		writel(val, port->base + MVPP2_GMAC_PORT_FIFO_CFG_1_REG);
-	}
+	if (phy_interface_mode_is_rgmii(port->phy_interface) ||
+	    port->phy_interface == PHY_INTERFACE_MODE_SGMII ||
+	    port->phy_interface == PHY_INTERFACE_MODE_1000BASEX ||
+	    port->phy_interface == PHY_INTERFACE_MODE_2500BASEX)
+		mvpp2_gmac_tx_fifo_configure(port, port->phy_interface);
 
 	/* Disable Legacy WRR, Disable EJP, Release from reset */
 	tx_port_num = mvpp2_egress_port(port);
@@ -5612,8 +5641,10 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 	else if (phy_interface_mode_is_rgmii(state->interface) ||
 		 state->interface == PHY_INTERFACE_MODE_SGMII ||
 		 state->interface == PHY_INTERFACE_MODE_1000BASEX ||
-		 state->interface == PHY_INTERFACE_MODE_2500BASEX)
+		 state->interface == PHY_INTERFACE_MODE_2500BASEX) {
 		mvpp2_gmac_config(port, mode, state);
+		mvpp2_gmac_tx_fifo_configure(port, state->interface);
+	}
 
 	if (port->priv->hw_version == MVPP21 && port->flags & MVPP2_F_LOOPBACK)
 		mvpp2_port_loopback_set(port, state);
