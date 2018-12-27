@@ -24,6 +24,4 @@
 	};
 };
 
-&usb3 {
-	status = "disabled";
-};
+/delete-node/ &usb3;

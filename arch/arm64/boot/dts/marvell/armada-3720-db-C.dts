@@ -15,3 +15,5 @@
 	phys = <&a3700_comphy0 1>;
 	managed = "in-band-status";
 };
+
+/delete-node/ &usb3;
