@@ -2861,6 +2861,33 @@ static int mvneta_poll(struct napi_struct *napi, int budget)
 	return rx_done;
 }
 
+static int mvneta_poll_musdk(struct napi_struct *napi, int budget)
+{
+	struct mvneta_port *pp = netdev_priv(napi->dev);
+
+	/* Read cause register */
+	if (mvreg_read(pp, MVNETA_INTR_NEW_CAUSE) & MVNETA_MISCINTR_INTR_MASK) {
+		unsigned long flags;
+		u32 cause_misc = mvreg_read(pp, MVNETA_INTR_MISC_CAUSE);
+
+		mvreg_write(pp, MVNETA_INTR_MISC_CAUSE, 0);
+
+		if (cause_misc & (MVNETA_CAUSE_PHY_STATUS_CHANGE |
+				  MVNETA_CAUSE_LINK_CHANGE))
+			mvneta_link_change(pp);
+		local_irq_save(flags);
+		mvreg_write(pp, MVNETA_INTR_NEW_MASK,
+			    MVNETA_MISCINTR_INTR_MASK);
+		local_irq_restore(flags);
+	}
+
+	/* We always want trigger this function by interrupt.
+	 * This is why '0' is return to napi_complete and as return value
+	 */
+	napi_complete_done(napi, 0);
+	return 0;
+}
+
 /* Handle rxq fill: allocates rxq skbs; called when initializing a port */
 static int mvneta_rxq_fill(struct mvneta_port *pp, struct mvneta_rx_queue *rxq,
 			   int num)
@@ -3853,13 +3880,34 @@ static int mvneta_open(struct net_device *dev)
 	int ret;
 
 	if (pp->musdk_port) {
+		/* Connect to port interrupt line */
+		ret = request_irq(pp->dev->irq, mvneta_isr, 0,
+				  dev->name, pp);
+		if (ret) {
+			netdev_err(pp->dev, "cannot request irq %d\n",
+				   pp->dev->irq);
+			return ret;
+		}
+
 		ret = mvneta_mdio_probe(pp);
 		if (ret < 0) {
 			netdev_err(dev, "cannot probe MDIO bus\n");
-			return 0;
+			free_irq(pp->dev->irq, pp);
+			return ret;
 		}
+
+		/* Only mask phy-status and link-state interrupts */
+		mvreg_write(pp, MVNETA_INTR_NEW_MASK,
+			    MVNETA_MISCINTR_INTR_MASK);
+
+		mvreg_write(pp, MVNETA_INTR_MISC_MASK,
+			    MVNETA_CAUSE_PHY_STATUS_CHANGE |
+			    MVNETA_CAUSE_LINK_CHANGE);
+
+		napi_enable(&pp->napi);
+
 		phylink_start(pp->phylink);
-		netdev_warn(dev, "skipping ndo_open as this port is User Space port\n");
+		netdev_info(dev, "skipping ndo_open as this port is User Space port\n");
 		return 0;
 	}
 
@@ -4735,19 +4783,21 @@ static int mvneta_probe(struct platform_device *pdev)
 	/* Armada3700 network controller does not support per-cpu
 	 * operation, so only single NAPI should be initialized.
 	 */
-	if (!pp->musdk_port) {
-		if (pp->neta_armada3700) {
+	if (pp->neta_armada3700) {
+		if (pp->musdk_port)
+			netif_napi_add(dev, &pp->napi, mvneta_poll_musdk,
+				       NAPI_POLL_WEIGHT);
+		else
 			netif_napi_add(dev, &pp->napi, mvneta_poll,
 				       NAPI_POLL_WEIGHT);
-		} else {
-			for_each_present_cpu(cpu) {
-				struct mvneta_pcpu_port *port =
-					per_cpu_ptr(pp->ports, cpu);
+	} else {
+		for_each_present_cpu(cpu) {
+			struct mvneta_pcpu_port *port =
+				per_cpu_ptr(pp->ports, cpu);
 
-				netif_napi_add(dev, &port->napi, mvneta_poll,
-					       NAPI_POLL_WEIGHT);
-				port->pp = pp;
-			}
+			netif_napi_add(dev, &port->napi, mvneta_poll,
+				       NAPI_POLL_WEIGHT);
+			port->pp = pp;
 		}
 	}
 
