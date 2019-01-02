@@ -139,7 +139,7 @@ static int alloc_desc_table(struct gpdma_engine *engine)
 	}
 
 	engine->pool.va = (struct gpdma_desc *)
-			  __get_free_pages(GFP_KERNEL|GFP_DMA, order);
+			  __get_free_pages(GFP_KERNEL|GFP_DMA|__GFP_ZERO, order);
 	if (!engine->pool.va)
 		return -ENOMEM;
 	engine->pool.order = order;
