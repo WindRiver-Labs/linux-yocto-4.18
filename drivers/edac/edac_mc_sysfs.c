@@ -390,7 +390,7 @@ static const struct attribute_group *csrow_dev_groups[] = {
 	NULL
 };
 
-int nr_pages_per_csrow(struct csrow_info *csrow)
+static inline int nr_pages_per_csrow(struct csrow_info *csrow)
 {
 	int chan, nr_pages = 0;
 
@@ -399,7 +399,6 @@ int nr_pages_per_csrow(struct csrow_info *csrow)
 
 	return nr_pages;
 }
-EXPORT_SYMBOL(nr_pages_per_csrow);
 
 /* Create a CSROW object under specifed edac_mc_device */
 static int edac_create_csrow_object(struct mem_ctl_info *mci,
@@ -454,17 +453,12 @@ error:
 static void edac_delete_csrow_objects(struct mem_ctl_info *mci)
 {
 	int i;
-	int chn;
 	struct csrow_info *csrow;
-	const unsigned int tot_channels = mci->num_cschannel;
 
 	for (i = mci->nr_csrows - 1; i >= 0; i--) {
 		csrow = mci->csrows[i];
 		if (!nr_pages_per_csrow(csrow))
 			continue;
-		for (chn = 0; chn < tot_channels; chn++)
-			kfree(csrow->channels[chn]);
-		kfree(csrow->channels);
 		device_unregister(&mci->csrows[i]->dev);
 	}
 }
