@@ -49,12 +49,31 @@
 
 	cp0_usb3_0_phy: cp0-usb3-0-phy {
 		compatible = "usb-nop-xceiv";
+		/* vcc-supply can be changed by io-expander or GPIO,
+		 * for A7040-DB we are using by default io-expander
+		 * for other board GPIO may be needed, should update
+		 * the phandle to gpio regulator
+		 */
 		vcc-supply = <&cp0_reg_usb3_0_vbus>;
+		current-limiter-supply = <&exp_usb3_0_current_limiter>;
 	};
 
 	cp0_usb3_1_phy: cp0-usb3-1-phy {
 		compatible = "usb-nop-xceiv";
 		vcc-supply = <&cp0_reg_usb3_1_vbus>;
+		current-limiter-supply = <&exp_usb3_1_current_limiter>;
+	};
+	exp_usb3_0_current_limiter: usb3-0-current-limiter {
+		compatible = "regulator-fixed";
+		regulator-name = "usb3-0-current-limiter";
+		enable-active-high;
+		gpio = <&expander0 4 GPIO_ACTIVE_HIGH>;
+	};
+	exp_usb3_1_current_limiter: usb3-1-current-limiter {
+		compatible = "regulator-fixed";
+		regulator-name = "usb3-1-current-limiter";
+		enable-active-high;
+		gpio = <&expander0 5 GPIO_ACTIVE_HIGH>;
 	};
 };
 
