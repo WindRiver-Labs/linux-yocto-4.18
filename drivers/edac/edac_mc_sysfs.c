@@ -452,14 +452,23 @@ error:
 
 static void edac_delete_csrow_objects(struct mem_ctl_info *mci)
 {
-	int i;
+	int i, chn;
 	struct csrow_info *csrow;
 
 	for (i = mci->nr_csrows - 1; i >= 0; i--) {
 		csrow = mci->csrows[i];
-		if (!nr_pages_per_csrow(csrow))
-			continue;
-		device_unregister(&mci->csrows[i]->dev);
+
+		/* free rank_info structures and channel pointers */
+		for (chn = 0; chn < mci->num_cschannel; chn++) {
+			kfree(csrow->channels[chn]);
+		}
+		kfree(csrow->channels);
+
+		if (!device_is_registered(&mci->csrows[i]->dev)) {
+			/* free unregistered csrows device*/
+			kfree(mci->csrows[i]);
+		} else
+			device_unregister(&mci->csrows[i]->dev);
 	}
 }
 #endif
@@ -1019,15 +1028,22 @@ void edac_remove_sysfs_mci_device(struct mem_ctl_info *mci)
 #endif
 #ifdef CONFIG_EDAC_LEGACY_SYSFS
 	edac_delete_csrow_objects(mci);
+	kfree(mci->csrows);
 #endif
 
 	for (i = 0; i < mci->tot_dimms; i++) {
 		struct dimm_info *dimm = mci->dimms[i];
-		if (dimm->nr_pages == 0)
+		if (dimm->nr_pages == 0) {
+			/* free unppopulated dimm_info structure */
+			kfree(mci->dimms[i]);
 			continue;
+		}
 		edac_dbg(0, "removing device %s\n", dev_name(&dimm->dev));
 		device_unregister(&dimm->dev);
 	}
+
+	/* free all dimm_info pointers */
+	kfree(mci->dimms);
 }
 
 void edac_unregister_sysfs(struct mem_ctl_info *mci)
