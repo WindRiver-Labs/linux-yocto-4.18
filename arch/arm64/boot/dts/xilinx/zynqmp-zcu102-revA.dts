@@ -802,6 +802,7 @@
 
 &pcie {
 	status = "okay";
+	reset-gpio = <&gpio 31 GPIO_ACTIVE_HIGH>;
 };
 
 &qspi {
