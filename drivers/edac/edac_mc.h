@@ -259,13 +259,4 @@ void edac_mc_handle_error(const enum hw_event_mc_err_type type,
  */
 extern char *edac_op_state_to_string(int op_state);
 
-/**
- * nr_pages_per_csrow()  - Calculate the nr_pages of csrow contains
- *
- * @csrow: pointer to a struct csrow_info structure
- *
- * Returns: returns the int nr_pages.
- */
-extern int nr_pages_per_csrow(struct csrow_info *csrow);
-
 #endif				/* _EDAC_MC_H_ */
