@@ -98,7 +98,6 @@ struct pci_endpoint_test {
 	struct miscdevice miscdev;
 	enum pci_barno test_reg_bar;
 	size_t alignment;
-	char name[20];
 };
 
 struct pci_endpoint_test_data {
@@ -467,6 +466,7 @@ static int pci_endpoint_test_probe(struct pci_dev *pdev,
 	int err;
 	int irq = 0;
 	int id;
+	char name[20];
 	enum pci_barno bar;
 	void __iomem *base;
 	struct device *dev = &pdev->dev;
@@ -561,10 +561,10 @@ static int pci_endpoint_test_probe(struct pci_dev *pdev,
 		goto err_iounmap;
 	}
 
-	snprintf(test->name, sizeof(test->name), DRV_MODULE_NAME ".%d", id);
+	snprintf(name, sizeof(name), DRV_MODULE_NAME ".%d", id);
 	misc_device = &test->miscdev;
 	misc_device->minor = MISC_DYNAMIC_MINOR;
-	misc_device->name = test->name;
+	misc_device->name = name;
 	if (!misc_device->name) {
 		err = -ENOMEM;
 		goto err_ida_remove;
