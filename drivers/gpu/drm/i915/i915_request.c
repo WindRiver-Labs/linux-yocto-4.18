@@ -27,8 +27,11 @@
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/signal.h>
+#include <linux/locallock.h>
 
 #include "i915_drv.h"
+
+static DEFINE_LOCAL_IRQ_LOCK(pendingb_lock);
 
 static const char *i915_fence_get_driver_name(struct dma_fence *fence)
 {
@@ -346,6 +349,8 @@ static void free_capture_list(struct i915_request *request)
 static void __retire_engine_request(struct intel_engine_cs *engine,
 				    struct i915_request *rq)
 {
+	unsigned long flags;
+
 	GEM_TRACE("%s(%s) fence %llx:%d, global=%d, current %d\n",
 		  __func__, engine->name,
 		  rq->fence.context, rq->fence.seqno,
@@ -354,7 +359,7 @@ static void __retire_engine_request(struct intel_engine_cs *engine,
 
 	GEM_BUG_ON(!i915_request_completed(rq));
 
-	local_irq_disable();
+	local_lock_irqsave(pendingb_lock, flags);
 
 	spin_lock(&engine->timeline.lock);
 	GEM_BUG_ON(!list_is_first(&rq->link, &engine->timeline.requests));
@@ -372,7 +377,7 @@ static void __retire_engine_request(struct intel_engine_cs *engine,
 	}
 	spin_unlock(&rq->lock);
 
-	local_irq_enable();
+	local_unlock_irqrestore(pendingb_lock, flags);
 
 	/*
 	 * The backing object for the context is done after switching to the
