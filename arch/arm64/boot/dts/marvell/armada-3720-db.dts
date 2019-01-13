@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Device Tree file for Marvell Armada 3720 development board
- * (DB-88F3720-DDR3)
+ * (DB-88F3720 with either DDR3 or DDR4)
  * Copyright (C) 2016 Marvell
  *
  * Gregory CLEMENT <gregory.clement@free-electrons.com>
@@ -17,7 +17,7 @@
 #include "armada-372x.dtsi"
 
 / {
-	model = "Marvell Armada 3720 Development Board DB-88F3720-DDR3";
+	model = "Marvell Armada 3720 Development Board DB-88F3720";
 	compatible = "marvell,armada-3720-db", "marvell,armada3720", "marvell,armada3710";
 
 	chosen {
