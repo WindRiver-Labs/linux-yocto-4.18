@@ -3484,8 +3484,11 @@ static int mvneta_mac_link_state(struct net_device *ndev,
 static void mvneta_mac_an_restart(struct net_device *ndev)
 {
 	struct mvneta_port *pp = netdev_priv(ndev);
-	u32 gmac_an = mvreg_read(pp, MVNETA_GMAC_AUTONEG_CONFIG);
+	u32 gmac_an;
 
+	if (pp->phy_interface == PHY_INTERFACE_MODE_2500BASEX)
+		return;
+	gmac_an = mvreg_read(pp, MVNETA_GMAC_AUTONEG_CONFIG);
 	mvreg_write(pp, MVNETA_GMAC_AUTONEG_CONFIG,
 		    gmac_an | MVNETA_GMAC_INBAND_RESTART_AN);
 	mvreg_write(pp, MVNETA_GMAC_AUTONEG_CONFIG,
@@ -3567,11 +3570,12 @@ static void mvneta_mac_config(struct net_device *ndev, unsigned int mode,
 		new_clk |= MVNETA_GMAC_1MS_CLOCK_ENABLE;
 		new_an = (new_an & ~(MVNETA_GMAC_FORCE_LINK_DOWN |
 				     MVNETA_GMAC_FORCE_LINK_PASS)) |
-			 MVNETA_GMAC_INBAND_AN_ENABLE |
 			 MVNETA_GMAC_CONFIG_GMII_SPEED |
 			 /* The MAC only supports FD mode */
 			 MVNETA_GMAC_CONFIG_FULL_DUPLEX;
 
+		if (state->interface != PHY_INTERFACE_MODE_2500BASEX)
+			new_an |= MVNETA_GMAC_INBAND_AN_ENABLE;
 		if (state->pause & MLO_PAUSE_AN && state->an_enabled)
 			new_an |= MVNETA_GMAC_AN_FLOW_CTRL_EN;
 	}
@@ -3579,12 +3583,17 @@ static void mvneta_mac_config(struct net_device *ndev, unsigned int mode,
 	/* Armada 370 documentation says we can only change the port mode
 	 * and in-band enable when the link is down, so force it down
 	 * while making these changes. We also do this for GMAC_CTRL2 */
-	if ((new_ctrl0 ^ gmac_ctrl0) & MVNETA_GMAC0_PORT_1000BASE_X ||
-	    (new_ctrl2 ^ gmac_ctrl2) & MVNETA_GMAC2_INBAND_AN_ENABLE ||
-	    (new_an  ^ gmac_an) & MVNETA_GMAC_INBAND_AN_ENABLE) {
-		mvreg_write(pp, MVNETA_GMAC_AUTONEG_CONFIG,
-			    (gmac_an & ~MVNETA_GMAC_FORCE_LINK_PASS) |
-			    MVNETA_GMAC_FORCE_LINK_DOWN);
+	/* Also set the GMAC in a reset to clear port on new link-up */
+	if ((new_ctrl0 ^ gmac_ctrl0) || (new_ctrl2 ^ gmac_ctrl2) ||
+	    (new_an  ^ gmac_an)) {
+		gmac_an &= ~MVNETA_GMAC_FORCE_LINK_PASS;
+		gmac_an |= MVNETA_GMAC_FORCE_LINK_DOWN;
+		mvreg_write(pp, MVNETA_GMAC_AUTONEG_CONFIG, gmac_an);
+
+		if (state->interface == PHY_INTERFACE_MODE_2500BASEX) {
+			gmac_ctrl2 |= MVNETA_GMAC2_PORT_RESET;
+			mvreg_write(pp, MVNETA_GMAC_CTRL_2, gmac_ctrl2);
+		}
 	}
 
 	/* When at 2.5G, the link partner can send frames with shortened
@@ -3597,18 +3606,14 @@ static void mvneta_mac_config(struct net_device *ndev, unsigned int mode,
 		mvreg_write(pp, MVNETA_GMAC_CTRL_0, new_ctrl0);
 	if (new_ctrl2 != gmac_ctrl2)
 		mvreg_write(pp, MVNETA_GMAC_CTRL_2, new_ctrl2);
+	while (mvreg_read(pp, MVNETA_GMAC_CTRL_2) & MVNETA_GMAC2_PORT_RESET)
+		continue;
 	if (new_ctrl4 != gmac_ctrl4)
 		mvreg_write(pp, MVNETA_GMAC_CTRL_4, new_ctrl4);
 	if (new_clk != gmac_clk)
 		mvreg_write(pp, MVNETA_GMAC_CLOCK_DIVIDER, new_clk);
 	if (new_an != gmac_an)
 		mvreg_write(pp, MVNETA_GMAC_AUTONEG_CONFIG, new_an);
-
-	if (gmac_ctrl2 & MVNETA_GMAC2_PORT_RESET) {
-		while ((mvreg_read(pp, MVNETA_GMAC_CTRL_2) &
-			MVNETA_GMAC2_PORT_RESET) != 0)
-			continue;
-	}
 }
 
 static void mvneta_set_eee(struct mvneta_port *pp, bool enable)
