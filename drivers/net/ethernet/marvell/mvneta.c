@@ -4768,6 +4768,21 @@ static int mvneta_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, pp->dev);
 
+	/* Port may be configured by Uboot to transmit IDLE, so a remote side
+	 * feels the link as UP. Stop TX in same way as in mvneta_start/stop.
+	 */
+	if (pp->phylink) {
+		if (rtnl_is_locked()) {
+			if (!mvneta_mdio_probe(pp))
+				mvneta_mdio_remove(pp);
+		} else {
+			rtnl_lock();
+			if (!mvneta_mdio_probe(pp))
+				mvneta_mdio_remove(pp);
+			rtnl_unlock();
+		}
+	}
+
 	if (pp->musdk_port)
 		netdev_info(dev, "Port belong to User Space (MUSDK)\n");
 
