@@ -117,16 +117,14 @@
 };
 
 &cp0_usb3_0 {
+	status = "okay";
 	usb-phy = <&cp0_usb3_0_phy0>;
-	/* Generic PHY, providing serdes lanes */
-	phys = <&cp0_comphy1 0>;
 	phy-names = "usb";
 };
 
 &cp0_usb3_1 {
+	status = "okay";
 	usb-phy = <&cp0_usb3_0_phy1>;
-	/* Generic PHY, providing serdes lanes */
-	phys = <&cp0_comphy3 1>;
 	phy-names = "usb";
 };
 
