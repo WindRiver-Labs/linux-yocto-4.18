@@ -291,6 +291,41 @@ static int mvpp2_dbgfs_port_vid_show(struct seq_file *s, void *unused)
 
 DEFINE_SHOW_ATTRIBUTE(mvpp2_dbgfs_port_vid);
 
+static int mvpp2_prs_hw_hits_dump(struct seq_file *s,
+				  struct mvpp2_prs_entry *pe)
+{
+	struct mvpp2 *priv = ((struct mvpp2_port *)s->private)->priv;
+	unsigned int cnt;
+
+	cnt = mvpp2_prs_hits(priv, pe->index);
+	if (cnt != 0)
+		seq_printf(s, "----- HITS: %d ------\n", cnt);
+	return 0;
+}
+
+static int mvpp2_dbgfs_port_parser_dump(struct seq_file *s,
+					struct mvpp2_prs_entry *pe)
+{
+	int i;
+
+	/* hw entry id */
+	seq_printf(s, "   [%4d] ", pe->index);
+
+	i = MVPP2_PRS_TCAM_WORDS - 1;
+	seq_printf(s, "%1.1x ", pe->tcam[i--] & MVPP2_PRS_LU_MASK);
+
+	while (i >= 0)
+		seq_printf(s, "%4.4x ", (pe->tcam[i--]) & MVPP2_PRS_WORD_MASK);
+
+	seq_printf(s, "| %4.4x %8.8x %8.8x %8.8x\n",
+		   pe->sram[3] & MVPP2_PRS_WORD_MASK,
+		   pe->sram[2],  pe->sram[1],  pe->sram[0]);
+
+	mvpp2_prs_hw_hits_dump(s, pe);
+
+	return 0;
+}
+
 static int mvpp2_dbgfs_port_parser_show(struct seq_file *s, void *unused)
 {
 	struct mvpp2_port *port = s->private;
@@ -304,7 +339,7 @@ static int mvpp2_dbgfs_port_parser_show(struct seq_file *s, void *unused)
 
 		pmap = mvpp2_prs_tcam_port_map_get(&pe);
 		if (priv->prs_shadow[i].valid && test_bit(port->id, &pmap))
-			seq_printf(s, "%03d\n", i);
+			mvpp2_dbgfs_port_parser_dump(s, &pe);
 	}
 
 	return 0;

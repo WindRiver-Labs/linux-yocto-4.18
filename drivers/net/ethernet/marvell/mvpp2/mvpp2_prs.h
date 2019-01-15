@@ -51,6 +51,7 @@
 #define MVPP2_PRS_AI_MASK			0xff
 #define MVPP2_PRS_PORT_MASK			0xff
 #define MVPP2_PRS_LU_MASK			0xf
+#define MVPP2_PRS_WORD_MASK			0xffff
 
 /* TCAM entries in registers are accessed using 16 data bits + 16 enable bits */
 #define MVPP2_PRS_BYTE_TO_WORD(byte)	((byte) / 2)
