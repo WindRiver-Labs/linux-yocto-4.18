@@ -5987,6 +5987,23 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 
 	priv->port_list[priv->port_count++] = port;
 
+	/* Port may be configured by Uboot to transmit IDLE, so a remote side
+	 * feels the link as UP. Stop TX in same way as in mvpp2_open/stop.
+	 */
+	if (port->of_node && port->phylink) {
+		if (rtnl_is_locked()) {
+			if (!phylink_of_phy_connect(port->phylink,
+						    port->of_node, 0))
+				phylink_disconnect_phy(port->phylink);
+		} else {
+			rtnl_lock();
+			if (!phylink_of_phy_connect(port->phylink,
+						    port->of_node, 0))
+				phylink_disconnect_phy(port->phylink);
+			rtnl_unlock();
+		}
+	}
+
 	return 0;
 
 err_phylink:
