@@ -3545,16 +3545,18 @@ err_drop_frame:
 		else
 			frag_size = bm_pool->frag_size;
 
-		/* _sync_ for coherency (_unmap_ is asynchroneous) */
+		/* _sync_ for coherency (_unmap_ is asynchroneous).
+		 * _sync_ should be done for the SAME size as in map/unmap.
+		 * The prefetch is for CPU and should be after unmap ~ mapToCPU
+		 */
 		if (rx_todo == 1)
 			dma_sync_single_for_cpu(dev->dev.parent, dma_addr,
-						MVPP2_RX_BUF_SIZE(rx_bytes),
+						bm_pool->buf_size,
 						DMA_FROM_DEVICE);
-
-		prefetch(data + NET_SKB_PAD); /* packet header */
-
 		dma_unmap_single(dev->dev.parent, dma_addr,
 				 bm_pool->buf_size, DMA_FROM_DEVICE);
+
+		prefetch(data + NET_SKB_PAD); /* packet header */
 
 		skb = mvpp2_build_skb(data, frag_size,
 				      napi, port, rx_status, rxq->id, bm_pool);
