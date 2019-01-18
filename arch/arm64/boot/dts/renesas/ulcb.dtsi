@@ -97,7 +97,7 @@
 	sound_card: sound {
 		compatible = "audio-graph-card";
 
-		label = "rcar-sound";
+		label = "ak4613";
 
 		dais = <&rsnd_port0>;
 	};
