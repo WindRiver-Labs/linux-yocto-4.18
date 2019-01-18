@@ -650,6 +650,9 @@ static int rx_header_size __read_mostly = 128;
 /* HW BM need that each port be identify by a unique ID */
 static int global_port_id;
 
+/* Branch prediction switches */
+DEFINE_STATIC_KEY_FALSE(a3700_variant);
+
 #define MVNETA_DRIVER_NAME "mvneta"
 #define MVNETA_DRIVER_VERSION "1.0"
 
@@ -2811,7 +2814,7 @@ static int mvneta_poll(struct napi_struct *napi, int budget)
 	 */
 	rx_queue = fls(((cause_rx_tx >> 8) & 0xff));
 
-	cause_rx_tx |= pp->neta_armada3700 ? pp->cause_rx_tx :
+	cause_rx_tx |= static_branch_likely(&a3700_variant) ? pp->cause_rx_tx :
 		port->cause_rx_tx;
 
 	if (rx_queue) {
@@ -2828,7 +2831,7 @@ static int mvneta_poll(struct napi_struct *napi, int budget)
 		cause_rx_tx = 0;
 		napi_complete_done(napi, rx_done);
 
-		if (pp->neta_armada3700) {
+		if (static_branch_likely(&a3700_variant)) {
 			unsigned long flags;
 
 			local_irq_save(flags);
@@ -2842,7 +2845,7 @@ static int mvneta_poll(struct napi_struct *napi, int budget)
 		}
 	}
 
-	if (pp->neta_armada3700)
+	if (static_branch_likely(&a3700_variant))
 		pp->cause_rx_tx = cause_rx_tx;
 	else
 		port->cause_rx_tx = cause_rx_tx;
@@ -4605,8 +4608,10 @@ static int mvneta_probe(struct platform_device *pdev)
 	pp->indir[0] = rxq_def;
 
 	/* Get special SoC configurations */
-	if (of_device_is_compatible(dn, "marvell,armada-3700-neta"))
+	if (of_device_is_compatible(dn, "marvell,armada-3700-neta")) {
 		pp->neta_armada3700 = true;
+		static_branch_enable(&a3700_variant);
+	}
 
 	pp->clk = devm_clk_get(&pdev->dev, "core");
 	if (IS_ERR(pp->clk))
