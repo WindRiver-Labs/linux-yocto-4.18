@@ -3298,7 +3298,7 @@ static int mvpp2_recycle_get_bm_id(struct sk_buff *skb)
 	/* ipsec: sp/secpath, _skb_refdst ... */
 	if (!skb_irq_freeable(skb))
 		return -1;
-	if (skb_shinfo(skb)->tx_flags & SKBTX_DEV_ZEROCOPY)
+	if (skb_shinfo(skb)->tx_flags & SKBTX_ZEROCOPY_FRAG)
 		return -1;
 
 	/* Get bm-pool-id */
