@@ -62,6 +62,19 @@ static int m25p80_read_reg(struct spi_nor *nor, u8 code, u8 *val, int len)
 	return ret;
 }
 
+#ifdef CONFIG_SPI_ZYNQMP_GQSPI
+static int m25p80_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
+{
+	struct m25p *flash = nor->priv;
+	struct spi_device *spi = flash->spimem->spi;
+
+	flash->command[0] = opcode;
+	if (buf)
+		memcpy(&flash->command[1], buf, len);
+
+	return spi_write(spi, flash->command, len + 1);
+}
+#else
 static int m25p80_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 {
 	struct m25p *flash = nor->priv;
@@ -82,6 +95,7 @@ static int m25p80_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 
 	return ret;
 }
+#endif
 
 static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 			    const u_char *buf)

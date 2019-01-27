@@ -247,6 +247,9 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		return -ENOMEM;
 
 	spi_message_init(&msg);
+#ifdef CONFIG_SPI_ZYNQMP_GQSPI
+	memset(xfers, 0x00, ARRAY_SIZE(xfers)*sizeof(struct spi_transfer));
+#endif
 
 	tmpbuf[0] = op->cmd.opcode;
 	xfers[xferpos].tx_buf = tmpbuf;
@@ -266,6 +269,9 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		xfers[xferpos].tx_buf = tmpbuf + 1;
 		xfers[xferpos].len = op->addr.nbytes;
 		xfers[xferpos].tx_nbits = op->addr.buswidth;
+#ifdef CONFIG_SPI_ZYNQMP_GQSPI
+		xfers[xferpos].isaddr = true;
+#endif
 		spi_message_add_tail(&xfers[xferpos], &msg);
 		xferpos++;
 		totalxferlen += op->addr.nbytes;
@@ -276,6 +282,9 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		xfers[xferpos].tx_buf = tmpbuf + op->addr.nbytes + 1;
 		xfers[xferpos].len = op->dummy.nbytes;
 		xfers[xferpos].tx_nbits = op->dummy.buswidth;
+#ifdef CONFIG_SPI_ZYNQMP_GQSPI
+		xfers[xferpos].isdummy = true;
+#endif
 		spi_message_add_tail(&xfers[xferpos], &msg);
 		xferpos++;
 		totalxferlen += op->dummy.nbytes;

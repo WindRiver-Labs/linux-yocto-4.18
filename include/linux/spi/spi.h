@@ -807,7 +807,10 @@ struct spi_transfer {
 	u8		bits_per_word;
 	u16		delay_usecs;
 	u32		speed_hz;
-
+#ifdef CONFIG_SPI_ZYNQMP_GQSPI
+	bool		isdummy;
+	bool		isaddr;
+#endif
 	struct list_head transfer_list;
 };
 

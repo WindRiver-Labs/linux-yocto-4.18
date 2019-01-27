@@ -137,6 +137,12 @@
 #define GQSPI_SELECT_MODE_QUADSPI	0x4
 #define GQSPI_DMA_UNALIGN		0x3
 #define GQSPI_DEFAULT_NUM_CS	1	/* Default number of chip selects */
+#define GQSPI_RX_BUS_WIDTH_QUAD		0x4
+#define GQSPI_RX_BUS_WIDTH_DUAL		0x2
+#define GQSPI_RX_BUS_WIDTH_SINGLE	0x1
+#define GQSPI_TX_BUS_WIDTH_QUAD		0x4
+#define GQSPI_TX_BUS_WIDTH_DUAL		0x2
+#define GQSPI_TX_BUS_WIDTH_SINGLE	0x1
 #define GQSPI_LPBK_DLY_ADJ_LPBK_SHIFT	5
 #define GQSPI_LPBK_DLY_ADJ_DLY_1	0x2
 #define GQSPI_LPBK_DLY_ADJ_DLY_1_SHIFT	3
@@ -193,6 +199,8 @@ struct zynqmp_qspi {
 	u32 genfifobus;
 	u32 dma_rx_bytes;
 	dma_addr_t dma_addr;
+	u32 rx_bus_width;
+	u32 tx_bus_width;
 	u32 genfifoentry;
 	bool isinstr;
 	enum mode_type mode;
@@ -470,7 +478,6 @@ static void zynqmp_qspi_chipselect(struct spi_device *qspi, bool is_high)
 	u32 genfifoentry = 0x0, statusreg;
 
 	genfifoentry |= GQSPI_GENFIFO_MODE_SPI;
-	genfifoentry |= xqspi->genfifobus;
 
 	if (qspi->master->flags & SPI_MASTER_BOTH_CS) {
 		zynqmp_gqspi_selectslave(xqspi,
@@ -485,6 +492,8 @@ static void zynqmp_qspi_chipselect(struct spi_device *qspi, bool is_high)
 			GQSPI_SELECT_FLASH_CS_LOWER,
 			GQSPI_SELECT_FLASH_BUS_LOWER);
 	}
+
+	genfifoentry |= xqspi->genfifobus;
 
 	if (!is_high) {
 		genfifoentry |= xqspi->genfifocs;
@@ -792,6 +801,28 @@ static inline u32 zynqmp_qspi_selectspimode(struct zynqmp_qspi *xqspi,
 }
 
 /**
+ * zynqmp_qspi_selectspimode_dummy -	Selects SPI mode for dummy - x1 or x2 or x4.
+ * @xqspi:	xqspi is a pointer to the GQSPI instance
+ * Return:	Mask to set desired SPI mode in GENFIFO entry.
+ */
+static inline u32 zynqmp_qspi_selectspimode_dummy(struct zynqmp_qspi *xqspi)
+{
+	u32 mask = 0;
+
+	/* SPI mode */
+	if (xqspi->rx_bus_width == GQSPI_RX_BUS_WIDTH_QUAD ||
+			xqspi->tx_bus_width == GQSPI_TX_BUS_WIDTH_QUAD)
+			mask |= GQSPI_GENFIFO_MODE_QUADSPI;
+	else if (xqspi->rx_bus_width == GQSPI_RX_BUS_WIDTH_DUAL ||
+			xqspi->tx_bus_width == GQSPI_TX_BUS_WIDTH_DUAL)
+			mask |= GQSPI_GENFIFO_MODE_DUALSPI;
+	else
+			mask |= GQSPI_GENFIFO_MODE_SPI;
+
+	return mask;
+}
+
+/**
  * zynq_qspi_setuprxdma -	This function sets up the RX DMA operation
  * @xqspi:	xqspi is a pointer to the GQSPI instance.
  */
@@ -864,10 +895,20 @@ static void zynqmp_qspi_txrxsetup(struct zynqmp_qspi *xqspi,
 		/* Setup data to be TXed */
 		*genfifoentry &= ~GQSPI_GENFIFO_RX;
 		*genfifoentry |= GQSPI_GENFIFO_DATA_XFER;
-		*genfifoentry |= GQSPI_GENFIFO_TX;
-		*genfifoentry |=
-			zynqmp_qspi_selectspimode(xqspi, transfer->tx_nbits);
-		xqspi->bytes_to_transfer = transfer->len;
+		if (transfer->isdummy)
+			*genfifoentry &= ~GQSPI_GENFIFO_TX;
+		else
+			*genfifoentry |= GQSPI_GENFIFO_TX;
+
+		if (transfer->isdummy)
+			*genfifoentry |= zynqmp_qspi_selectspimode_dummy(xqspi);
+		else
+			*genfifoentry |=
+				zynqmp_qspi_selectspimode(xqspi, transfer->tx_nbits);
+		if (transfer->isdummy)
+			xqspi->bytes_to_transfer = 0;
+		else
+			xqspi->bytes_to_transfer = transfer->len;
 		if (xqspi->mode == GQSPI_MODE_DMA) {
 			config_reg = zynqmp_gqspi_read(xqspi,
 							GQSPI_CONFIG_OFST);
@@ -927,12 +968,18 @@ static int zynqmp_qspi_start_transfer(struct spi_master *master,
 		(master->flags & SPI_MASTER_DATA_STRIPE))
 		genfifoentry |= GQSPI_GENFIFO_STRIPE;
 
+	if (transfer->isaddr || transfer->isdummy)
+		genfifoentry &= ~GQSPI_GENFIFO_STRIPE;
+
 	zynqmp_qspi_txrxsetup(xqspi, transfer, &genfifoentry);
 
 	if (xqspi->mode == GQSPI_MODE_DMA)
 		transfer_len = xqspi->dma_rx_bytes;
 	else
 		transfer_len = transfer->len;
+
+	if (transfer->isdummy)
+		transfer_len = (transfer->len*8)/transfer->tx_nbits;
 
 	xqspi->genfifoentry = genfifoentry;
 	if ((transfer_len) < GQSPI_GENFIFO_IMM_DATA_MASK) {
@@ -1153,6 +1200,9 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct device *dev = &pdev->dev;
 	u32 num_cs;
+	u32 rx_bus_width;
+	u32 tx_bus_width;
+	struct device_node *nc;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(*xqspi));
 	if (!master)
@@ -1222,6 +1272,30 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 		dev_err(dev, "request_irq failed\n");
 		goto clk_dis_all;
 	}
+
+	xqspi->rx_bus_width = GQSPI_RX_BUS_WIDTH_SINGLE;
+	for_each_available_child_of_node(pdev->dev.of_node, nc) {
+		ret = of_property_read_u32(nc, "spi-rx-bus-width",
+					&rx_bus_width);
+		if (!ret) {
+			xqspi->rx_bus_width = rx_bus_width;
+			break;
+		}
+	}
+	if (ret)
+		dev_err(dev, "rx bus width not found\n");
+
+	xqspi->tx_bus_width = GQSPI_TX_BUS_WIDTH_SINGLE;
+	for_each_available_child_of_node(pdev->dev.of_node, nc) {
+		ret = of_property_read_u32(nc, "spi-tx-bus-width",
+					&tx_bus_width);
+		if (!ret) {
+			xqspi->tx_bus_width = tx_bus_width;
+			break;
+		}
+	}
+	if (ret)
+		dev_err(dev, "tx bus width not found\n");
 
 	ret = of_property_read_u32(pdev->dev.of_node, "num-cs", &num_cs);
 	if (ret < 0)
