@@ -553,6 +553,7 @@ int __init early_irq_init(void)
 		raw_spin_lock_init(&desc[i].lock);
 		lockdep_set_class(&desc[i].lock, &irq_desc_lock_class);
 		desc_set_defaults(i, &desc[i], node, NULL, NULL);
+		mutex_init(&desc[i].request_mutex);
 	}
 	return arch_early_irq_init();
 }
