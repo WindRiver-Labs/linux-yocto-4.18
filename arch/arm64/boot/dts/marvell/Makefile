@@ -30,3 +30,4 @@ dtb-$(CONFIG_ARCH_MVEBU) += armada-8320-pd.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-3900-db-vd-A.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-3900-db-vd-B.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += cn9130-db-A.dtb
+dtb-$(CONFIG_ARCH_MVEBU) += cn9131-db-A.dtb
