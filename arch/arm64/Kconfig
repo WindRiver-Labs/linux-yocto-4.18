@@ -703,7 +703,7 @@ config CPU_BIG_ENDIAN
 
 config MMIO_64BIT
 	bool "64BIT MMIO Access"
-	default n
+	default y
 	help
 	  Say Y if you your platform supports 64bit MMIO access.
 
