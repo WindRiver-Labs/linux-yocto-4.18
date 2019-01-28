@@ -127,13 +127,3 @@
 	usb-phy = <&cp0_usb3_0_phy1>;
 	phy-names = "usb";
 };
-
-&cp0_pcie0 {
-	status = "okay";
-	ranges =
-		/* downstream I/O */
-		<0x81000000 0 0xf8000000 0 0xf8000000 0 0x10000
-		/* non-prefetchable memory */
-		0x82000000 0 0xc0000000 0 0xc0000000 0 0x1000000>;
-};
-
