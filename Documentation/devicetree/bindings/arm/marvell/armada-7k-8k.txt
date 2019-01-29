@@ -22,12 +22,7 @@ SoC:
    - "marvell,armada8040", "marvell,armada-ap806-quad", "marvell,armada-ap806"
       when the SoC being used is the Armada 8040
 
-   - "marvell,cn9130", "marvell,armada-ap807-quad", "marvell,armada-ap807"
-      when the SoC being used is the CN9130
-
 Boards:
-   - "marvell,cn9130-db-A"
-      when the board being used is the Armada CN9130 Development board
 
    - "marvell,armada3900-db-vd"
       when the board being used is the Armada 3900 validation board
