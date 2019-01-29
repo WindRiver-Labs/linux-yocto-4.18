@@ -1,0 +1,25 @@
+Marvell OcteonTX2 CN913X Platforms Device Tree Bindings
+-------------------------------------------------------
+
+Boards using a SoC of the Marvell CN913X families must carry the following
+root node property:
+
+ - compatible, with one of the following values:
+
+SoC:
+   - "marvell,cn9130", "marvell,armada-ap807-quad", "marvell,armada-ap807"
+      when the SoC being used is the CN9130
+
+Boards:
+   - "marvell,cn9130-db-A"
+      when the board being used is the OcteonTX2 CN9130 Development board with
+      Setup A.
+
+   - "marvell,cn9131-db-A"
+      when the board being used is the OcteonTX2 CN9131 Development board with
+      Setup A.
+
+Example:
+
+compatible = "marvell,cn9131-db-A", "marvell,cn9131-db",
+	     "marvell,armada-ap807-quad", "marvell,armada-ap807";
