@@ -3697,6 +3697,13 @@ static int __init caam_algapi_init(void)
 		if (!aes_inst && (alg_sel == OP_ALG_ALGSEL_AES))
 				continue;
 
+		t_alg = caam_alg_alloc(alg);
+		if (IS_ERR(t_alg)) {
+			err = PTR_ERR(t_alg);
+			pr_warn("%s alg allocation failed\n", alg->driver_name);
+			continue;
+		}
+
 		/*
 		 * Check support for AES modes not available
 		 * on LP devices.
@@ -3705,13 +3712,6 @@ static int __init caam_algapi_init(void)
 		    (t_alg->caam.class1_alg_type & OP_ALG_AAI_MASK) ==
 		    OP_ALG_AAI_XTS)
 			continue;
-
-		t_alg = caam_alg_alloc(alg);
-		if (IS_ERR(t_alg)) {
-			err = PTR_ERR(t_alg);
-			pr_warn("%s alg allocation failed\n", alg->driver_name);
-			continue;
-		}
 
 		err = crypto_register_alg(&t_alg->crypto_alg);
 		if (err) {
