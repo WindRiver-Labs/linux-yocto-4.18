@@ -19,6 +19,10 @@ Boards:
       when the board being used is the OcteonTX2 CN9131 Development board with
       Setup A.
 
+   - "marvell,cn9132-db-A", "marvell,cn9132-db"
+      when the board being used is the OcteonTX2 CN9132 Development board with
+      Setup A.
+
 Example:
 
 compatible = "marvell,cn9131-db-A", "marvell,cn9131-db",
