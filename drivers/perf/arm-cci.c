@@ -1336,9 +1336,9 @@ static int cci_pmu_event_init(struct perf_event *event)
 	 * the event being installed into its context, so the PMU's CPU can't
 	 * change under our feet.
 	 */
+	event->cpu = cci_pmu->cpu;
 	if (event->cpu < 0)
 		return -EINVAL;
-	event->cpu = cci_pmu->cpu;
 
 	event->destroy = hw_perf_event_destroy;
 	if (!atomic_inc_not_zero(active_events)) {
@@ -1678,19 +1678,21 @@ static int cci_pmu_probe(struct platform_device *pdev)
 	raw_spin_lock_init(&cci_pmu->hw_events.pmu_lock);
 	mutex_init(&cci_pmu->reserve_mutex);
 	atomic_set(&cci_pmu->active_events, 0);
-	cci_pmu->cpu = get_cpu();
+	cci_pmu->cpu = -1;
 
 	ret = cci_pmu_init(cci_pmu, pdev);
 	if (ret) {
-		put_cpu();
 		return ret;
 	}
+
+	g_cci_pmu = cci_pmu;
 
 	cpuhp_setup_state_nocalls(CPUHP_AP_PERF_ARM_CCI_ONLINE,
 				  "perf/arm/cci:online", NULL,
 				  cci_pmu_offline_cpu);
-	put_cpu();
-	g_cci_pmu = cci_pmu;
+
+	cci_pmu->cpu = raw_smp_processor_id();
+
 	pr_info("ARM %s PMU driver probed", cci_pmu->model->name);
 	return 0;
 }
