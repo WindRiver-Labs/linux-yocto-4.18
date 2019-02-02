@@ -998,7 +998,7 @@ static int __test_tls(struct crypto_aead *tfm, int enc,
 	struct scatterlist *sg;
 	struct scatterlist *sgout;
 	const char *e, *d;
-	struct tcrypt_result result;
+	struct crypto_wait wait;
 	void *input;
 	void *output;
 	void *assoc;
@@ -1035,7 +1035,7 @@ static int __test_tls(struct crypto_aead *tfm, int enc,
 	d = diff_dst ? "-ddst" : "";
 	e = enc ? "encryption" : "decryption";
 
-	init_completion(&result.completion);
+	crypto_init_wait(&wait);
 
 	req = aead_request_alloc(tfm, GFP_KERNEL);
 	if (!req) {
@@ -1045,7 +1045,7 @@ static int __test_tls(struct crypto_aead *tfm, int enc,
 	}
 
 	aead_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG,
-				  tcrypt_complete, &result);
+				  crypto_req_done, &wait);
 
 	for (i = 0; i < tcount; i++) {
 		input = xbuf[0];
@@ -1111,32 +1111,10 @@ static int __test_tls(struct crypto_aead *tfm, int enc,
 
 		aead_request_set_ad(req, template[i].alen);
 
-		ret = enc ? crypto_aead_encrypt(req) : crypto_aead_decrypt(req);
+		ret = crypto_wait_req(enc ? crypto_aead_encrypt(req) :
+		                      crypto_aead_decrypt(req), &wait);
 
-		switch (ret) {
-		case 0:
-			if (template[i].novrfy) {
-				/* verification was supposed to fail */
-				pr_err("alg: tls%s: %s failed on test %d for %s: ret was 0, expected -EBADMSG\n",
-				       d, e, i, algo);
-				/* so really, we got a bad message */
-				ret = -EBADMSG;
-				goto out;
-			}
-			break;
-		case -EINPROGRESS:
-		case -EBUSY:
-			wait_for_completion(&result.completion);
-			reinit_completion(&result.completion);
-			ret = result.err;
-			if (!ret)
-				break;
-		case -EBADMSG:
-			/* verification failure was expected */
-			if (template[i].novrfy)
-				continue;
-			/* fall through */
-		default:
+		if (ret) {
 			pr_err("alg: tls%s: %s failed on test %d for %s: ret=%d\n",
 			       d, e, i, algo, -ret);
 			goto out;
