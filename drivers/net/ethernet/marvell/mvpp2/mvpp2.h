@@ -1026,6 +1026,9 @@ struct mvpp2_port {
 
 	/* Coherency-update for TX-ON from link_status_irq */
 	struct tasklet_struct txqs_on_tasklet;
+
+	/* Firmware TX flow control */
+	bool tx_fc;
 };
 
 /* The mvpp2_tx_desc and mvpp2_rx_desc structures describe the
