@@ -51,6 +51,8 @@
 			status = "disabled";
 			dma-coherent;
 
+			cm3-mem = <&CP110_LABEL(cm3_sram)>;
+
 			CP110_LABEL(eth0): eth0 {
 				interrupts = <ICU_GRP_NSR 39 IRQ_TYPE_LEVEL_HIGH>,
 					<ICU_GRP_NSR 43 IRQ_TYPE_LEVEL_HIGH>,
@@ -174,6 +176,14 @@
 			#interrupt-cells = <3>;
 			interrupt-controller;
 			msi-parent = <&gicp>;
+		};
+
+		CP110_LABEL(cm3_sram): cm3@220000 {
+			compatible = "mmio-sram";
+			reg = <0x220000 0x800>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x220000 0x800>;
 		};
 
 		CP110_LABEL(rtc): rtc@284000 {
