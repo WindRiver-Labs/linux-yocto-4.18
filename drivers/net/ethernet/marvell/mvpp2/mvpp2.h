@@ -856,6 +856,9 @@ struct mvpp2 {
 	struct gen_pool *sram_pool;
 
 	bool custom_dma_mask;
+
+	/* Spinlocks for CM3 shared memory configuration */
+	spinlock_t mss_spinlock;
 };
 
 struct mvpp2_pcpu_stats {
