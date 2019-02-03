@@ -897,6 +897,9 @@ struct mvpp2 {
 	/* CM3 SRAM pool */
 	struct gen_pool *sram_pool;
 
+	/* Global TX Flow Control config */
+	bool global_tx_fc;
+
 	bool custom_dma_mask;
 
 	/* Spinlocks for CM3 shared memory configuration */
