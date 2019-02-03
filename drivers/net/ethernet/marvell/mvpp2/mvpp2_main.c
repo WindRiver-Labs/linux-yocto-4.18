@@ -26,6 +26,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/genalloc.h>
 #include <linux/phy.h>
 #include <linux/phylink.h>
 #include <linux/phy/phy.h>
@@ -6348,6 +6349,35 @@ static int mvpp2_init(struct platform_device *pdev, struct mvpp2 *priv)
 	return 0;
 }
 
+static int mvpp2_get_sram(struct platform_device *pdev,
+			  struct mvpp2 *priv)
+{
+	struct device_node *dn = pdev->dev.of_node;
+	struct resource *res;
+
+	if (has_acpi_companion(&pdev->dev)) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+		if (!res) {
+			dev_warn(&pdev->dev, "ACPI is too old, TX FC disabled\n");
+			return 0;
+		}
+		priv->cm3_base = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(priv->cm3_base))
+			return PTR_ERR(priv->cm3_base);
+	} else {
+		priv->sram_pool = of_gen_pool_get(dn, "cm3-mem", 0);
+		if (!priv->sram_pool) {
+			dev_warn(&pdev->dev, "DT is too old, TX FC disabled\n");
+			return 0;
+		}
+		priv->cm3_base = (void __iomem *)gen_pool_alloc(priv->sram_pool,
+								MSS_SRAM_SIZE);
+		if (!priv->cm3_base)
+			return -ENOMEM;
+	}
+	return 0;
+}
+
 static int mvpp2_probe(struct platform_device *pdev)
 {
 	const struct acpi_device_id *acpi_id;
@@ -6404,6 +6434,11 @@ static int mvpp2_probe(struct platform_device *pdev)
 		priv->iface_base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(priv->iface_base))
 			return PTR_ERR(priv->iface_base);
+
+		/* Map CM3 SRAM */
+		err = mvpp2_get_sram(pdev, priv);
+		if (err)
+			dev_warn(&pdev->dev, "Fail to alloc CM3 SRAM\n");
 	}
 
 	if (priv->hw_version != MVPP21 && dev_of_node(&pdev->dev)) {
@@ -6653,6 +6688,12 @@ static int mvpp2_remove(struct platform_device *pdev)
 	if (priv->custom_dma_mask) {
 		kfree(pdev->dev.dma_mask);
 		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
+	}
+
+	if (!has_acpi_companion(&pdev->dev)) {
+		gen_pool_free(priv->sram_pool, (unsigned long)priv->cm3_base,
+			      MSS_SRAM_SIZE);
+		gen_pool_destroy(priv->sram_pool);
 	}
 
 	if (is_acpi_node(port_fwnode))

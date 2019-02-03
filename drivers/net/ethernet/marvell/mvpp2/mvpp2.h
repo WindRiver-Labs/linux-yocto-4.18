@@ -765,6 +765,9 @@ enum mvpp2_prs_l3_cast {
 
 #define MVPP2_DESC_DMA_MASK	DMA_BIT_MASK(40)
 
+/* MSS Flow control */
+#define MSS_SRAM_SIZE	0x800
+
 /* Definitions */
 
 /* Shared Packet Processor resources */
@@ -772,6 +775,7 @@ struct mvpp2 {
 	/* Shared registers' base addresses */
 	void __iomem *lms_base;
 	void __iomem *iface_base;
+	void __iomem *cm3_base;
 
 	/* On PPv2.2, each "software thread" can access the base
 	 * register through a separate address space, each 64 KB apart
@@ -829,6 +833,9 @@ struct mvpp2 {
 
 	/* Debugfs root entry */
 	struct dentry *dbgfs_dir;
+
+	/* CM3 SRAM pool */
+	struct gen_pool *sram_pool;
 
 	bool custom_dma_mask;
 };
@@ -1219,6 +1226,18 @@ static inline
 u32 mvpp2_cpu_to_thread(struct mvpp2 *priv, int cpu)
 {
 	return cpu % priv->nthreads;
+}
+
+static inline
+void mvpp2_cm3_write(struct mvpp2 *priv, u32 offset, u32 data)
+{
+	writel(data, priv->cm3_base + offset);
+}
+
+static inline
+u32 mvpp2_cm3_read(struct mvpp2 *priv, u32 offset)
+{
+	return readl(priv->cm3_base + offset);
 }
 
 /* These accessors should be used to access:
