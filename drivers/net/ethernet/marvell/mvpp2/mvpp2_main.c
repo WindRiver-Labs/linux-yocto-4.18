@@ -949,6 +949,16 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 		new_long_pool = MVPP2_BM_LONG;
 
 	if (new_long_pool != port->pool_long->id) {
+		if (port->tx_fc) {
+			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
+				mvpp2_bm_pool_update_fc(port,
+							port->pool_short,
+							false);
+			else
+				mvpp2_bm_pool_update_fc(port, port->pool_long,
+							false);
+		}
+
 		/* Remove port from old short & long pool */
 		port->pool_long = mvpp2_bm_pool_use(port, port->pool_long->id,
 						    port->pool_long->pkt_size);
@@ -964,6 +974,15 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 
 		/* Add port to new short & long pool */
 		mvpp2_swf_bm_pool_init(port);
+
+		if (port->tx_fc) {
+			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
+				mvpp2_bm_pool_update_fc(port, port->pool_long,
+							true);
+			else
+				mvpp2_bm_pool_update_fc(port, port->pool_short,
+							true);
+		}
 
 		/* Update L4 checksum when jumbo enable/disable on port */
 		if (new_long_pool == MVPP2_BM_JUMBO && port->id != 0) {
@@ -5014,6 +5033,18 @@ static int mvpp2_ethtool_set_pause_param(struct net_device *dev,
 					 struct ethtool_pauseparam *pause)
 {
 	struct mvpp2_port *port = netdev_priv(dev);
+
+	if (pause->tx_pause && port->priv->global_tx_fc) {
+		port->tx_fc = true;
+		mvpp2_rxq_enable_fc(port);
+		mvpp2_bm_pool_update_fc(port, port->pool_long, true);
+		mvpp2_bm_pool_update_fc(port, port->pool_short, true);
+	} else if (port->priv->global_tx_fc) {
+		port->tx_fc = false;
+		mvpp2_rxq_disable_fc(port);
+		mvpp2_bm_pool_update_fc(port, port->pool_long, false);
+		mvpp2_bm_pool_update_fc(port, port->pool_short, false);
+	}
 
 	if (!port->phylink)
 		return -ENOTSUPP;
