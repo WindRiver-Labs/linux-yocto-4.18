@@ -646,6 +646,18 @@
 #define MVPP2_TX_FIFO_THRESHOLD(kb)	\
 		(kb * 1024 - MVPP2_TX_FIFO_THRESHOLD_MIN)
 
+/* RX FIFO threshold in 1KB granularity */
+#define MVPP23_PORT0_FIFO_TRSH	(9 * 1024)
+#define MVPP23_PORT1_FIFO_TRSH	(4 * 1024)
+#define MVPP23_PORT2_FIFO_TRSH	(2 * 1024)
+
+/* RX Flow Control Registers */
+#define MVPP2_RX_FC_REG(port)		(0x150 + 4 * (port))
+#define     MVPP2_RX_FC_EN		BIT(24)
+#define     MVPP2_RX_FC_TRSH_OFFS	16
+#define     MVPP2_RX_FC_TRSH_MASK	(0xFF << MVPP2_RX_FC_TRSH_OFFS)
+#define     MVPP2_RX_FC_TRSH_UNIT	256
+
 /* GMAC TX FIFO configuration */
 #define MVPP2_GMAC_TX_FIFO_MIN_TH_1000	\
 	MVPP2_GMAC_TX_FIFO_MIN_TH_MASK(50)
@@ -1381,7 +1393,7 @@ u32 mvpp2_thread_read_relaxed(struct mvpp2 *priv, unsigned int thread,
 }
 
 void mvpp2_dbgfs_init(struct mvpp2 *priv, const char *name);
-
 void mvpp2_dbgfs_cleanup(struct mvpp2 *priv);
+void mvpp23_rx_fifo_fc_en(struct mvpp2 *priv, int port, bool en);
 
 #endif
