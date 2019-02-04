@@ -5896,6 +5896,7 @@ static void mvpp2_gmac_config(struct mvpp2_port *port, unsigned int mode,
 
 	/* Set the GMAC in a reset state */
 	ctrl2 |= MVPP2_GMAC_PORT_RESET_MASK;
+	ctrl2 &= ~MVPP2_GMAC_FLOW_CTRL_MASK;
 	writel(ctrl2, port->base + MVPP2_GMAC_CTRL_2_REG);
 
 	an &= ~(MVPP2_GMAC_CONFIG_MII_SPEED | MVPP2_GMAC_CONFIG_GMII_SPEED |
