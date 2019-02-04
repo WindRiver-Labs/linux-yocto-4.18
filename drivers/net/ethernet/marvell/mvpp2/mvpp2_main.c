@@ -6348,6 +6348,12 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 		}
 	}
 
+	/* Init TX locks and bm locks */
+	for (i = 0; i < MVPP2_MAX_THREADS; i++) {
+		spin_lock_init(&port->bm_lock[i]);
+		spin_lock_init(&port->tx_lock[i]);
+	}
+
 	return 0;
 
 err_phylink:
