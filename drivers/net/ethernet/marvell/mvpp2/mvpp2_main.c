@@ -5002,6 +5002,15 @@ static int mvpp2_ethtool_set_ringparam(struct net_device *dev,
 	if (err)
 		return err;
 
+	if (ring->rx_pending < MSS_THRESHOLD_START && port->tx_fc) {
+		netdev_warn(dev, "TX FC disabled. Ring size is less than %d\n",
+			    MSS_THRESHOLD_START);
+		port->tx_fc = false;
+		mvpp2_rxq_disable_fc(port);
+		if (port->priv->hw_version == MVPP23)
+			mvpp23_rx_fifo_fc_en(port->priv, port->id, false);
+	}
+
 	if (!netif_running(dev)) {
 		port->rx_ring_size = ring->rx_pending;
 		port->tx_ring_size = ring->tx_pending;
@@ -5068,6 +5077,13 @@ static int mvpp2_ethtool_set_pause_param(struct net_device *dev,
 
 	if (pause->tx_pause && port->priv->global_tx_fc &&
 	    bm_underrun_protect) {
+		if (port->rx_ring_size < MSS_THRESHOLD_START) {
+			netdev_err(dev, "TX FC cannot be supported.");
+			netdev_err(dev, "Ring size is less than %d\n",
+				   MSS_THRESHOLD_START);
+			return -EINVAL;
+		}
+
 		port->tx_fc = true;
 		mvpp2_rxq_enable_fc(port);
 		mvpp2_bm_pool_update_fc(port, port->pool_long, true);
