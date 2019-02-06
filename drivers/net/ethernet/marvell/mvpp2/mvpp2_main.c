@@ -464,8 +464,12 @@ static int mvpp2_bm_pool_destroy(struct platform_device *pdev,
 static int mvpp2_bm_pools_init(struct platform_device *pdev,
 			       struct mvpp2 *priv)
 {
-	int i, err, size;
+	int i, err, size, cpu;
 	struct mvpp2_bm_pool *bm_pool;
+
+	/* Initialize Virtual with 0x0 */
+	for_each_present_cpu(cpu)
+		mvpp2_thread_write(priv, cpu, MVPP2_BM_VIRT_RLS_REG, 0x0);
 
 	/* Create all pools with maximum size */
 	size = MVPP2_BM_POOL_SIZE_MAX;
