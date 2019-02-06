@@ -6138,14 +6138,11 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 	};
 
 	/* Mac-config is called on UP-request. Don't repeat if already UP */
-	if (state->link && netif_carrier_ok(dev) && port->has_phy)
-		return;
-
-	mvpp2_tx_stop_all_queues(port->dev);
-
-	/* Make sure the port is disabled when reconfiguring the mode */
-	mvpp2_port_disable(port);
 	if (change_interface) {
+		/* Make sure the port is disabled when reconfiguring the mode */
+		mvpp2_tx_stop_all_queues(port->dev);
+		mvpp2_port_disable(port);
+
 		mvpp22_gop_mask_irq(port);
 
 		if (port->priv->hw_version == MVPP22) {
@@ -6155,6 +6152,9 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 			phy_power_off(port->comphy);
 			mvpp22_mode_reconfigure(port);
 		}
+
+		mvpp2_tx_wake_all_queues(dev);
+		mvpp2_port_enable(port);
 	}
 
 	/* mac (re)configuration */
@@ -6173,9 +6173,6 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 
 	if (change_interface)
 		mvpp22_gop_unmask_irq(port);
-
-	mvpp2_port_enable(port);
-	mvpp2_tx_wake_all_queues(dev);
 }
 
 static void mvpp2_mac_link_up(struct net_device *dev, unsigned int mode,
