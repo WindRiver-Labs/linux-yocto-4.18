@@ -58,6 +58,10 @@
 	};
 };
 
+&cp1_crypto {
+	status = "okay";
+};
+
 &cp1_ethernet {
 	status = "okay";
 };

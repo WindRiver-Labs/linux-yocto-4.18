@@ -48,6 +48,10 @@
 		     "marvell,armada-ap806";
 };
 
+&cp0_crypto {
+	status = "okay";
+};
+
 &cp0_gpio1 {
 	status = "okay";
 };

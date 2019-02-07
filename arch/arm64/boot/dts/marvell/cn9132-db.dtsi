@@ -72,6 +72,10 @@
 	};
 };
 
+&cp2_crypto {
+	status = "okay";
+};
+
 &cp2_gpio1 {
 	status = "okay";
 };
