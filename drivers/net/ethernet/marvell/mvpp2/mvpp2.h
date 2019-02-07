@@ -603,8 +603,8 @@
 					MVPP2_CPU_DESC_CHUNK * ncpus)
 #define MVPP2_TX_PAUSE_HYSTERESIS	(MVPP2_MAX_TSO_SEGS * 2)
 
-/* Default number of RXQs in use */
-#define MVPP2_DEFAULT_RXQ		1
+/* Max number of RXQs per port */
+#define MVPP2_PORT_MAX_RXQ		32
 
 /* Max number of Rx descriptors */
 #define MVPP2_MAX_RXD_MAX		2048
