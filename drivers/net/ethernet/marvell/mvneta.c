@@ -1942,9 +1942,10 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 			  struct mvneta_port *pp, int budget,
 			  struct mvneta_rx_queue *rxq)
 {
+	struct sk_buff *rcvd_skbs[NAPI_POLL_WEIGHT];
 	struct net_device *dev = pp->dev;
 	int rx_todo, rx_proc;
-	int refill = 0;
+	int refill = 0, i = 0;
 	u32 rcvd_pkts = 0;
 	u32 rcvd_bytes = 0;
 
@@ -2077,18 +2078,19 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 			rxq->skb = NULL;
 			continue;
 		}
-		rcvd_pkts++;
 		rcvd_bytes += rxq->skb->len;
+		rcvd_skbs[rcvd_pkts++] = rxq->skb;
 
 		/* Linux processing */
 		rxq->skb->protocol = eth_type_trans(rxq->skb, dev);
-
-		napi_gro_receive(napi, rxq->skb);
 
 		/* clean uncomplete skb pointer in queue */
 		rxq->skb = NULL;
 		rxq->left_size = 0;
 	}
+
+	while (i < rcvd_pkts)
+		napi_gro_receive(napi, rcvd_skbs[i++]);
 
 	if (rcvd_pkts) {
 		struct mvneta_pcpu_stats *stats = this_cpu_ptr(pp->stats);
