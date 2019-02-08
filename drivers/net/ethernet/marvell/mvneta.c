@@ -1917,12 +1917,13 @@ int mvneta_rx_refill_queue(struct mvneta_port *pp, struct mvneta_rx_queue *rxq)
 {
 	struct mvneta_rx_desc *rx_desc;
 	int curr_desc = rxq->first_to_refill;
-	int i;
+	int i, err;
 
 	for (i = 0; (i < rxq->refill_num) && (i < 64); i++) {
 		rx_desc = rxq->descs + curr_desc;
 		if (!(rx_desc->buf_phys_addr)) {
-			if (mvneta_rx_refill(pp, rx_desc, rxq, GFP_ATOMIC)) {
+			err = mvneta_rx_refill(pp, rx_desc, rxq, GFP_ATOMIC);
+			if (unlikely(err)) {
 				pr_err("Can't refill queue %d. Done %d from %d\n",
 				       rxq->id, i, rxq->refill_num);
 				rxq->refill_err++;
@@ -1976,7 +1977,7 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 
 		if (rx_status & MVNETA_RXD_FIRST_DESC) {
 			/* Check errors only for FIRST descriptor */
-			if (rx_status & MVNETA_RXD_ERR_SUMMARY) {
+			if (unlikely(rx_status & MVNETA_RXD_ERR_SUMMARY)) {
 				mvneta_rx_error(pp, rx_desc);
 				dev->stats.rx_errors++;
 				/* leave the descriptor untouched */
@@ -2070,7 +2071,7 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 			/* no last descriptor this time */
 			continue;
 
-		if (rxq->left_size) {
+		if (unlikely(rxq->left_size)) {
 			pr_err("get last desc, but left_size (%d) != 0\n",
 			       rxq->left_size);
 			dev_kfree_skb_any(rxq->skb);
@@ -2089,10 +2090,10 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 		rxq->left_size = 0;
 	}
 
-	while (i < rcvd_pkts)
+	while (likely(i < rcvd_pkts))
 		napi_gro_receive(napi, rcvd_skbs[i++]);
 
-	if (rcvd_pkts) {
+	if (likely(rcvd_pkts)) {
 		struct mvneta_pcpu_stats *stats = this_cpu_ptr(pp->stats);
 
 		u64_stats_update_begin(&stats->syncp);
