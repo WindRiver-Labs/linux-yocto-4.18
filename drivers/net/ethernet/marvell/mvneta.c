@@ -769,8 +769,8 @@ static void mvneta_rxq_non_occup_desc_add(struct mvneta_port *pp,
 }
 
 /* Get number of RX descriptors occupied by received packets */
-static int mvneta_rxq_busy_desc_num_get(struct mvneta_port *pp,
-					struct mvneta_rx_queue *rxq)
+static inline int mvneta_rxq_busy_desc_num_get(struct mvneta_port *pp,
+					       struct mvneta_rx_queue *rxq)
 {
 	u32 val;
 
@@ -781,9 +781,9 @@ static int mvneta_rxq_busy_desc_num_get(struct mvneta_port *pp,
 /* Update num of rx desc called upon return from rx path or
  * from mvneta_rxq_drop_pkts().
  */
-static void mvneta_rxq_desc_num_update(struct mvneta_port *pp,
-				       struct mvneta_rx_queue *rxq,
-				       int rx_done, int rx_filled)
+static inline void mvneta_rxq_desc_num_update(struct mvneta_port *pp,
+					      struct mvneta_rx_queue *rxq,
+					      int rx_done, int rx_filled)
 {
 	u32 val;
 
@@ -1621,9 +1621,9 @@ static void mvneta_tx_done_pkts_coal_set(struct mvneta_port *pp,
 }
 
 /* Handle rx descriptor fill by setting buf_cookie and buf_phys_addr */
-static void mvneta_rx_desc_fill(struct mvneta_rx_desc *rx_desc,
-				u32 phys_addr, void *virt_addr,
-				struct mvneta_rx_queue *rxq)
+static inline void mvneta_rx_desc_fill(struct mvneta_rx_desc *rx_desc,
+				       u32 phys_addr, void *virt_addr,
+				       struct mvneta_rx_queue *rxq)
 {
 	int i;
 
@@ -1819,10 +1819,10 @@ static void mvneta_txq_done(struct mvneta_port *pp,
 
 /* Refill processing for SW buffer management */
 /* Allocate page per descriptor */
-static int mvneta_rx_refill(struct mvneta_port *pp,
-			    struct mvneta_rx_desc *rx_desc,
-			    struct mvneta_rx_queue *rxq,
-			    gfp_t gfp_mask)
+static inline int mvneta_rx_refill(struct mvneta_port *pp,
+				   struct mvneta_rx_desc *rx_desc,
+				   struct mvneta_rx_queue *rxq,
+				   gfp_t gfp_mask)
 {
 	dma_addr_t phys_addr;
 	struct page *page;
