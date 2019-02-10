@@ -130,9 +130,13 @@ static void mvpp2_mac_link_up(struct net_device *dev, unsigned int mode,
 #define MVPP2_QDIST_MULTI_MODE	1
 
 static int queue_mode = MVPP2_QDIST_MULTI_MODE;
+static int tx_fifo_protection;
 
 module_param(queue_mode, int, 0444);
 MODULE_PARM_DESC(queue_mode, "Set queue_mode (single=0, multi=1)");
+
+module_param(tx_fifo_protection, int, 0444);
+MODULE_PARM_DESC(tx_fifo_protection, "Set tx_fifo_protection (off=0, on=1)");
 
 static dma_addr_t mvpp2_txdesc_dma_addr_get(struct mvpp2_port *port,
 					    struct mvpp2_tx_desc *tx_desc)
@@ -6236,8 +6240,10 @@ static void mvpp2_axi_init(struct mvpp2 *priv)
 
 	/* Buffer Data */
 	/* Force TX FIFO transactions priority on the AXI QOS bus */
-	mvpp2_write(priv, MVPP22_AXI_TX_DATA_RD_ATTR_REG,
-		    rdval | MVPP22_AXI_TX_DATA_RD_QOS_ATTRIBUTE);
+	if (tx_fifo_protection)
+		rdval |= MVPP22_AXI_TX_DATA_RD_QOS_ATTRIBUTE;
+
+	mvpp2_write(priv, MVPP22_AXI_TX_DATA_RD_ATTR_REG, rdval);
 	mvpp2_write(priv, MVPP22_AXI_RX_DATA_WR_ATTR_REG, wrval);
 
 	val = MVPP22_AXI_CODE_CACHE_NON_CACHE
