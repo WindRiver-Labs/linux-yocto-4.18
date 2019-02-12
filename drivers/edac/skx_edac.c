@@ -1182,9 +1182,6 @@ static void __exit skx_exit(void)
 module_init(skx_init);
 module_exit(skx_exit);
 
-module_param(edac_op_state, int, 0444);
-MODULE_PARM_DESC(edac_op_state, "EDAC Error Reporting state: 0=Poll,1=NMI");
-
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Tony Luck");
 MODULE_DESCRIPTION("MC Driver for Intel Skylake server processors");
