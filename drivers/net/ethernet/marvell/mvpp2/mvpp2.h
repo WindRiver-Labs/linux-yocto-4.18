@@ -846,6 +846,7 @@ enum mvpp2_prs_l3_cast {
 
 #define MSS_THRESHOLD_STOP	768
 #define MSS_THRESHOLD_START	1024
+#define MSS_FC_MAX_TIMEOUT	5000
 
 /* Definitions */
 
