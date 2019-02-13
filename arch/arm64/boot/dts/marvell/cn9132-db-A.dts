@@ -16,6 +16,7 @@
 	aliases {
 		gpio5 = &cp2_gpio1;
 		gpio6 = &cp2_gpio2;
+		ethernet5 = &cp2_eth0;
 	};
 };
 

@@ -18,6 +18,9 @@
 
 	aliases {
 		i2c0 = &cp0_i2c0;
+		ethernet0 = &cp0_eth0;
+		ethernet1 = &cp0_eth1;
+		ethernet2 = &cp0_eth2;
 	};
 
 	memory@00000000 {

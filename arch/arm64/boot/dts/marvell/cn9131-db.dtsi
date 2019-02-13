@@ -28,6 +28,8 @@
 	aliases {
 		gpio3 = &cp1_gpio1;
 		gpio4 = &cp1_gpio2;
+		ethernet3 = &cp1_eth0;
+		ethernet4 = &cp1_eth1;
 	};
 
 	cp1_reg_usb3_vbus0: cp1_usb3_vbus@0 {
