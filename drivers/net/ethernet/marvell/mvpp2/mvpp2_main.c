@@ -1232,12 +1232,21 @@ static void mvpp22_gop_init_xpcs(struct mvpp2_port *port)
 	void __iomem *xpcs = priv->iface_base + MVPP22_XPCS_BASE(port->gop_id);
 	u32 val;
 
+	/* Reset the XPCS when reconfiguring the lanes */
+	val = readl(xpcs + MVPP22_XPCS_CFG0);
+	writel(val & ~MVPP22_XPCS_CFG0_RESET_DIS, xpcs + MVPP22_XPCS_CFG0);
+
 	/* XPCS */
 	val = readl(xpcs + MVPP22_XPCS_CFG0);
 	val &= ~(MVPP22_XPCS_CFG0_PCS_MODE(0x3) |
 		 MVPP22_XPCS_CFG0_ACTIVE_LANE(0x3));
 	val |= MVPP22_XPCS_CFG0_ACTIVE_LANE(2);
 	writel(val, xpcs + MVPP22_XPCS_CFG0);
+
+	/* Release lanes from reset */
+	val = readl(xpcs + MVPP22_XPCS_CFG0);
+	writel(val | MVPP22_XPCS_CFG0_RESET_DIS, xpcs + MVPP22_XPCS_CFG0);
+
 }
 
 static void mvpp22_gop_init_mpcs(struct mvpp2_port *port)
