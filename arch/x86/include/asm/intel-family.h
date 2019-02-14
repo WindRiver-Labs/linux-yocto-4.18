@@ -54,6 +54,7 @@
 #define INTEL_FAM6_KABYLAKE_DESKTOP	0x9E
 
 #define INTEL_FAM6_CANNONLAKE_MOBILE	0x66
+#define INTEL_FAM6_ICELAKE_MOBILE       0x7E
 
 /* "Small Core" Processors (Atom) */
 
