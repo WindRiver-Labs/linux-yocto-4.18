@@ -135,7 +135,7 @@
 	status = "okay";
 	/* Network PHY */
 	phy = <&phy0>;
-	phy-mode = "10gbase-kr";
+	phy-mode = "5gbase-kr";
 	/* Generic PHY, providing serdes lanes */
 	phys = <&cp0_comphy2 0>;
 };
