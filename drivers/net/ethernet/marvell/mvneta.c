@@ -1946,7 +1946,7 @@ static int mvneta_rx_swbm(struct napi_struct *napi,
 			  struct mvneta_port *pp, int budget,
 			  struct mvneta_rx_queue *rxq)
 {
-	struct sk_buff *rcvd_skbs[NAPI_POLL_WEIGHT];
+	struct sk_buff *rcvd_skbs[budget];
 	struct net_device *dev = pp->dev;
 	int rx_todo, rx_proc;
 	int refill = 0, i = 0;
