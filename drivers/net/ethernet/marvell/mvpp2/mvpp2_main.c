@@ -126,6 +126,9 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 static void mvpp2_mac_link_up(struct net_device *dev, unsigned int mode,
 			      phy_interface_t interface, struct phy_device *phy);
 
+/* Branch prediction switches */
+DEFINE_STATIC_KEY_FALSE(mvpp21_variant);
+
 /* Queue modes */
 #define MVPP2_QDIST_SINGLE_MODE	0
 #define MVPP2_QDIST_MULTI_MODE	1
@@ -146,7 +149,7 @@ MODULE_PARM_DESC(bm_underrun_protect, "Set BM underrun protect feature (0-1), de
 static dma_addr_t mvpp2_txdesc_dma_addr_get(struct mvpp2_port *port,
 					    struct mvpp2_tx_desc *tx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return le32_to_cpu(tx_desc->pp21.buf_dma_addr);
 	else
 		return le64_to_cpu(tx_desc->pp22.buf_dma_addr_ptp) &
@@ -162,7 +165,7 @@ static void mvpp2_txdesc_dma_addr_set(struct mvpp2_port *port,
 	addr = dma_addr & ~MVPP2_TX_DESC_ALIGN;
 	offset = dma_addr & MVPP2_TX_DESC_ALIGN;
 
-	if (port->priv->hw_version == MVPP21) {
+	if (static_branch_unlikely(&mvpp21_variant)) {
 		tx_desc->pp21.buf_dma_addr = cpu_to_le32(addr);
 		tx_desc->pp21.packet_offset = offset;
 	} else {
@@ -177,7 +180,7 @@ static void mvpp2_txdesc_dma_addr_set(struct mvpp2_port *port,
 static size_t mvpp2_txdesc_size_get(struct mvpp2_port *port,
 				    struct mvpp2_tx_desc *tx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return le16_to_cpu(tx_desc->pp21.data_size);
 	else
 		return le16_to_cpu(tx_desc->pp22.data_size);
@@ -187,7 +190,7 @@ static void mvpp2_txdesc_size_set(struct mvpp2_port *port,
 				  struct mvpp2_tx_desc *tx_desc,
 				  size_t size)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		tx_desc->pp21.data_size = cpu_to_le16(size);
 	else
 		tx_desc->pp22.data_size = cpu_to_le16(size);
@@ -197,7 +200,7 @@ static void mvpp2_txdesc_txq_set(struct mvpp2_port *port,
 				 struct mvpp2_tx_desc *tx_desc,
 				 unsigned int txq)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		tx_desc->pp21.phys_txq = txq;
 	else
 		tx_desc->pp22.phys_txq = txq;
@@ -207,7 +210,7 @@ static void mvpp2_txdesc_cmd_set(struct mvpp2_port *port,
 				 struct mvpp2_tx_desc *tx_desc,
 				 unsigned int command)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		tx_desc->pp21.command = cpu_to_le32(command);
 	else
 		tx_desc->pp22.command = cpu_to_le32(command);
@@ -216,7 +219,7 @@ static void mvpp2_txdesc_cmd_set(struct mvpp2_port *port,
 static unsigned int mvpp2_txdesc_offset_get(struct mvpp2_port *port,
 					    struct mvpp2_tx_desc *tx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return tx_desc->pp21.packet_offset;
 	else
 		return tx_desc->pp22.packet_offset;
@@ -225,7 +228,7 @@ static unsigned int mvpp2_txdesc_offset_get(struct mvpp2_port *port,
 static dma_addr_t mvpp2_rxdesc_dma_addr_get(struct mvpp2_port *port,
 					    struct mvpp2_rx_desc *rx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return le32_to_cpu(rx_desc->pp21.buf_dma_addr);
 	else
 		return le64_to_cpu(rx_desc->pp22.buf_dma_addr_key_hash) &
@@ -235,7 +238,7 @@ static dma_addr_t mvpp2_rxdesc_dma_addr_get(struct mvpp2_port *port,
 static size_t mvpp2_rxdesc_size_get(struct mvpp2_port *port,
 				    struct mvpp2_rx_desc *rx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return le16_to_cpu(rx_desc->pp21.data_size);
 	else
 		return le16_to_cpu(rx_desc->pp22.data_size);
@@ -244,7 +247,7 @@ static size_t mvpp2_rxdesc_size_get(struct mvpp2_port *port,
 static u32 mvpp2_rxdesc_status_get(struct mvpp2_port *port,
 				   struct mvpp2_rx_desc *rx_desc)
 {
-	if (port->priv->hw_version == MVPP21)
+	if (static_branch_unlikely(&mvpp21_variant))
 		return le32_to_cpu(rx_desc->pp21.status);
 	else
 		return le32_to_cpu(rx_desc->pp22.status);
@@ -839,7 +842,7 @@ static inline void mvpp2_bm_pool_put(struct mvpp2_port *port, int pool,
 	 * For performance reasons don't store VA|PA and don't use "cookie".
 	 * VA/PA obtained faster from dma_to_phys(dma-addr) and phys_to_virt.
 	 */
-	if (port->priv->hw_version != MVPP21 && sizeof(dma_addr_t) == 8) {
+	if (static_branch_likely(&mvpp21_variant) && sizeof(dma_addr_t) == 8) {
 		u32 val = upper_32_bits(buf_dma_addr) &
 				MVPP22_BM_ADDR_HIGH_PHYS_RLS_MASK;
 
@@ -1136,7 +1139,7 @@ static void mvpp2_interrupts_unmask(void *arg)
 	if (port->flags & MVPP22_F_IF_MUSDK)
 		return;
 
-	val = MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(port->priv->hw_version);
+	val = MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(mvpp21_variant);
 	if (port->has_tx_irqs)
 		val |= MVPP2_CAUSE_TXQ_OCCUP_DESC_ALL_MASK;
 
@@ -1161,7 +1164,7 @@ mvpp2_shared_interrupt_mask_unmask(struct mvpp2_port *port, bool mask)
 	if (mask)
 		val = 0;
 	else
-		val = MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(MVPP22);
+		val = MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(mvpp21_variant);
 
 	for (i = 0; i < port->nqvecs; i++) {
 		struct mvpp2_queue_vector *v = port->qvecs + i;
@@ -4288,7 +4291,7 @@ static int mvpp2_poll(struct napi_struct *napi, int budget)
 
 	/* Process RX packets */
 	cause_rx = cause_rx_tx &
-		   MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(port->priv->hw_version);
+		   MVPP2_CAUSE_RXQ_OCCUP_DESC_ALL_MASK(mvpp21_variant);
 	cause_rx <<= qv->first_rxq;
 	cause_rx |= qv->pending_cause_rx;
 	while (cause_rx && budget > 0) {
@@ -7004,6 +7007,10 @@ static int mvpp2_probe(struct platform_device *pdev)
 	if (dev_of_node(&pdev->dev))
 		of_reserved_mem_device_init_by_idx(&pdev->dev,
 						   pdev->dev.of_node, 0);
+
+	/* Configure branch prediction switch */
+	if (priv->hw_version == MVPP21)
+		static_branch_enable(&mvpp21_variant);
 
 	/* Map DTS-active ports. Should be done before FIFO mvpp2_init */
 	fwnode_for_each_available_child_node(fwnode, port_fwnode) {
