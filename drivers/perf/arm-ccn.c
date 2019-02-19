@@ -166,7 +166,7 @@ struct arm_ccn_dt {
 
 	struct hrtimer hrtimer;
 
-	cpumask_t cpu;
+	unsigned int cpu;
 	struct hlist_node node;
 
 	struct pmu pmu;
@@ -558,7 +558,7 @@ static ssize_t arm_ccn_pmu_cpumask_show(struct device *dev,
 {
 	struct arm_ccn *ccn = pmu_to_arm_ccn(dev_get_drvdata(dev));
 
-	return cpumap_print_to_pagebuf(true, buf, &ccn->dt.cpu);
+	return cpumap_print_to_pagebuf(true, buf, cpumask_of(ccn->dt.cpu));
 }
 
 static struct device_attribute arm_ccn_pmu_cpumask_attr =
@@ -761,7 +761,7 @@ static int arm_ccn_pmu_event_init(struct perf_event *event)
 	 * mitigate this, we enforce CPU assignment to one, selected
 	 * processor (the one described in the "cpumask" attribute).
 	 */
-	event->cpu = cpumask_first(&ccn->dt.cpu);
+	event->cpu = ccn->dt.cpu;
 
 	node_xp = CCN_CONFIG_NODE(event->attr.config);
 	type = CCN_CONFIG_TYPE(event->attr.config);
@@ -1217,15 +1217,15 @@ static int arm_ccn_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 	struct arm_ccn *ccn = container_of(dt, struct arm_ccn, dt);
 	unsigned int target;
 
-	if (!cpumask_test_and_clear_cpu(cpu, &dt->cpu))
+	if (cpu != dt->cpu)
 		return 0;
 	target = cpumask_any_but(cpu_online_mask, cpu);
 	if (target >= nr_cpu_ids)
 		return 0;
 	perf_pmu_migrate_context(&dt->pmu, cpu, target);
-	cpumask_set_cpu(target, &dt->cpu);
+	dt->cpu = target;
 	if (ccn->irq)
-		WARN_ON(irq_set_affinity_hint(ccn->irq, &dt->cpu) != 0);
+		WARN_ON(irq_set_affinity_hint(ccn->irq, cpumask_of(dt->cpu)));
 	return 0;
 }
 
@@ -1300,11 +1300,12 @@ static int arm_ccn_pmu_init(struct arm_ccn *ccn)
 	}
 
 	/* Pick one CPU which we will use to collect data from CCN... */
-	cpumask_set_cpu(get_cpu(), &ccn->dt.cpu);
+	cpus_read_lock();
+	ccn->dt.cpu = raw_smp_processor_id();
 
 	/* Also make sure that the overflow interrupt is handled by this CPU */
 	if (ccn->irq) {
-		err = irq_set_affinity_hint(ccn->irq, &ccn->dt.cpu);
+		err = irq_set_affinity_hint(ccn->irq, cpumask_of(ccn->dt.cpu));
 		if (err) {
 			dev_err(ccn->dev, "Failed to set interrupt affinity!\n");
 			goto error_set_affinity;
@@ -1315,14 +1316,14 @@ static int arm_ccn_pmu_init(struct arm_ccn *ccn)
 	if (err)
 		goto error_pmu_register;
 
-	cpuhp_state_add_instance_nocalls(CPUHP_AP_PERF_ARM_CCN_ONLINE,
-					 &ccn->dt.node);
-	put_cpu();
+	cpuhp_state_add_instance_nocalls_cpuslocked(CPUHP_AP_PERF_ARM_CCN_ONLINE,
+						    &ccn->dt.node);
+	cpus_read_unlock();
 	return 0;
 
 error_pmu_register:
 error_set_affinity:
-	put_cpu();
+	cpus_read_unlock();
 error_choose_name:
 	ida_simple_remove(&arm_ccn_pmu_ida, ccn->dt.id);
 	for (i = 0; i < ccn->num_xps; i++)
