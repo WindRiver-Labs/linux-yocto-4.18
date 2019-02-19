@@ -176,7 +176,7 @@
 			reg = <0x20 0x10094000 0 0x1000>;
 		};
 
-		pcie0: pciex@0x3000000000 {
+		pcie0: pcie@0x3000000000 {
 			compatible = "axxia,plb-pciex";
 			device_type = "pci";
 			#interrupt-cells = <1>;
@@ -217,7 +217,7 @@
 			status = "disabled";
 		};
 
-		pcie1: pciex@0x3080000000 {
+		pcie1: pcie@0x3080000000 {
 			compatible = "axxia,plb-pciex";
 			device_type = "pci";
 			#interrupt-cells = <1>;
