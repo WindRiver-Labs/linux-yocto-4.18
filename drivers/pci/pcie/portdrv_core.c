@@ -189,7 +189,7 @@ static int pcie_init_service_irqs(struct pci_dev *dev, int *irqs, int mask)
 		if (dev->irq)
 			irq = dev->irq;
 		for (i = 0; i < PCIE_PORT_DEVICE_MAXSERVICES; i++)
-			if (irqs[i] == -1 && i != PCIE_PORT_SERVICE_VC_SHIFT)
+			if (irqs[i] == -1)
 				irqs[i] = irq;
 		return 0;
 	}
