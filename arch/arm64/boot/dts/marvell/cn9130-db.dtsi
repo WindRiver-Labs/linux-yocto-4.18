@@ -41,12 +41,22 @@
 
 	cp0_reg_sd_vccq: cp0_sd_vccq@0 {
 		compatible = "regulator-gpio";
-		regulator-name = "cp0_sd_vcc";
+		regulator-name = "cp0_sd_vccq";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
 		gpios = <&expander0 15 GPIO_ACTIVE_HIGH>;
 		states = <1800000 0x1
 			  3300000 0x0>;
+	};
+
+	cp0_reg_sd_vcc: cp0_sd_vcc@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "cp0_sd_vcc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&expander0 14 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
 	};
 
 	cp0_sfp_eth0: sfp-eth0 {
@@ -111,9 +121,12 @@
 
 &cp0_sdhci0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&cp0_sdhci_pins>;
+	pinctrl-0 = <&cp0_sdhci_pins
+		     &cp0_sdhci_cd_pins>;
 	bus-width = <4>;
+	cd-gpios = <&cp0_gpio2 11 GPIO_ACTIVE_LOW>;
 	vqmmc-supply = <&cp0_reg_sd_vccq>;
+	vmmc-supply = <&cp0_reg_sd_vcc>;
 };
 
 &cp0_usb3_0 {

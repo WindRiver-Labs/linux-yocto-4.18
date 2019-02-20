@@ -86,6 +86,10 @@
 				       "mpp53", "mpp54", "mpp55";
 			marvell,function = "ge1";
 		};
+		cp0_sdhci_cd_pins: cp0-sdhci-cd-pins-0 {
+			marvell,pins = "mpp43";
+			marvell,function = "gpio";
+		};
 		cp0_sdhci_pins: cp0-sdhi-pins-0 {
 			marvell,pins = "mpp56", "mpp57", "mpp58",
 				       "mpp59", "mpp60", "mpp61";
