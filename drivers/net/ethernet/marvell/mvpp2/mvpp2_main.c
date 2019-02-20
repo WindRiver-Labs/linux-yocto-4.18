@@ -842,14 +842,15 @@ static inline void mvpp2_bm_pool_put(struct mvpp2_port *port, int pool,
 	 * For performance reasons don't store VA|PA and don't use "cookie".
 	 * VA/PA obtained faster from dma_to_phys(dma-addr) and phys_to_virt.
 	 */
-	if (!static_branch_unlikely(&mvpp21_variant) &&
-	    sizeof(dma_addr_t) == 8) {
+#if defined(CONFIG_ARCH_DMA_ADDR_T_64BIT) && defined(CONFIG_PHYS_ADDR_T_64BIT)
+	if (!static_branch_unlikely(&mvpp21_variant)) {
 		u32 val = upper_32_bits(buf_dma_addr) &
 				MVPP22_BM_ADDR_HIGH_PHYS_RLS_MASK;
 
 		mvpp2_thread_write_relaxed(port->priv, thread,
 					   MVPP22_BM_ADDR_HIGH_RLS_REG, val);
 	}
+#endif
 
 	mvpp2_thread_write_relaxed(port->priv, thread,
 				   MVPP2_BM_PHY_RLS_REG(pool), buf_dma_addr);
