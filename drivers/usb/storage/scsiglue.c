@@ -138,6 +138,9 @@ static int slave_configure(struct scsi_device *sdev)
 	 */
 	if (!us->pusb_dev->bus->controller->dma_mask)
 		blk_queue_bounce_limit(sdev->request_queue, BLK_BOUNCE_HIGH);
+	else
+		blk_queue_bounce_limit(sdev->request_queue,
+			*us->pusb_dev->bus->controller->dma_mask);
 
 	/*
 	 * We can't put these settings in slave_alloc() because that gets
