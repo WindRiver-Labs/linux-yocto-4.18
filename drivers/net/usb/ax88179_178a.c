@@ -1404,7 +1404,6 @@ static int ax88179_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 			skb_pull(skb, 2);
 			skb->len = pkt_len;
 			skb_set_tail_pointer(skb, pkt_len);
-			skb->truesize = pkt_len + sizeof(struct sk_buff);
 			ax88179_rx_checksum(skb, pkt_hdr);
 			return 1;
 		}
@@ -1414,7 +1413,6 @@ static int ax88179_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 			ax_skb->len = pkt_len;
 			ax_skb->data = skb->data + 2;
 			skb_set_tail_pointer(ax_skb, pkt_len);
-			ax_skb->truesize = pkt_len + sizeof(struct sk_buff);
 			ax88179_rx_checksum(ax_skb, pkt_hdr);
 			usbnet_skb_return(dev, ax_skb);
 		} else {
