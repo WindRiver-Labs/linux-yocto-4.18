@@ -37,26 +37,40 @@
 /* SLM-1521-V2, CON6 */
 &cp2_pcie0 {
 	status = "okay";
-	num-lanes = <4>;
+	num-lanes = <2>;
 	num-viewport = <8>;
 	/* Generic PHY, providing serdes lanes */
 	phys = <&cp2_comphy0 0
-		&cp2_comphy1 0
-		&cp2_comphy2 0
-		&cp2_comphy3 0>;
+		&cp2_comphy1 0>;
+};
+
+/* SLM-1521-V2, CON8 */
+&cp2_pcie2 {
+	status = "okay";
+	num-lanes = <1>;
+	num-viewport = <8>;
+	/* Generic PHY, providing serdes lanes */
+	phys = <&cp2_comphy5 2>;
 };
 
 &cp2_sata0 {
 	status = "okay";
-	/* SLM-1521-V2, CON2 */
-	sata-port@1 {
+	/* SLM-1521-V2, CON4 */
+	sata-port@0 {
 		status = "okay";
 		/* Generic PHY, providing serdes lanes */
-		phys = <&cp2_comphy5 1>;
+		phys = <&cp2_comphy2 0>;
 	};
 };
 
 /* CON 2 on SLM-1683 - microSD */
 &cp2_sdhci0 {
 	status = "okay";
+};
+
+/* SLM-1521-V2, CON11 */
+&cp2_usb3_1 {
+	status = "okay";
+	/* Generic PHY, providing serdes lanes */
+	phys = <&cp2_comphy3 1>;
 };
