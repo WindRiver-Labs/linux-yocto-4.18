@@ -298,7 +298,8 @@ static int mv3310_config_init(struct phy_device *phydev)
 	if (phydev->interface != PHY_INTERFACE_MODE_SGMII &&
 	    phydev->interface != PHY_INTERFACE_MODE_XAUI &&
 	    phydev->interface != PHY_INTERFACE_MODE_RXAUI &&
-	    phydev->interface != PHY_INTERFACE_MODE_10GKR)
+	    phydev->interface != PHY_INTERFACE_MODE_10GKR &&
+	    phydev->interface != PHY_INTERFACE_MODE_5GKR)
 		return -ENODEV;
 
 	mv3310_of_config_init(phydev);
@@ -458,7 +459,8 @@ static int mv3310_aneg_done(struct phy_device *phydev)
 static void mv3310_update_interface(struct phy_device *phydev)
 {
 	if ((phydev->interface == PHY_INTERFACE_MODE_SGMII ||
-	     phydev->interface == PHY_INTERFACE_MODE_10GKR) && phydev->link) {
+	     phydev->interface == PHY_INTERFACE_MODE_10GKR ||
+	     phydev->interface == PHY_INTERFACE_MODE_5GKR) && phydev->link) {
 		/* The PHY automatically switches its serdes interface (and
 		 * active PHYXS instance) between Cisco SGMII and 10GBase-KR
 		 * modes according to the speed.  Florian suggests setting
@@ -467,6 +469,8 @@ static void mv3310_update_interface(struct phy_device *phydev)
 		 */
 		if (phydev->speed == SPEED_10000)
 			phydev->interface = PHY_INTERFACE_MODE_10GKR;
+		else if (phydev->speed == SPEED_5000)
+			phydev->interface = PHY_INTERFACE_MODE_5GKR;
 		else if (phydev->speed >= SPEED_10 &&
 			 phydev->speed < SPEED_10000)
 			phydev->interface = PHY_INTERFACE_MODE_SGMII;
