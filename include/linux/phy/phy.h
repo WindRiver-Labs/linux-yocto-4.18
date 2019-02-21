@@ -43,6 +43,7 @@ enum phy_mode {
 	PHY_MODE_PCIE,
 	PHY_MODE_SATA,
 	PHY_MODE_RXAUI,
+	PHY_MODE_ETHERNET,
 };
 
 /**
