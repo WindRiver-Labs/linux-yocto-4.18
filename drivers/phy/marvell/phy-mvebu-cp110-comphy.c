@@ -11,11 +11,13 @@
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/phy.h>
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 
 struct mvebu_comhy_conf {
 	enum phy_mode mode;
+	int submode;
 	unsigned lane;
 	unsigned port;
 };
@@ -25,6 +27,14 @@ struct mvebu_comhy_conf {
 		.lane = _lane,			\
 		.port = _port,			\
 		.mode = _mode,			\
+		.submode = PHY_INTERFACE_MODE_NA,			\
+	}
+#define MVEBU_COMPHY_CONF_ETH(_lane, _port, _submode)	\
+	{						\
+		.lane = _lane,				\
+		.port = _port,				\
+		.mode = PHY_MODE_ETHERNET,		\
+		.submode = _submode,			\
 	}
 
 /* FW related definitions */
@@ -89,13 +99,13 @@ static unsigned long a3700_comphy_smc(unsigned long function_id,
 
 static const struct mvebu_comhy_conf mvebu_comphy_a3700_modes[] = {
 	/* lane 0 */
-	MVEBU_COMPHY_CONF(0, 1, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(0, 1, PHY_MODE_2500SGMII),
+	MVEBU_COMPHY_CONF_ETH(0, 1, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(0, 1, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF(0, 0, PHY_MODE_USB_HOST),
 	MVEBU_COMPHY_CONF(0, 0, PHY_MODE_USB_DEVICE),
 	/* lane 1 */
 	MVEBU_COMPHY_CONF(1, 0, PHY_MODE_PCIE),
-	MVEBU_COMPHY_CONF(1, 0, PHY_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(1, 0, PHY_INTERFACE_MODE_SGMII),
 	/* lane 2 */
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_SATA),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_USB_HOST),
@@ -104,45 +114,45 @@ static const struct mvebu_comhy_conf mvebu_comphy_a3700_modes[] = {
 
 static const struct mvebu_comhy_conf mvebu_comphy_cp110_modes[] = {
 	/* lane 0 */
-	MVEBU_COMPHY_CONF(0, 1, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(0, 1, PHY_MODE_2500SGMII),
+	MVEBU_COMPHY_CONF_ETH(0, 1, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(0, 1, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF(0, 0, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(0, 1, PHY_MODE_SATA),
 	/* lane 1 */
-	MVEBU_COMPHY_CONF(1, 2, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(1, 2, PHY_MODE_2500SGMII),
+	MVEBU_COMPHY_CONF_ETH(1, 2, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(1, 2, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF(1, 0, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(1, 0, PHY_MODE_SATA),
 	MVEBU_COMPHY_CONF(1, 0, PHY_MODE_USB_HOST),
 	/* lane 2 */
-	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_2500SGMII),
-	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_10GKR),
+	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_2500BASEX),
+	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_10GKR),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_USB_HOST),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_SATA),
-	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_RXAUI),
+	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_RXAUI),
 	/* lane 3 */
-	MVEBU_COMPHY_CONF(3, 1, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(3, 1, PHY_MODE_2500SGMII),
+	MVEBU_COMPHY_CONF_ETH(3, 1, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(3, 1, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF(3, 0, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(3, 1, PHY_MODE_SATA),
 	MVEBU_COMPHY_CONF(3, 1, PHY_MODE_USB_HOST),
-	MVEBU_COMPHY_CONF(3, 0, PHY_MODE_RXAUI),
+	MVEBU_COMPHY_CONF_ETH(3, 0, PHY_INTERFACE_MODE_RXAUI),
 	/* lane 4 */
-	MVEBU_COMPHY_CONF(4, 0, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(4, 0, PHY_MODE_2500SGMII),
-	MVEBU_COMPHY_CONF(4, 0, PHY_MODE_10GKR),
-	MVEBU_COMPHY_CONF(4, 1, PHY_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_2500BASEX),
+	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_10GKR),
+	MVEBU_COMPHY_CONF_ETH(4, 1, PHY_INTERFACE_MODE_SGMII),
 	MVEBU_COMPHY_CONF(4, 1, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(4, 1, PHY_MODE_USB_HOST),
-	MVEBU_COMPHY_CONF(4, 0, PHY_MODE_RXAUI),
+	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_RXAUI),
 	/* lane 5 */
-	MVEBU_COMPHY_CONF(5, 2, PHY_MODE_SGMII),
-	MVEBU_COMPHY_CONF(5, 2, PHY_MODE_2500SGMII),
+	MVEBU_COMPHY_CONF_ETH(5, 2, PHY_INTERFACE_MODE_SGMII),
+	MVEBU_COMPHY_CONF_ETH(5, 2, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF(5, 2, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(5, 1, PHY_MODE_SATA),
-	MVEBU_COMPHY_CONF(5, 0, PHY_MODE_RXAUI),
+	MVEBU_COMPHY_CONF_ETH(5, 0, PHY_INTERFACE_MODE_RXAUI),
 };
 
 struct mvebu_comphy_data {
@@ -163,6 +173,7 @@ struct mvebu_comphy_lane {
 	struct mvebu_comphy_priv *priv;
 	unsigned id;
 	enum phy_mode mode;
+	int submode;
 	int port;
 };
 
@@ -183,7 +194,7 @@ static const struct mvebu_comphy_data cp110_data = {
 };
 
 static int mvebu_is_comphy_mode_valid(struct mvebu_comphy_lane *lane,
-				      enum phy_mode mode)
+				      enum phy_mode mode, int submode)
 {
 	const struct mvebu_comphy_data *data = lane->priv->data;
 	const struct mvebu_comhy_conf *modes = data->modes;
@@ -192,7 +203,8 @@ static int mvebu_is_comphy_mode_valid(struct mvebu_comphy_lane *lane,
 	for (i = 0; i < data->modes_size; i++) {
 		if (modes[i].lane == lane->id &&
 		    modes[i].port == lane->port &&
-		    modes[i].mode == mode)
+		    modes[i].mode == mode &&
+		    modes[i].submode == submode)
 			break;
 	}
 
@@ -200,6 +212,49 @@ static int mvebu_is_comphy_mode_valid(struct mvebu_comphy_lane *lane,
 		return -EINVAL;
 
 	return 0;
+}
+
+static int mvebu_comphy_eth_power_on(struct phy *phy)
+{
+	struct mvebu_comphy_lane *lane = phy_get_drvdata(phy);
+	struct mvebu_comphy_priv *priv = lane->priv;
+	const struct mvebu_comphy_data *data = priv->data;
+	int ret;
+
+	switch (lane->submode) {
+	case PHY_INTERFACE_MODE_SGMII:
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id,
+				 COMPHY_FW_NET_FORMAT(COMPHY_SGMII_MODE,
+						      lane->port,
+						      COMPHY_SPEED_1_25G));
+		break;
+	case PHY_INTERFACE_MODE_2500BASEX:
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id,
+				 COMPHY_FW_NET_FORMAT(COMPHY_HS_SGMII_MODE,
+						      lane->port,
+						      COMPHY_SPEED_3_125G));
+		break;
+	case PHY_INTERFACE_MODE_10GKR:
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id,
+				 COMPHY_FW_NET_FORMAT(COMPHY_XFI_MODE,
+						      lane->port,
+						      COMPHY_SPEED_10_3125G));
+		break;
+	case PHY_INTERFACE_MODE_RXAUI:
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id,
+				 COMPHY_FW_MODE_FORMAT(COMPHY_RXAUI_MODE));
+		break;
+	default:
+		dev_err(priv->dev, "unsupported PHY submode (%d)\n",
+			lane->submode);
+		return -ENOTSUPP;
+	}
+
+	return ret;
 }
 
 static int mvebu_comphy_power_on(struct phy *phy)
@@ -210,29 +265,6 @@ static int mvebu_comphy_power_on(struct phy *phy)
 	int ret;
 
 	switch (lane->mode) {
-	case PHY_MODE_SGMII:
-		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
-				 lane->id,
-				 COMPHY_FW_NET_FORMAT(COMPHY_SGMII_MODE,
-						      lane->port,
-						      COMPHY_SPEED_1_25G));
-
-		break;
-	case PHY_MODE_2500SGMII:
-		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
-				 lane->id,
-				 COMPHY_FW_NET_FORMAT(COMPHY_HS_SGMII_MODE,
-						      lane->port,
-						      COMPHY_SPEED_3_125G));
-
-		break;
-	case PHY_MODE_10GKR:
-		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
-				 lane->id,
-				 COMPHY_FW_NET_FORMAT(COMPHY_XFI_MODE,
-						      lane->port,
-						      COMPHY_SPEED_10_3125G));
-		break;
 	case PHY_MODE_PCIE:
 		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
 				 lane->id,
@@ -246,15 +278,13 @@ static int mvebu_comphy_power_on(struct phy *phy)
 				 lane->id,
 				 COMPHY_FW_MODE_FORMAT(COMPHY_SATA_MODE));
 		break;
-	case PHY_MODE_RXAUI:
-		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
-				 lane->id,
-				 COMPHY_FW_MODE_FORMAT(COMPHY_RXAUI_MODE));
-		break;
 	case PHY_MODE_USB_HOST:
 		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
 				 lane->id,
 				 COMPHY_FW_MODE_FORMAT(COMPHY_USB3H_MODE));
+		break;
+	case PHY_MODE_ETHERNET:
+		ret = mvebu_comphy_eth_power_on(phy);
 		break;
 	default:
 		return -ENOTSUPP;
@@ -270,10 +300,17 @@ static int mvebu_comphy_set_mode(struct phy *phy,
 {
 	struct mvebu_comphy_lane *lane = phy_get_drvdata(phy);
 
-	if (mvebu_is_comphy_mode_valid(lane, mode) < 0)
+	if (submode == PHY_INTERFACE_MODE_1000BASEX)
+		submode = PHY_INTERFACE_MODE_SGMII;
+
+	if (mvebu_is_comphy_mode_valid(lane, mode, submode) < 0) {
+		dev_dbg(&phy->dev, "invalid mode %d or submode %d for lane %d\n",
+		       mode, submode, lane->id);
 		return -EINVAL;
+	}
 
 	lane->mode = mode;
+	lane->submode = submode;
 	return 0;
 }
 

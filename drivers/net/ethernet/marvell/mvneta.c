@@ -3193,25 +3193,13 @@ static int mvneta_setup_txqs(struct mvneta_port *pp)
  */
 static int mvneta_comphy_init(struct mvneta_port *pp)
 {
-	enum phy_mode mode;
 	int ret;
 
 	if (!pp->comphy)
 		return 0;
 
-	switch (pp->phy_interface) {
-	case PHY_INTERFACE_MODE_SGMII:
-	case PHY_INTERFACE_MODE_1000BASEX:
-		mode = PHY_MODE_SGMII;
-		break;
-	case PHY_INTERFACE_MODE_2500BASEX:
-		mode = PHY_MODE_2500SGMII;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	ret = phy_set_mode(pp->comphy, mode);
+	ret = phy_set_mode_ext(pp->comphy, PHY_MODE_ETHERNET,
+			       pp->phy_interface);
 	if (ret)
 		return ret;
 
