@@ -58,7 +58,7 @@
 		regulator-name = "cp2_sd_vcc";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
-		gpios = <&cp2_gpio2 16 GPIO_ACTIVE_HIGH>;
+		gpios = <&cp2_gpio2 17 GPIO_ACTIVE_HIGH>;
 		states = <1800000 0x1 3300000 0x0>;
 	};
 
@@ -119,6 +119,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&cp2_sdhci_pins>;
 	bus-width = <4>;
+	cd-gpios = <&cp2_gpio2 23 GPIO_ACTIVE_LOW>;
 	vqmmc-supply = <&cp2_reg_sd_vccq>;
 };
 
