@@ -89,6 +89,8 @@ typedef enum {
 	PHY_INTERFACE_MODE_XAUI,
 	/* 10GBASE-KR, XFI, SFI - single lane 10G Serdes */
 	PHY_INTERFACE_MODE_10GKR,
+	/* 5GBASE-KR - Single lane 5G Serdes */
+	PHY_INTERFACE_MODE_5GKR,
 	PHY_INTERFACE_MODE_MAX,
 } phy_interface_t;
 
@@ -161,6 +163,8 @@ static inline const char *phy_modes(phy_interface_t interface)
 		return "xaui";
 	case PHY_INTERFACE_MODE_10GKR:
 		return "10gbase-kr";
+	case PHY_INTERFACE_MODE_5GKR:
+		return "5gbase-kr";
 	default:
 		return "unknown";
 	}
