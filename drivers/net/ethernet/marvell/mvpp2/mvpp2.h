@@ -1050,6 +1050,9 @@ struct mvpp2_port {
 
 	/* Firmware TX flow control */
 	bool tx_fc;
+
+	/* Indication, whether port is connected to XLG MAC */
+	bool has_xlg_mac;
 };
 
 /* The mvpp2_tx_desc and mvpp2_rx_desc structures describe the
