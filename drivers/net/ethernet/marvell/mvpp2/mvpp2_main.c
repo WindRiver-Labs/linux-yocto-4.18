@@ -1221,10 +1221,9 @@ static void mvpp22_gop_init_sgmii(struct mvpp2_port *port)
 	}
 }
 
-static void mvpp22_gop_init_10gkr(struct mvpp2_port *port)
+static void mvpp22_gop_init_xpcs(struct mvpp2_port *port)
 {
 	struct mvpp2 *priv = port->priv;
-	void __iomem *mpcs = priv->iface_base + MVPP22_MPCS_BASE(port->gop_id);
 	void __iomem *xpcs = priv->iface_base + MVPP22_XPCS_BASE(port->gop_id);
 	u32 val;
 
@@ -1234,6 +1233,13 @@ static void mvpp22_gop_init_10gkr(struct mvpp2_port *port)
 		 MVPP22_XPCS_CFG0_ACTIVE_LANE(0x3));
 	val |= MVPP22_XPCS_CFG0_ACTIVE_LANE(2);
 	writel(val, xpcs + MVPP22_XPCS_CFG0);
+}
+
+static void mvpp22_gop_init_mpcs(struct mvpp2_port *port)
+{
+	struct mvpp2 *priv = port->priv;
+	void __iomem *mpcs = priv->iface_base + MVPP22_MPCS_BASE(port->gop_id);
+	u32 val;
 
 	/* MPCS */
 	val = readl(mpcs + MVPP22_MPCS_CTRL);
@@ -1316,10 +1322,15 @@ static int mvpp22_gop_init(struct mvpp2_port *port)
 	case PHY_INTERFACE_MODE_2500BASEX:
 		mvpp22_gop_init_sgmii(port);
 		break;
+	case PHY_INTERFACE_MODE_XAUI:
+		if (port->gop_id != 0)
+			goto invalid_conf;
+		mvpp22_gop_init_xpcs(port);
+		break;
 	case PHY_INTERFACE_MODE_10GKR:
 		if (port->gop_id != 0)
 			goto invalid_conf;
-		mvpp22_gop_init_10gkr(port);
+		mvpp22_gop_init_mpcs(port);
 		break;
 	default:
 		goto unsupported_conf;
