@@ -125,6 +125,7 @@
 		     &cp0_sdhci_cd_pins>;
 	bus-width = <4>;
 	cd-gpios = <&cp0_gpio2 11 GPIO_ACTIVE_LOW>;
+	no-1-8-v;
 	vqmmc-supply = <&cp0_reg_sd_vccq>;
 	vmmc-supply = <&cp0_reg_sd_vcc>;
 };
