@@ -2,17 +2,17 @@ menu "Platform selection"
 
 choice
 	prompt "Choose NXP platform..."
-        default PXP
+        default SIMU
 
-config PXP
-        bool "PXP"
+config EMU_PXP
+        bool "EMU_PXP"
         help
-          Build Linux image for PXP platform
+          Build Linux image for EMU_PXP platform
 
-config CFP
-        bool "CFP"
+config EMU_CFP
+        bool "EMU_CFP"
         help
-          Build Linux image for CFP platform
+          Build Linux image for EMU_CFP platform
 
 config SIMU
         bool "SIMU"
