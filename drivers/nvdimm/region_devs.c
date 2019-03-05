@@ -18,8 +18,12 @@
 #include <linux/sort.h>
 #include <linux/io.h>
 #include <linux/nd.h>
+#include <linux/locallock.h>
 #include "nd-core.h"
 #include "nd.h"
+
+/* lock for tasks on the same CPU to sequence the access to the lane */
+static DEFINE_LOCAL_IRQ_LOCK(ndl_local_lock);
 
 /*
  * For readq() and writeq() on 32-bit builds, the hi-lo, lo-hi order is
@@ -926,18 +930,15 @@ int nd_blk_region_init(struct nd_region *nd_region)
 unsigned int nd_region_acquire_lane(struct nd_region *nd_region)
 {
 	unsigned int cpu, lane;
+	struct nd_percpu_lane *ndl_lock, *ndl_count;
 
-	cpu = get_cpu();
-	if (nd_region->num_lanes < nr_cpu_ids) {
-		struct nd_percpu_lane *ndl_lock, *ndl_count;
+	cpu = local_lock_cpu(ndl_local_lock);
 
-		lane = cpu % nd_region->num_lanes;
-		ndl_count = per_cpu_ptr(nd_region->lane, cpu);
-		ndl_lock = per_cpu_ptr(nd_region->lane, lane);
-		if (ndl_count->count++ == 0)
-			spin_lock(&ndl_lock->lock);
-	} else
-		lane = cpu;
+	lane = cpu % nd_region->num_lanes;
+	ndl_count = per_cpu_ptr(nd_region->lane, cpu);
+	ndl_lock = per_cpu_ptr(nd_region->lane, lane);
+	if (ndl_count->count++ == 0)
+		spin_lock(&ndl_lock->lock);
 
 	return lane;
 }
@@ -945,17 +946,14 @@ EXPORT_SYMBOL(nd_region_acquire_lane);
 
 void nd_region_release_lane(struct nd_region *nd_region, unsigned int lane)
 {
-	if (nd_region->num_lanes < nr_cpu_ids) {
-		unsigned int cpu = get_cpu();
-		struct nd_percpu_lane *ndl_lock, *ndl_count;
+	struct nd_percpu_lane *ndl_lock, *ndl_count;
+	unsigned int cpu = smp_processor_id();
 
-		ndl_count = per_cpu_ptr(nd_region->lane, cpu);
-		ndl_lock = per_cpu_ptr(nd_region->lane, lane);
-		if (--ndl_count->count == 0)
-			spin_unlock(&ndl_lock->lock);
-		put_cpu();
-	}
-	put_cpu();
+	ndl_count = per_cpu_ptr(nd_region->lane, cpu);
+	ndl_lock = per_cpu_ptr(nd_region->lane, lane);
+	if (--ndl_count->count == 0)
+		spin_unlock(&ndl_lock->lock);
+	local_unlock_cpu(ndl_local_lock);
 }
 EXPORT_SYMBOL(nd_region_release_lane);
 
