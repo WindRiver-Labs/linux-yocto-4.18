@@ -82,7 +82,7 @@
 &cp1_eth1 {
 	status = "disabled";
 	phy-mode = "10gbase-kr";
-	phy = <&phy4>;
+	phy = <&phy8>;
 	/* TODO: regarding to the spec comphy2 can be used with port 0 only */
 	phys = <&cp1_comphy2 1>;
 };
@@ -198,9 +198,9 @@
 
 &cp1_xmdio {
 	status = "okay";
-	phy4: ethernet-phy@4 {
+	phy8: ethernet-phy@8 {
 		compatible = "ethernet-phy-ieee802.3-c45";
-		reg = <4>;
+		reg = <8>;
 	};
 };
 
