@@ -41,7 +41,7 @@
 };
 
 &i2c2 {
-	pmic: pfuze100@08 {
+	pmic: pfuze100@8 {
 		regulators {
 			sw1a_reg: sw1ab {
 				regulator-min-microvolt = <300000>;

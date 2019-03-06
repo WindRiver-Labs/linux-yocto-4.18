@@ -142,14 +142,6 @@
 		gpios = <&gpio2 6 GPIO_ACTIVE_LOW>;
 	};
 
-	reg_vref_3v3: regulator@7 {
-		compatible = "regulator-fixed";
-		reg = <7>;
-		regulator-name = "vref-3v3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-	};
-
 	reg_pcie_gpio: regulator-pcie-gpio {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
@@ -168,33 +160,49 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
-	reg_pcie: regulator@8 {
-		compatible = "regulator-fixed";
-		reg = <8>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_pcie_reg>;
-		regulator-name = "MPCIE_3V3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpio = <&gpio2 1 0>;
-		regulator-always-on;
-		enable-active-high;
-	};
 
-	reg_can_en: regulator@9 {
-		compatible = "regulator-fixed";
-		reg = <9>;
-		regulator-name = "can-en";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-	};
 
-	reg_can_stby: regulator@10 {
-		compatible = "regulator-fixed";
-		reg = <10>;
-		regulator-name = "can-stby";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_vref_3v3: regulator@7 {
+			compatible = "regulator-fixed";
+			reg = <7>;
+			regulator-name = "vref-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		reg_pcie: regulator@8 {
+			compatible = "regulator-fixed";
+			reg = <8>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_pcie_reg>;
+			regulator-name = "MPCIE_3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio2 1 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+		reg_can_en: regulator@9 {
+			compatible = "regulator-fixed";
+			reg = <9>;
+			regulator-name = "can-en";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		reg_can_stby: regulator@10 {
+			compatible = "regulator-fixed";
+			reg = <10>;
+			regulator-name = "can-stby";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
 	};
 
 	sound {
@@ -347,7 +355,7 @@
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
 
-	pmic: pfuze100@08 {
+	pmic: pfuze100@8 {
 		compatible = "fsl,pfuze200";
 		reg = <0x08>;
 
@@ -909,18 +917,6 @@
 			fsl,pins = <
 				MX6SX_PAD_SD2_CLK__MQS_RIGHT 0x120b0
 				MX6SX_PAD_SD2_CMD__MQS_LEFT  0x120b0
-			>;
-		};
-
-		pinctrl_pcie: pciegrp {
-			fsl,pins = <
-				MX6SX_PAD_ENET1_COL__GPIO2_IO_0 0x10b0
-			>;
-		};
-
-		pinctrl_pcie_reg: pciereggrp {
-			fsl,pins = <
-				MX6SX_PAD_ENET1_CRS__GPIO2_IO_1	0x10b0
 			>;
 		};
 

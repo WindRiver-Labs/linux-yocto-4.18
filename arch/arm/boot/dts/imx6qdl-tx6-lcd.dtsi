@@ -66,21 +66,6 @@
 		default-brightness-level = <50>;
 	};
 
-	lcd_panel: lcd-panel {
-		compatible = "edt,etm0700g0dh6";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_lcd0_pwr>;
-		enable-gpios = <&gpio3 29 GPIO_ACTIVE_HIGH>;
-		power-supply = <&reg_3v3>;
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_out>;
-			};
-		};
-	};
-
 	lcd@0 {
 		compatible = "fsl,lcd";
 		ipu_id = <0>;
