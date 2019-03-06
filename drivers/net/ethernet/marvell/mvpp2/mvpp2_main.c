@@ -4553,6 +4553,9 @@ static int mvpp2_open(struct net_device *dev)
 	bool valid = false;
 	int err, cpu;
 
+	if (port->flags & MVPP22_F_IF_MUSDK)
+		goto skip_musdk_parser;
+
 	err = mvpp2_prs_mac_da_accept(port, mac_bcast, true);
 	if (err) {
 		netdev_err(dev, "mvpp2_prs_mac_da_accept BC failed\n");
@@ -4574,6 +4577,7 @@ static int mvpp2_open(struct net_device *dev)
 		return err;
 	}
 
+skip_musdk_parser:
 	/* Allocate the Rx/Tx queues */
 	err = mvpp2_setup_rxqs(port);
 	if (err) {
