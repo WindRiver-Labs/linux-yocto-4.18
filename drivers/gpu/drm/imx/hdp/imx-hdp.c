@@ -700,9 +700,7 @@ static int imx_hdp_connector_get_modes(struct drm_connector *connector)
 				dev_dbg(hdp->dev, "use default video modes\n");
 				num_modes =
 					imx_hdp_default_video_modes(connector);
-			} else
-				/* Store the ELD */
-				drm_edid_to_eld(connector, edid);
+			}
 			kfree(edid);
 		} else {
 			dev_dbg(hdp->dev, "failed to get edid, ");
