@@ -59,7 +59,7 @@
 #include <linux/seq_file.h>
 #include <linux/mman.h>
 #include <asm/atomic.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-direct.h>
 #include <linux/slab.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 #include <linux/anon_inodes.h>

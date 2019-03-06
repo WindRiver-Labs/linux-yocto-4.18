@@ -62,7 +62,7 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <asm/atomic.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-direct.h>
 
 #include <linux/dma-buf.h>
 #include <linux/platform_device.h>

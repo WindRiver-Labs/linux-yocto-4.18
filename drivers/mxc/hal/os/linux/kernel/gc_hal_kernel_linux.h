@@ -65,7 +65,7 @@
 #include <linux/signal.h>
 #include <linux/interrupt.h>
 #include <linux/vmalloc.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-direct.h>
 #include <linux/kthread.h>
 
 #include <linux/idr.h>

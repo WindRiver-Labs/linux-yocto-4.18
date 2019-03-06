@@ -60,7 +60,7 @@
 #include <linux/seq_file.h>
 #include <linux/mman.h>
 #include <asm/atomic.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-direct.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 
