@@ -15,7 +15,7 @@
 	status = "okay";
 
 	tsc2046 {
-		interrupts = <13 0>;
+		interrupts = <GIC_SPI 13 0>;
 		pendown-gpio = <&gpio2 13 0>;
 	};
 };

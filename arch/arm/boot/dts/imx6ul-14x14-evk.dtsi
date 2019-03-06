@@ -51,13 +51,19 @@
 		enable-active-high;
 	};
 
-	reg_can_3v3: regulator@0 {
-		compatible = "regulator-fixed";
-		reg = <0>;
-		regulator-name = "can-3v3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpios = <&gpio_spi 3 GPIO_ACTIVE_LOW>;
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_can_3v3: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "can-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpios = <&gpio_spi 3 GPIO_ACTIVE_LOW>;
+		};
 	};
 
 	reg_gpio_dvfs: regulator-gpio {

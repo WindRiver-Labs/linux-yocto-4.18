@@ -74,10 +74,6 @@
 	status = "disabled";
 };
 
-&lcd_panel {
-	compatible = "edt,etm0700g0edh6";
-};
-
 &reg_can_xcvr {
 	status = "disabled";
 };

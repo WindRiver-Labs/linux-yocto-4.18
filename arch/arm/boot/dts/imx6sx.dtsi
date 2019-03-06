@@ -920,7 +920,7 @@
 					pd_pci: power-domain@3 {
 						reg = <3>;
 						#power-domain-cells = <0>;
-						power-supply = <&reg_pcie>;
+						power-supply = <&reg_pcie_phy>;
 					};
 
 					pd_disp: power-domain@2 {
