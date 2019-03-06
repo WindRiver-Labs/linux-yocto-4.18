@@ -10,18 +10,6 @@
 
 #define MC_CMD_NUM_OF_PARAMS	7
 
-/**
- * struct fsl_mc_command - Management Complex (MC) command structure
- * @header: MC command header
- * @params: MC command parameters
- *
- * Used by RESTOOL_SEND_MC_COMMAND
- */
-struct fsl_mc_command {
-	__u64 header;
-	__u64 params[MC_CMD_NUM_OF_PARAMS];
-};
-
 #define RESTOOL_IOCTL_TYPE	'R'
 #define RESTOOL_IOCTL_SEQ	0xE0
 
