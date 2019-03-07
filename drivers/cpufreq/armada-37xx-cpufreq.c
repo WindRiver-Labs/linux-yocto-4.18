@@ -162,11 +162,25 @@ static void __init armada37xx_cpufreq_dvfs_setup(struct regmap *base,
 	}
 
 	/*
-	 * Set cpu clock source, for all the level we keep the same
-	 * clock source that the one already configured. For this one
-	 * we need to use the clock framework
+	 * Set CPU clock source, for all the level we keep the same
+	 * clock source that the one already configured with DVS
+	 * disabled. For this one we need to use the clock framework
 	 */
 	parent = clk_get_parent(clk);
+
+	/*
+	 * Unset parent clock to force the clock framework setting again
+	 * the clock parent
+	 */
+	clk_set_parent(clk, NULL);
+
+	/*
+	 * For the Armada 37xx CPU clocks, setting the parent will
+	 * actually configure the parent when DVFS is enabled. At
+	 * hardware level it will be a different register from the one
+	 * read when doing clk_get_parent that will be set with
+	 * clk_set_parent.
+	 */
 	clk_set_parent(clk, parent);
 }
 
