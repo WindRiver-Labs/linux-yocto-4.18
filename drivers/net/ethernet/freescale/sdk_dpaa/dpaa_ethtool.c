@@ -90,7 +90,7 @@ static char dpa_stats_global[][ETH_GSTRING_LEN] = {
 static int __cold dpa_get_ksettings(struct net_device *net_dev,
 		struct ethtool_link_ksettings *cmd)
 {
-	int			 _errno;
+	int			 _errno = 0;
 	struct dpa_priv_s	*priv;
 
 	priv = netdev_priv(net_dev);
