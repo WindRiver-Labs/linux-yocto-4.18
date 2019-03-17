@@ -5994,21 +5994,18 @@ static void mvpp2_gmac_config(struct mvpp2_port *port, unsigned int mode,
 	if (phylink_test(state->advertising, Asym_Pause))
 		an |= MVPP2_GMAC_FC_ADV_ASM_EN;
 
+	ctrl4 &= ~(MVPP22_CTRL4_RX_FC_EN | MVPP22_CTRL4_TX_FC_EN);
+
 	if (phy_interface_mode_is_8023z(state->interface) ||
 	    state->interface == PHY_INTERFACE_MODE_SGMII) {
 		an |= MVPP2_GMAC_IN_BAND_AUTONEG;
 		ctrl2 |= MVPP2_GMAC_INBAND_AN_MASK | MVPP2_GMAC_PCS_ENABLE_MASK;
 
-		ctrl4 &= ~(MVPP22_CTRL4_EXT_PIN_GMII_SEL |
-			   MVPP22_CTRL4_RX_FC_EN | MVPP22_CTRL4_TX_FC_EN);
+		ctrl4 &= ~MVPP22_CTRL4_EXT_PIN_GMII_SEL;
 		ctrl4 |= MVPP22_CTRL4_SYNC_BYPASS_DIS |
 			 MVPP22_CTRL4_DP_CLK_SEL |
 			 MVPP22_CTRL4_QSGMII_BYPASS_ACTIVE;
 
-		if (state->pause & MLO_PAUSE_TX)
-			ctrl4 |= MVPP22_CTRL4_TX_FC_EN;
-		if (state->pause & MLO_PAUSE_RX)
-			ctrl4 |= MVPP22_CTRL4_RX_FC_EN;
 	} else if (phy_interface_mode_is_rgmii(state->interface)) {
 		an |= MVPP2_GMAC_IN_BAND_AUTONEG_BYPASS;
 
@@ -6022,6 +6019,11 @@ static void mvpp2_gmac_config(struct mvpp2_port *port, unsigned int mode,
 			 MVPP22_CTRL4_SYNC_BYPASS_DIS |
 			 MVPP22_CTRL4_QSGMII_BYPASS_ACTIVE;
 	}
+
+	if (state->pause & MLO_PAUSE_TX)
+		ctrl4 |= MVPP22_CTRL4_TX_FC_EN;
+	if (state->pause & MLO_PAUSE_RX)
+		ctrl4 |= MVPP22_CTRL4_RX_FC_EN;
 
 	writel(ctrl0, port->base + MVPP2_GMAC_CTRL_0_REG);
 	writel(ctrl2, port->base + MVPP2_GMAC_CTRL_2_REG);
