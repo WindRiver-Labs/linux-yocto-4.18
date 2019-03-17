@@ -21,6 +21,8 @@
 			ethernet@0 {
 				eth0 {
 					/delete-property/phy;
+					managed = "in-band-status";
+					sfp = <&sfp_eth0>;
 				};
 			};
 			/delete-node/cp0_xmdio;
@@ -32,6 +34,8 @@
 			ethernet@0 {
 				eth0 {
 					/delete-property/phy;
+					managed = "in-band-status";
+					sfp = <&sfp_eth1>;
 				};
 			};
 			/delete-node/cp1_xmdio;
