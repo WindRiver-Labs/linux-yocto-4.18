@@ -550,11 +550,14 @@ static int __init test_insert_dup(struct test_obj_rhl *rhl_test_objects,
 	int err = 0;
 
 	rhlt = kmalloc(sizeof(*rhlt), GFP_KERNEL);
-	if (!rhlt)
-		return -ENOMEM;
+	if (WARN_ON(!rhlt))
+		return -EINVAL;
+
 	err = rhltable_init(rhlt, &test_rht_params_dup);
-	if (WARN_ON(err))
+	if (WARN_ON(err)) {
+		kfree(rhlt);
 		return err;
+	}
 
 	for (i = 0; i < cnt; i++) {
 		rhl_test_objects[i].value.tid = i;
@@ -579,6 +582,7 @@ static int __init test_insert_dup(struct test_obj_rhl *rhl_test_objects,
 
 skip_print:
 	rhltable_destroy(rhlt);
+	kfree(rhlt);
 
 	return 0;
 }
