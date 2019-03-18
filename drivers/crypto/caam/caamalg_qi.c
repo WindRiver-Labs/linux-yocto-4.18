@@ -3021,6 +3021,7 @@ static int caam_init_common(struct caam_ctx *ctx, struct caam_alg_entry *caam,
 			    bool uses_dkp)
 {
 	struct caam_drv_private *priv;
+	struct device *dev;
 	/* Digest sizes for MD5, SHA1, SHA-224, SHA-256, SHA-384, SHA-512 */
 	static const u8 digest_size[] = {
 		MD5_DIGEST_SIZE,
@@ -3277,7 +3278,7 @@ int caam_qi_algapi_init(struct device *ctrldev)
 		t_alg = caam_alg_alloc(alg);
 		if (IS_ERR(t_alg)) {
 			err = PTR_ERR(t_alg);
-			dev_warn(priv->qidev, "%s alg allocation failed\n",
+			dev_warn(ctrldev, "%s alg allocation failed\n",
 				 alg->driver_name);
 			continue;
 		}
