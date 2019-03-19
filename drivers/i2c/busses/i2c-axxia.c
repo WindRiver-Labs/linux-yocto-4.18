@@ -507,8 +507,6 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 
 	if (idev->msg_err == -ETIMEDOUT)
 		i2c_recover_bus(&idev->adapter);
-		axxia_i2c_init(idev);
-	}
 
 	if (unlikely(idev->msg_err != 0)) {
 		axxia_i2c_init(idev);
