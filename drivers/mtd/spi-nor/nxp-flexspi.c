@@ -1161,7 +1161,8 @@ static void nxp_fspi_unprep(struct spi_nor *nor, enum spi_nor_ops ops)
 }
 
 static const struct of_device_id nxp_fspi_dt_ids[] = {
-	{ .compatible = "nxp,lx2160a-fspi", .data = (void *)&ls1028a_data, },
+	{ .compatible = "nxp,lx2160a-fspi", .data = (void *)&lx2160a_data, },
+	{ .compatible = "nxp,ls1028a-fspi", .data = (void *)&ls1028a_data, },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, nxp_fspi_dt_ids);
