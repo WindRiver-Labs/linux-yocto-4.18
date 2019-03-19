@@ -668,6 +668,7 @@ static int imx274_regmap_util_write_table_8(struct regmap *regmap,
 
 static inline int imx274_read_reg(struct stimx274 *priv, u16 addr, u8 *val)
 {
+	unsigned int uint_val;
 	int err;
 	unsigned int temp;
 

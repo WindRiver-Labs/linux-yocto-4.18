@@ -358,7 +358,7 @@ struct mlx5_frag_buf_ctrl {
 	struct mlx5_frag_buf	frag_buf;
 	u32			sz_m1;
 	u16			frag_sz_m1;
-	u32			strides_offset;
+	u16			strides_offset;
 	u8			log_sz;
 	u8			log_stride;
 	u8			log_frag_strides;
@@ -985,7 +985,7 @@ static inline u32 mlx5_base_mkey(const u32 key)
 }
 
 static inline void mlx5_fill_fbc_offset(u8 log_stride, u8 log_sz,
-					u32 strides_offset,
+					u16 strides_offset,
 					struct mlx5_frag_buf_ctrl *fbc)
 {
 	fbc->log_stride = log_stride;
@@ -1316,7 +1316,7 @@ enum {
 static inline const struct cpumask *
 mlx5_get_vector_affinity_hint(struct mlx5_core_dev *dev, int vector)
 {
-	return dev->priv.irq_info[vector].mask;
+	return dev->priv.irq_info[vector + MLX5_EQ_VEC_COMP_BASE].mask;
 }
 
 #endif /* MLX5_DRIVER_H */
