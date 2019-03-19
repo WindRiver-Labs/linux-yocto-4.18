@@ -19,4 +19,5 @@ config FSL_GUTS
 
 if ARM || ARM64
 source "drivers/soc/fsl/Kconfig.arm"
+source "drivers/soc/fsl/ls2-console/Kconfig"
 endif
