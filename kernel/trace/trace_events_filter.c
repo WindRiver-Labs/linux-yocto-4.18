@@ -583,11 +583,13 @@ predicate_parse(const char *str, int nr_parens, int nr_preds,
 		}
 	}
 
+	kfree(op_stack);
+	kfree(inverts);
 	return prog;
 out_free:
 	kfree(op_stack);
-	kfree(prog_stack);
 	kfree(inverts);
+	kfree(prog_stack);
 	return ERR_PTR(ret);
 }
 
@@ -1311,7 +1313,7 @@ static int parse_pred(const char *str, void *data,
 		/* go past the last quote */
 		i++;
 
-	} else if (isdigit(str[i])) {
+	} else if (isdigit(str[i]) || str[i] == '-') {
 
 		/* Make sure the field is not a string */
 		if (is_string_field(field)) {
@@ -1323,6 +1325,9 @@ static int parse_pred(const char *str, void *data,
 			parse_error(pe, FILT_ERR_ILLEGAL_FIELD_OP, pos + i);
 			goto err_free;
 		}
+
+		if (str[i] == '-')
+			i++;
 
 		/* We allow 0xDEADBEEF */
 		while (isalnum(str[i]))
@@ -1730,6 +1735,7 @@ static int create_filter(struct trace_event_call *call,
 	err = process_preds(call, filter_string, *filterp, pe);
 	if (err && set_str)
 		append_filter_err(pe, *filterp);
+	create_filter_finish(pe);
 
 	return err;
 }

@@ -287,7 +287,7 @@ axxia_i2c_empty_rx_fifo(struct axxia_i2c_dev *idev)
 			 */
 			if (c <= 0) {
 				idev->msg_err = -EPROTO;
-				i2c_int_disable(idev, ~0);
+				i2c_int_disable(idev, ~MST_STATUS_TSS);
 				complete(&idev->msg_complete);
 				break;
 			} else if (c > I2C_SMBUS_BLOCK_MAX) {
@@ -380,6 +380,21 @@ axxia_i2c_service_irq(struct axxia_i2c_dev *idev)
 			readl(&idev->regs->mst_rx_xfer),
 			readl(&idev->regs->mst_tx_bytes_xfrd),
 			readl(&idev->regs->mst_tx_xfer));
+		complete(&idev->msg_complete);
+	} else if (status & MST_STATUS_SCC) {
+		/* Stop completed */
+		i2c_int_disable(idev, ~MST_STATUS_TSS);
+		complete(&idev->msg_complete);
+	} else if (status & MST_STATUS_SNS) {
+		/* Transfer done */
+		i2c_int_disable(idev, ~MST_STATUS_TSS);
+		if (i2c_m_rd(idev->msg) && idev->msg_xfrd < idev->msg->len)
+			axxia_i2c_empty_rx_fifo(idev);
+		complete(&idev->msg_complete);
+	} else if (status & MST_STATUS_TSS) {
+		/* Transfer timeout */
+		idev->msg_err = -ETIMEDOUT;
+		i2c_int_disable(idev, ~MST_STATUS_TSS);
 		complete(&idev->msg_complete);
 	}
 }
@@ -492,6 +507,8 @@ axxia_i2c_xfer_msg(struct axxia_i2c_dev *idev, struct i2c_msg *msg)
 
 	if (idev->msg_err == -ETIMEDOUT)
 		i2c_recover_bus(&idev->adapter);
+		axxia_i2c_init(idev);
+	}
 
 	if (unlikely(idev->msg_err != 0)) {
 		axxia_i2c_init(idev);
