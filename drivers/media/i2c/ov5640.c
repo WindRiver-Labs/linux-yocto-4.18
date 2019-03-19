@@ -1645,6 +1645,7 @@ static int ov5640_get_binning(struct ov5640_dev *sensor)
 		return ret;
 
 	return temp & BIT(0);
+<<<<<<< HEAD
 }
 
 static int ov5640_set_binning(struct ov5640_dev *sensor, bool enable)
@@ -1879,8 +1880,6 @@ static int ov5640_set_mode_exposure_calc(struct ov5640_dev *sensor,
 static int ov5640_set_mode_direct(struct ov5640_dev *sensor,
 				  const struct ov5640_mode_info *mode)
 {
-	int ret;
-
 	if (!mode->reg_data)
 		return -EINVAL;
 
