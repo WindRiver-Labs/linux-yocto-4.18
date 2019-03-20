@@ -44,8 +44,8 @@
 #include "key_gen.h"
 #include "caamalg_desc.h"
 #include "caamhash_desc.h"
-#include "../../../drivers/staging/fsl-mc/include/dpaa2-io.h"
-#include "../../../drivers/staging/fsl-mc/include/dpaa2-fd.h"
+#include <soc/fsl/dpaa2-io.h>
+#include <soc/fsl/dpaa2-fd.h>
 
 #define CAAM_CRA_PRIORITY	2000
 

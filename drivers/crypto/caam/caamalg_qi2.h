@@ -35,8 +35,8 @@
 #ifndef _CAAMALG_QI2_H_
 #define _CAAMALG_QI2_H_
 
-#include "../../../drivers/staging/fsl-mc/include/dpaa2-io.h"
-#include "../../../drivers/staging/fsl-mc/include/dpaa2-fd.h"
+#include <soc/fsl/dpaa2-io.h>
+#include <soc/fsl/dpaa2-fd.h>
 #include <linux/threads.h>
 #include "dpseci.h"
 #include "desc_constr.h"
