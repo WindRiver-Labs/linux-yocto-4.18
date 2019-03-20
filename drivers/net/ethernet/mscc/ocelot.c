@@ -527,9 +527,10 @@ static int ocelot_port_stop(struct net_device *dev)
 static int ocelot_gen_ifh(u32 *ifh, struct frame_info *info)
 {
 	ifh[0] = IFH_INJ_BYPASS;
-	ifh[1] = (0xf00 & info->port) >> 8;
+	ifh[1] = (0xff00 & info->port) >> 8;
 	ifh[2] = (0xff & info->port) << 24;
-	ifh[3] = (info->tag_type << 16) | info->vid;
+	ifh[3] = IFH_INJ_POP_CNT_DISABLE | (info->cpuq << 20) |
+		 (info->tag_type << 16) | info->vid;
 
 	return 0;
 }
