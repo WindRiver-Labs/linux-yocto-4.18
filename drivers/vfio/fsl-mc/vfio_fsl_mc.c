@@ -331,9 +331,7 @@ static int vfio_fsl_mc_dprc_wait_for_response(void __iomem *ioaddr)
 		u64 header;
 		struct mc_cmd_header *resp_hdr;
 
-		__iormb();
 		header = readq(ioaddr);
-		__iormb();
 
 		resp_hdr = (struct mc_cmd_header *)&header;
 		status = (enum mc_cmd_status)resp_hdr->status;
