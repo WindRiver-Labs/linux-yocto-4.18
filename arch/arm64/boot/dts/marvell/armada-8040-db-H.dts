@@ -85,6 +85,20 @@
 	phy-mode = "rgmii-id";
 };
 
+&cp0_crypto {
+	status = "okay";
+};
+
+/* CON9 on CP0 expansion */
+&cp0_usb3_0 {
+	status = "okay";
+};
+
+/* CON10 on CP0 expansion */
+&cp0_usb3_1 {
+	status = "okay";
+};
+
 &cp1_spi1 {
 	status = "okay";
 };
@@ -128,10 +142,16 @@
 	phy-mode = "rgmii-id";
 };
 
-&cp0_crypto {
+&cp1_crypto {
 	status = "okay";
 };
 
-&cp1_crypto {
+/* CON9 on CP1 expansion */
+&cp1_usb3_0 {
+	status = "okay";
+};
+
+/* CON10 on CP1 expansion */
+&cp1_usb3_1 {
 	status = "okay";
 };
