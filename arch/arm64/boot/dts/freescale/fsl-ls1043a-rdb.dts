@@ -71,6 +71,7 @@
 			reg = <0x0 0x0 0x8000000>;
 			bank-width = <2>;
 			device-width = <1>;
+			big-endian;
 		};
 
 		nand@1,0 {
