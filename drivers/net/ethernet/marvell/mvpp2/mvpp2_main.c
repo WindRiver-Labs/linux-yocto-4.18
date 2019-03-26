@@ -128,6 +128,7 @@ static void mvpp2_mac_link_up(struct net_device *dev, unsigned int mode,
 
 /* Branch prediction switches */
 DEFINE_STATIC_KEY_FALSE(mvpp21_variant);
+DEFINE_STATIC_KEY_FALSE(mvpp2_recycle_ena);
 
 /* Queue modes */
 #define MVPP2_QDIST_SINGLE_MODE	0
@@ -136,6 +137,7 @@ DEFINE_STATIC_KEY_FALSE(mvpp21_variant);
 static int queue_mode = MVPP2_QDIST_MULTI_MODE;
 static int tx_fifo_protection;
 static int bm_underrun_protect = 1;
+static int recycle;
 
 module_param(queue_mode, int, 0444);
 MODULE_PARM_DESC(queue_mode, "Set queue_mode (single=0, multi=1)");
@@ -145,6 +147,9 @@ MODULE_PARM_DESC(tx_fifo_protection, "Set tx_fifo_protection (off=0, on=1)");
 
 module_param(bm_underrun_protect, int, 0444);
 MODULE_PARM_DESC(bm_underrun_protect, "Set BM underrun protect feature (0-1), def=1");
+
+module_param(recycle, int, 0444);
+MODULE_PARM_DESC(recycle, "Recycle: 0:disable(default), >=1:enable");
 
 static dma_addr_t mvpp2_txdesc_dma_addr_get(struct mvpp2_port *port,
 					    struct mvpp2_tx_desc *tx_desc)
@@ -2504,10 +2509,14 @@ static void mvpp2_txq_bufs_free(struct mvpp2_port *port,
 		} else if (tx_buf->skb != TSO_HEADER_MARK) {
 			dma_unmap_single(port->dev->dev.parent, tx_buf->dma,
 					 tx_buf->size, DMA_TO_DEVICE);
-			mvpp2_recycle_put(port, txq_pcpu, tx_buf);
-			/* sets tx_buf->skb=NULL if put to recycle */
-			if (tx_buf->skb)
+			if (static_branch_unlikely(&mvpp2_recycle_ena)) {
+				mvpp2_recycle_put(port, txq_pcpu, tx_buf);
+				/* sets tx_buf->skb=NULL if put to recycle */
+				if (tx_buf->skb)
+					dev_kfree_skb_any(tx_buf->skb);
+			} else {
 				dev_kfree_skb_any(tx_buf->skb);
+			}
 		}
 		/* else: no action, tx_buf->skb always overwritten in xmit */
 		mvpp2_txq_inc_get(txq_pcpu);
@@ -3738,9 +3747,40 @@ static struct sk_buff *mvpp2_recycle_get(struct mvpp2_port *port,
 		skb = kmem_cache_alloc(skbuff_head_cache, GFP_ATOMIC);
 	}
 
-	if (!skb) {
+	if (unlikely(!skb)) {
 		dma_unmap_single(port->dev->dev.parent, dma_addr,
-				 bm_pool->frag_size, DMA_FROM_DEVICE);
+				bm_pool->buf_size, DMA_FROM_DEVICE);
+		mvpp2_frag_free(bm_pool, frag);
+		return NULL;
+	}
+	mvpp2_bm_pool_put(port, bm_pool->id, dma_addr);
+	return skb;
+}
+
+/* SKB and BM-buff alloc/refill like mvpp2_recycle_get but without recycle */
+static inline
+struct sk_buff *mvpp2_bm_refill_skb_get(struct mvpp2_port *port,
+		struct mvpp2_bm_pool *bm_pool)
+{
+	void *frag;
+	struct sk_buff *skb;
+	dma_addr_t dma_addr;
+
+	/* GET bm buffer, refill into BM */
+	frag = mvpp2_frag_alloc(bm_pool);
+	dma_addr = dma_map_single(port->dev->dev.parent, frag,
+			bm_pool->buf_size, DMA_FROM_DEVICE);
+	if (unlikely(dma_mapping_error(port->dev->dev.parent, dma_addr))) {
+		netdev_err(port->dev, "failed to refill BM pool-%d\n",
+				bm_pool->id);
+		return NULL;
+	}
+
+	/* GET skb buffer */
+	skb = kmem_cache_alloc(skbuff_head_cache, GFP_ATOMIC);
+	if (unlikely(!skb)) {
+		dma_unmap_single(port->dev->dev.parent, dma_addr,
+				bm_pool->frag_size, DMA_FROM_DEVICE);
 		mvpp2_frag_free(bm_pool, frag);
 		return NULL;
 	}
@@ -3781,8 +3821,11 @@ struct sk_buff *mvpp2_build_skb(void *data, unsigned int frag_size,
 	struct sk_buff *skb;
 	unsigned int size = frag_size ? : ksize(data);
 
-	skb = mvpp2_recycle_get(port, bm_pool);
-	if (!skb)
+	if (static_branch_unlikely(&mvpp2_recycle_ena))
+		skb = mvpp2_recycle_get(port, bm_pool);
+	else
+		skb = mvpp2_bm_refill_skb_get(port, bm_pool);
+	if (unlikely(!skb))
 		return NULL;
 
 	size -= SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
@@ -7057,6 +7100,9 @@ static int mvpp2_probe(struct platform_device *pdev)
 	/* Configure branch prediction switch */
 	if (priv->hw_version == MVPP21)
 		static_branch_enable(&mvpp21_variant);
+	if (recycle)
+		static_branch_enable(&mvpp2_recycle_ena);
+	/* else - keep the DEFINE_STATIC_KEY_FALSE */
 
 	/* Map DTS-active ports. Should be done before FIFO mvpp2_init */
 	fwnode_for_each_available_child_node(fwnode, port_fwnode) {
