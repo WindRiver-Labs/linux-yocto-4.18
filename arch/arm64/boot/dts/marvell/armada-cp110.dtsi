@@ -233,6 +233,7 @@
 			clocks = <&CP110_LABEL(clk) 1 3>;
 			clock-names = "apb_pclk";
 			bus-width = <40>;
+			status = "disabled";
 			port@0 { };
 		};
 
@@ -242,6 +243,7 @@
 			clocks = <&CP110_LABEL(clk) 1 3>;
 			clock-names = "apb_pclk";
 			bus-width = <40>;
+			status = "disabled";
 			port@0 { };
 		};
 
