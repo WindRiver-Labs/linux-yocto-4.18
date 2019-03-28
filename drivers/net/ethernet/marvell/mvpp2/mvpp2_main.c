@@ -6208,8 +6208,8 @@ static void mvpp2_mac_link_up(struct net_device *dev, unsigned int mode,
 	u32 val;
 
 	if (!phylink_autoneg_inband(mode) &&
-	    (interface != PHY_INTERFACE_MODE_10GKR ||
-	     interface != PHY_INTERFACE_MODE_5GKR)) {
+	    interface != PHY_INTERFACE_MODE_10GKR &&
+	    interface != PHY_INTERFACE_MODE_5GKR) {
 		val = readl(port->base + MVPP2_GMAC_AUTONEG_CONFIG);
 		val &= ~MVPP2_GMAC_FORCE_LINK_DOWN;
 		val |= MVPP2_GMAC_FORCE_LINK_PASS;
@@ -6230,8 +6230,8 @@ static void mvpp2_mac_link_down(struct net_device *dev, unsigned int mode,
 	u32 val;
 
 	if (!phylink_autoneg_inband(mode) &&
-	    (interface != PHY_INTERFACE_MODE_10GKR ||
-	     interface != PHY_INTERFACE_MODE_5GKR)) {
+	    interface != PHY_INTERFACE_MODE_10GKR &&
+	    interface != PHY_INTERFACE_MODE_5GKR) {
 		val = readl(port->base + MVPP2_GMAC_AUTONEG_CONFIG);
 		val &= ~MVPP2_GMAC_FORCE_LINK_PASS;
 		val |= MVPP2_GMAC_FORCE_LINK_DOWN;
