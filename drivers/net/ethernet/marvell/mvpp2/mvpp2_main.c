@@ -36,6 +36,7 @@
 #include <linux/ktime.h>
 #include <linux/regmap.h>
 #include <uapi/linux/ppp_defs.h>
+#include <net/dsa.h>
 #include <net/ip.h>
 #include <net/ipv6.h>
 #include <net/tso.h>
@@ -6262,6 +6263,34 @@ static const struct phylink_mac_ops mvpp2_phylink_ops = {
 	.mac_link_down = mvpp2_mac_link_down,
 };
 
+/* DSA notifier */
+static void mvpp2_dsa_port_register(struct net_device *dev)
+{
+	struct mvpp2_port *port = netdev_priv(dev);
+	struct mvpp2 *priv = port->priv;
+	u32 reg;
+
+	/* For switch port enable non-extended DSA tags and make sure
+	 * the extended DSA tag usage is disabled as those
+	 * two options cannot coexist.
+	 */
+	reg = mvpp2_read(priv, MVPP2_MH_REG(port->id));
+	reg &= ~MVPP2_DSA_EXTENDED;
+	reg |= MVPP2_DSA_NON_EXTENDED;
+	mvpp2_write(priv, MVPP2_MH_REG(port->id), reg);
+}
+
+static int mvpp2_dsa_notifier(struct notifier_block *unused,
+			      unsigned long event, void *ptr)
+{
+	struct dsa_notifier_register_info *info = ptr;
+
+	if (event == DSA_PORT_REGISTER)
+		mvpp2_dsa_port_register(info->master);
+
+	return NOTIFY_DONE;
+}
+
 /* Ports initialization */
 static int mvpp2_port_probe(struct platform_device *pdev,
 			    struct fwnode_handle *port_fwnode,
@@ -6537,6 +6566,14 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 		spin_lock_init(&port->tx_lock[i]);
 	}
 
+	/* Register DSA notifier */
+	port->dsa_notifier.notifier_call = mvpp2_dsa_notifier;
+	err = register_dsa_notifier(&port->dsa_notifier);
+	if (err) {
+		dev_err(&pdev->dev, "failed to register DSA notifier\n");
+		goto err_phylink;
+	}
+
 	return 0;
 
 err_phylink:
@@ -6566,6 +6603,7 @@ static void mvpp2_port_remove(struct mvpp2_port *port)
 
 	mvpp2_port_musdk_set(port->dev, false);
 	unregister_netdev(port->dev);
+	unregister_dsa_notifier(&port->dsa_notifier);
 	if (port->phylink)
 		phylink_destroy(port->phylink);
 	free_percpu(port->pcpu);

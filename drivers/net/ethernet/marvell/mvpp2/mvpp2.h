@@ -50,6 +50,7 @@
 
 /* Top Registers */
 #define MVPP2_MH_REG(port)			(0x5040 + 4 * (port))
+#define MVPP2_DSA_NON_EXTENDED			BIT(4)
 #define MVPP2_DSA_EXTENDED			BIT(5)
 #define MVPP2_VER_ID_REG			0x50b0
 #define MVPP2_VER_PP22				0x10
@@ -1055,6 +1056,9 @@ struct mvpp2_port {
 
 	/* Indication, whether port is connected to XLG MAC */
 	bool has_xlg_mac;
+
+	/* Notifier required when the port is connected to the switch */
+	struct notifier_block dsa_notifier;
 };
 
 /* The mvpp2_tx_desc and mvpp2_rx_desc structures describe the
