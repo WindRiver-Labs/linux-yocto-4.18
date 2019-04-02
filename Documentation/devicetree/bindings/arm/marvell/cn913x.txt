@@ -15,6 +15,11 @@ Boards:
       when the board being used is the OcteonTX2 CN9130 Development board with
       Setup A.
 
+Boards:
+   - "marvell,cn9130-db-B"
+      when the board being used is the OcteonTX2 CN9130 Development board with
+      Setup B.
+
    - "marvell,cn9131-db-A"
       when the board being used is the OcteonTX2 CN9131 Development board with
       Setup A.
