@@ -57,6 +57,7 @@
 		tx-fault-gpio = <&cp1_gpio1 8 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&cp1_sfp_pins>;
+		status = "disabled";
 	};
 };
 
