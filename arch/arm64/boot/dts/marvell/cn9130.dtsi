@@ -62,7 +62,7 @@
 
 &cp0_syscon0 {
 	cp0_pinctrl: pinctrl {
-		compatible = "marvell,armada-8k-cpm-pinctrl";
+		compatible = "marvell,cp115-standalone-pinctrl";
 
 		cp0_i2c0_pins: cp0-i2c-pins-0 {
 			marvell,pins = "mpp37", "mpp38";
