@@ -127,7 +127,7 @@ static int mxsfb_atomic_helper_check(struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct drm_plane_state *primary_state;
 		int old_bpp = 0;
 		int new_bpp = 0;

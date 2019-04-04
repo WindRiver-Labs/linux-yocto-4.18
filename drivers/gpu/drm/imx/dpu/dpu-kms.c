@@ -411,7 +411,7 @@ dpu_atomic_mark_pipe_states_prone_to_put_per_crtc(struct drm_crtc *crtc,
 	int i;
 
 	if ((crtc_mask & drm_crtc_mask(crtc)) == 0) {
-		for_each_plane_in_state(state, plane, plane_state, i) {
+		for_each_new_plane_in_state(state, plane, plane_state, i) {
 			if (plane->possible_crtcs &
 			    drm_crtc_mask(crtc)) {
 				found_pstate = true;
@@ -552,7 +552,7 @@ static int dpu_drm_atomic_check(struct drm_device *dev,
 		grp[i] = NULL;
 	}
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i)
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i)
 		crtc_mask_in_state |= drm_crtc_mask(crtc);
 
 	drm_for_each_crtc(crtc, dev) {
@@ -710,7 +710,7 @@ static int dpu_drm_atomic_check(struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+	for_each_new_crtc_in_state(state, crtc, crtc_state, i) {
 		struct dpu_crtc *dpu_crtc = to_dpu_crtc(crtc);
 		struct drm_plane_state **states;
 		int n;
