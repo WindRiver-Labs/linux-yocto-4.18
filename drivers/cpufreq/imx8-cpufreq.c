@@ -122,21 +122,9 @@ static int imx8_cpufreq_init(struct cpufreq_policy *policy)
 
 static void imx8_cpufreq_ready(struct cpufreq_policy *policy)
 {
-	struct device_node *np = of_get_cpu_node(policy->cpu, NULL);
 	unsigned int cluster_id = topology_physical_package_id(policy->cpu);
 
-	if (of_find_property(np, "#cooling-cells", NULL)) {
-		cdev[cluster_id] = of_cpufreq_cooling_register(np, policy);
-
-		if (IS_ERR(cdev[cluster_id]) && PTR_ERR(cdev[cluster_id]) != -ENOSYS) {
-			pr_err("cpu%d is not running as cooling device: %ld\n",
-					policy->cpu, PTR_ERR(cdev[cluster_id]));
-
-			cdev[cluster_id] = NULL;
-		}
-	}
-
-	of_node_put(np);
+	cdev[cluster_id] = of_cpufreq_cooling_register(policy);
 }
 
 static struct cpufreq_driver imx8_cpufreq_driver = {
