@@ -54,7 +54,7 @@ static void dcss_kms_setup_output_pipe(struct drm_atomic_state *state)
 	struct drm_display_info *di;
 	int i;
 
-	for_each_connector_in_state(state, connector, conn_state, i) {
+	for_each_new_connector_in_state(state, connector, conn_state, i) {
 		if (!connector->state->best_encoder)
 			continue;
 
