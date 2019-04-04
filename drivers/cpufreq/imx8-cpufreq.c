@@ -109,12 +109,7 @@ static int imx8_cpufreq_init(struct cpufreq_policy *policy)
 	 */
 	cpumask_copy(policy->cpus, topology_core_cpumask(policy->cpu));
 
-	ret = cpufreq_table_validate_and_show(policy, freq_table[cluster_id]);
-	if (ret) {
-		pr_err("%s: invalid frequency table: %d\n", __func__, ret);
-		return ret;
-	}
-
+	policy->freq_table = freq_table[cluster_id];
 	policy->cpuinfo.transition_latency = transition_latency[cluster_id];
 	policy->suspend_freq = policy->max;
 
