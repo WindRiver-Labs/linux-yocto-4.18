@@ -1108,7 +1108,7 @@ static int nwl_dsi_probe(struct platform_device *pdev)
 	struct nwl_mipi_dsi *dsi;
 	struct clk *clk;
 	struct resource *res;
-	int ret;
+	int ret = 0;
 
 	dsi = devm_kzalloc(dev, sizeof(*dsi), GFP_KERNEL);
 	if (!dsi)
@@ -1181,9 +1181,7 @@ static int nwl_dsi_probe(struct platform_device *pdev)
 	dsi->bridge.funcs = &nwl_dsi_bridge_funcs;
 	dsi->bridge.of_node = dev->of_node;
 
-	ret = drm_bridge_add(&dsi->bridge);
-	if (ret < 0)
-		dev_err(dev, "Failed to add nwl-dsi bridge (%d)\n", ret);
+	drm_bridge_add(&dsi->bridge);
 
 	return ret;
 }
