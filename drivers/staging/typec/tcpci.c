@@ -15,7 +15,7 @@
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec.h>
 #include <linux/of_gpio.h>
-#include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 
 #include "tcpci.h"
 

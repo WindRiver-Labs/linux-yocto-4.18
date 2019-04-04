@@ -23,7 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
-#include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 #include <linux/gpio/consumer.h>
 
 /* PTN5150_REG_INT_STATUS */
