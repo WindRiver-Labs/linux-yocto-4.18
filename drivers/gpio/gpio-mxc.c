@@ -766,8 +766,6 @@ static int __maybe_unused mxc_gpio_noirq_suspend(struct device *dev)
 	unsigned long flags;
 	int ret;
 #ifdef CONFIG_GPIO_MXC_PAD_WAKEUP
-	int wakeup_line = mxc_gpio_get_pad_wakeup(port);
-
 	mxc_gpio_set_pad_wakeup(port, false);
 #endif
 
@@ -799,6 +797,8 @@ static int __maybe_unused mxc_gpio_noirq_resume(struct device *dev)
 	int ret;
 
 #ifdef CONFIG_GPIO_MXC_PAD_WAKEUP
+	int wakeup_line = mxc_gpio_get_pad_wakeup(port);
+
 	mxc_gpio_set_pad_wakeup(port, true);
 #endif
 	if (mxc_gpio_hwtype == IMX21_GPIO)
