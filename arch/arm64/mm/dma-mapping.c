@@ -930,7 +930,7 @@ void arch_setup_dma_ops(struct device *dev, u64 dma_base, u64 size,
 	if (of_property_read_u32(np, "only-dma-mask32", &mask32))
 		mask32 = 0;
 	if (mask32) {
-		swiotlb_dma_ops.dma_supported = __swiotlb_dma_supported_quirk;
+		arm64_swiotlb_dma_ops.dma_supported = __swiotlb_dma_supported_quirk;
 #ifdef CONFIG_IOMMU_DMA
 		iommu_dma_ops.dma_supported = iommu_dma_supported_quirk;
 #endif
