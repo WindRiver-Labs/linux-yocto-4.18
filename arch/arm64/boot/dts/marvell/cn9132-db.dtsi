@@ -69,6 +69,7 @@
 		mod-def0-gpio = <&cp2_moudle_expander1 10 GPIO_ACTIVE_LOW>;
 		tx-disable-gpio = <&cp2_moudle_expander1 9 GPIO_ACTIVE_HIGH>;
 		tx-fault-gpio = <&cp2_moudle_expander1 8 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
 	};
 };
 
