@@ -110,7 +110,7 @@ static int hdmi_vendor_info_set(struct imx_hdp *hdp,
 	int ret;
 
 	/* Initialise vendor frame from DRM mode */
-	ret = drm_hdmi_vendor_infoframe_from_display_mode(&frame, mode);
+	ret = drm_hdmi_vendor_infoframe_from_display_mode(&frame, &hdp->connector, mode);
 	if (ret < 0) {
 		DRM_DEBUG("Unable to init vendor infoframe: %d\n", ret);
 		return -1;
