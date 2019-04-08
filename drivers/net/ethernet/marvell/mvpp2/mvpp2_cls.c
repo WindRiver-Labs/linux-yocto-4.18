@@ -915,6 +915,11 @@ void mvpp2_cls_init(struct mvpp2 *priv)
 		mvpp2_cls_lookup_write(priv, &le);
 	}
 
+	/* Clear CLS_SWFWD_PCTRL register - value of QueueHigh is defined by
+	 * the Classifier
+	 */
+	mvpp2_write(priv, MVPP2_CLS_SWFWD_PCTRL_REG, 0);
+
 	mvpp2_cls_port_init_flows(priv);
 
 	/* Initialize C2 */
@@ -993,17 +998,8 @@ void mvpp22_rss_disable(struct mvpp2_port *port)
 /* Set CPU queue number for oversize packets */
 void mvpp2_cls_oversize_rxq_set(struct mvpp2_port *port)
 {
-	u32 val;
-
 	mvpp2_write(port->priv, MVPP2_CLS_OVERSIZE_RXQ_LOW_REG(port->id),
 		    port->first_rxq & MVPP2_CLS_OVERSIZE_RXQ_LOW_MASK);
-
-	mvpp2_write(port->priv, MVPP2_CLS_SWFWD_P2HQ_REG(port->id),
-		    (port->first_rxq >> MVPP2_CLS_OVERSIZE_RXQ_LOW_BITS));
-
-	val = mvpp2_read(port->priv, MVPP2_CLS_SWFWD_PCTRL_REG);
-	val |= MVPP2_CLS_SWFWD_PCTRL_MASK(port->id);
-	mvpp2_write(port->priv, MVPP2_CLS_SWFWD_PCTRL_REG, val);
 }
 
 static inline u32 mvpp22_rxfh_indir(struct mvpp2_port *port, u32 rxq)
