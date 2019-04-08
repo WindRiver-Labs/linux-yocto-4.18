@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <soc/imx8/soc.h>
+#include <linux/seq_file.h>
 
 #include "dcss-prv.h"
 #include <video/imx-dcss.h>

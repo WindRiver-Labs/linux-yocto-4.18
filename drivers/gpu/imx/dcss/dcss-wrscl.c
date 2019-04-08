@@ -16,6 +16,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
+#include <linux/seq_file.h>
 
 #include <video/imx-dcss.h>
 #include "dcss-prv.h"

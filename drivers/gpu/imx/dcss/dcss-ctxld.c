@@ -21,6 +21,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
+#include <linux/seq_file.h>
 
 #include "video/imx-dcss.h"
 #include "dcss-prv.h"
