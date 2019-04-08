@@ -376,6 +376,7 @@ err_unref:
 static void imx_drm_unbind(struct device *dev)
 {
 	struct drm_device *drm = dev_get_drvdata(dev);
+	struct imx_drm_device *imxdrm = drm->dev_private;
 
 	if (has_dpu(dev))
 		imx_drm_driver.driver_features &= ~DRIVER_RENDER;
