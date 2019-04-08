@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <drm/drm_fourcc.h>
+#include <linux/seq_file.h>
 
 #include <video/imx-dcss.h>
 #include "dcss-prv.h"
