@@ -413,7 +413,8 @@ static int mxc_pcsi_s_power(struct v4l2_subdev *sd, int on)
 	return v4l2_subdev_call(sen_sd, core, s_power, on);
 }
 
-static int mxc_pcsi_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mxc_pcsi_s_frame_interval(struct v4l2_subdev *sd,
+					struct v4l2_subdev_frame_interval *ival)
 {
 	struct mxc_parallel_csi_dev *pcsidev = sd_to_mxc_pcsi_dev(sd);
 	struct media_pad *source_pad;
@@ -433,10 +434,11 @@ static int mxc_pcsi_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 		return -EINVAL;
 	}
 
-	return v4l2_subdev_call(sen_sd, video, s_parm, a);
+	return v4l2_subdev_call(sen_sd, video, s_frame_interval, ival);
 }
 
-static int mxc_pcsi_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mxc_pcsi_g_frame_interval(struct v4l2_subdev *sd,
+										struct v4l2_subdev_frame_interval *ival)
 {
 	struct mxc_parallel_csi_dev *pcsidev = sd_to_mxc_pcsi_dev(sd);
 	struct media_pad *source_pad;
@@ -455,7 +457,7 @@ static int mxc_pcsi_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 		v4l2_err(&pcsidev->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
 	}
-	return v4l2_subdev_call(sen_sd, video, g_parm, a);
+	return v4l2_subdev_call(sen_sd, video, g_frame_interval, ival);
 }
 
 static int mxc_pcsi_s_stream(struct v4l2_subdev *sd, int enable)
@@ -524,8 +526,8 @@ static struct v4l2_subdev_core_ops pcsi_core_ops = {
 };
 
 static struct v4l2_subdev_video_ops pcsi_video_ops = {
-	.s_parm = mxc_pcsi_s_parm,
-	.g_parm = mxc_pcsi_g_parm,
+	.s_frame_interval = mxc_pcsi_s_frame_interval,
+	.g_frame_interval = mxc_pcsi_g_frame_interval,
 	.s_stream = mxc_pcsi_s_stream,
 };
 

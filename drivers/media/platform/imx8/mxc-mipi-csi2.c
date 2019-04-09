@@ -457,7 +457,8 @@ static int mipi_csi2_s_power(struct v4l2_subdev *sd, int on)
 	return v4l2_subdev_call(sen_sd, core, s_power, on);
 }
 
-static int mipi_csi2_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mipi_csi2_s_frame_interval(struct v4l2_subdev *sd,
+									struct v4l2_subdev_frame_interval *ival)
 {
 	struct mxc_mipi_csi2_dev *csi2dev = sd_to_mxc_mipi_csi2_dev(sd);
 	struct media_pad *source_pad;
@@ -476,10 +477,11 @@ static int mipi_csi2_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 		v4l2_err(&csi2dev->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
 	}
-	return v4l2_subdev_call(sen_sd, video, s_parm, a);
+	return v4l2_subdev_call(sen_sd, video, s_frame_interval, ival);
 }
 
-static int mipi_csi2_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mipi_csi2_g_frame_interval(struct v4l2_subdev *sd,
+									struct v4l2_subdev_frame_interval *ival)
 {
 	struct mxc_mipi_csi2_dev *csi2dev = sd_to_mxc_mipi_csi2_dev(sd);
 	struct media_pad *source_pad;
@@ -499,7 +501,7 @@ static int mipi_csi2_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 		return -EINVAL;
 	}
 
-	return v4l2_subdev_call(sen_sd, video, g_parm, a);
+	return v4l2_subdev_call(sen_sd, video, g_frame_interval, ival);
 }
 
 static int mipi_csi2_s_stream(struct v4l2_subdev *sd, int enable)
@@ -646,8 +648,8 @@ static struct v4l2_subdev_core_ops mipi_csi2_core_ops = {
 };
 
 static struct v4l2_subdev_video_ops mipi_csi2_video_ops = {
-	.s_parm = mipi_csi2_s_parm,
-	.g_parm = mipi_csi2_g_parm,
+	.s_frame_interval = mipi_csi2_s_frame_interval,
+	.g_frame_interval = mipi_csi2_g_frame_interval,
 	.s_stream = mipi_csi2_s_stream,
 };
 

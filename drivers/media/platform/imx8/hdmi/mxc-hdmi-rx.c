@@ -276,7 +276,8 @@ static void mxc_hdmi_pixel_link_encoder(struct mxc_hdmi_rx_dev *hdmi_rx)
 /* -----------------------------------------------------------------------------
  * v4l2_subdev_video_ops
  */
-static int mxc_hdmi_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mxc_hdmi_s_frame_interval(struct v4l2_subdev *sd,
+										struct v4l2_subdev_frame_interval *ival)
 {
 	struct mxc_hdmi_rx_dev *hdmi_rx = imx_sd_to_hdmi(sd);
 	struct device *dev = &hdmi_rx->pdev->dev;
@@ -286,9 +287,9 @@ static int mxc_hdmi_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 	return 0;
 }
 
-static int mxc_hdmi_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int mxc_hdmi_g_frame_interval(struct v4l2_subdev *sd,
+										struct v4l2_subdev_frame_interval *ival)
 {
-	struct v4l2_captureparm *cparm = &a->parm.capture;
 	struct mxc_hdmi_rx_dev *hdmi_rx = imx_sd_to_hdmi(sd);
 	int ret = 0;
 
@@ -297,31 +298,8 @@ static int mxc_hdmi_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
 		return -EINVAL;
 	}
 
-	switch (a->type) {
-	/* This is the only case currently handled. */
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		memset(a, 0, sizeof(*a));
-		a->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		cparm->timeperframe.denominator = hdmi_rx->timings->fps;
-		cparm->timeperframe.numerator = 1;
-		ret = 0;
-		break;
-
-	/* These are all the possible cases. */
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
-	case V4L2_BUF_TYPE_VIDEO_OVERLAY:
-	case V4L2_BUF_TYPE_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_VBI_OUTPUT:
-	case V4L2_BUF_TYPE_SLICED_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_SLICED_VBI_OUTPUT:
-		ret = -EINVAL;
-		break;
-	default:
-		pr_debug("   type is unknown - %d\n", a->type);
-		ret = -EINVAL;
-		break;
-	}
+	ival->interval.denominator = hdmi_rx->timings->fps;
+	ival->interval.numerator = 1;
 
 	return ret;
 }
@@ -364,8 +342,8 @@ static int mxc_hdmi_s_stream(struct v4l2_subdev *sd, int enable)
 
 static const struct v4l2_subdev_video_ops imx_video_ops_hdmi = {
 	.s_stream = mxc_hdmi_s_stream,
-	.g_parm =	mxc_hdmi_g_parm,
-	.s_parm =	mxc_hdmi_s_parm,
+	.g_frame_interval =	mxc_hdmi_g_frame_interval,
+	.s_frame_interval =	mxc_hdmi_s_frame_interval,
 };
 
 /* -----------------------------------------------------------------------------

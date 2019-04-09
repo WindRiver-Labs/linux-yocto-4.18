@@ -1191,7 +1191,7 @@ static int mxc_isi_cap_g_parm(struct file *file, void *fh,
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
 	}
-	return v4l2_subdev_call(sd, video, g_parm, a);
+	return v4l2_g_parm_cap(video_devdata(file), sd, a);
 }
 
 static int mxc_isi_cap_s_parm(struct file *file, void *fh,
@@ -1213,7 +1213,7 @@ static int mxc_isi_cap_s_parm(struct file *file, void *fh,
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote subdev found!\n", __func__);
 		return -EINVAL;
 	}
-	return v4l2_subdev_call(sd, video, s_parm, a);
+	return v4l2_s_parm_cap(video_devdata(file), sd, a);
 }
 
 static int mxc_isi_cap_enum_framesizes(struct file *file, void *priv,
