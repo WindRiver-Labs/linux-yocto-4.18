@@ -286,7 +286,7 @@ static int subdev_notifier_bound(struct v4l2_async_notifier *notifier,
 	dev_dbg(&mxc_md->pdev->dev, "%s\n", __func__);
 	/* Find platform data for this sensor subdev */
 	for (i = 0; i < ARRAY_SIZE(mxc_md->sensor); i++) {
-		if (mxc_md->sensor[i].asd.match.fwnode.fwnode ==
+		if (mxc_md->sensor[i].asd.match.fwnode ==
 				of_fwnode_handle(sd->dev->of_node))
 			sensor = &mxc_md->sensor[i];
 	}
@@ -355,7 +355,7 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
 
 		if (!of_node_cmp(node->name, "hdmi_rx")) {
 			mxc_md->sensor[index].asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
-			mxc_md->sensor[index].asd.match.fwnode.fwnode = of_fwnode_handle(node);
+			mxc_md->sensor[index].asd.match.fwnode = of_fwnode_handle(node);
 			mxc_md->async_subdevs[index] = &mxc_md->sensor[index].asd;
 
 			mxc_md->num_sensors++;
@@ -401,7 +401,7 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
 		}
 
 		mxc_md->sensor[index].asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
-		mxc_md->sensor[index].asd.match.fwnode.fwnode = of_fwnode_handle(rem);
+		mxc_md->sensor[index].asd.match.fwnode = of_fwnode_handle(rem);
 		mxc_md->async_subdevs[index] = &mxc_md->sensor[index].asd;
 
 		mxc_md->num_sensors++;
