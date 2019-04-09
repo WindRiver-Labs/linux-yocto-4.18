@@ -627,6 +627,10 @@ static const struct media_device_ops mxc_md_ops = {
 	.link_notify = mxc_md_link_notify,
 };
 
+static const struct v4l2_async_notifier_operations mxc_md_async_ops = {
+	.bound = subdev_notifier_bound,
+	.complete = subdev_notifier_complete,
+};
 
 static int mxc_md_probe(struct platform_device *pdev)
 {
@@ -678,8 +682,7 @@ static int mxc_md_probe(struct platform_device *pdev)
 	if (mxc_md->num_sensors > 0) {
 		mxc_md->subdev_notifier.subdevs = mxc_md->async_subdevs;
 		mxc_md->subdev_notifier.num_subdevs = mxc_md->num_sensors;
-		mxc_md->subdev_notifier.bound = subdev_notifier_bound;
-		mxc_md->subdev_notifier.complete = subdev_notifier_complete;
+		mxc_md->subdev_notifier.ops = &mxc_md_async_ops;
 		mxc_md->num_sensors = 0;
 
 		ret = v4l2_async_notifier_register(&mxc_md->v4l2_dev,

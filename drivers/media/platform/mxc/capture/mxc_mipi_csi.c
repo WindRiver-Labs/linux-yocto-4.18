@@ -993,6 +993,10 @@ static int mipi_csis_parse_dt(struct platform_device *pdev,
 static int mipi_csis_pm_resume(struct device *dev, bool runtime);
 static const struct of_device_id mipi_csis_of_match[];
 
+static const struct v4l2_async_notifier_operations mipi_csis_async_ops = {
+	.bound = subdev_notifier_bound,
+};
+
 /* register parent dev */
 static int mipi_csis_subdev_host(struct csi_state *state)
 {
@@ -1028,7 +1032,7 @@ static int mipi_csis_subdev_host(struct csi_state *state)
 
 	state->subdev_notifier.subdevs = state->async_subdevs;
 	state->subdev_notifier.num_subdevs = 1;
-	state->subdev_notifier.bound = subdev_notifier_bound;
+	state->subdev_notifier.ops = &mipi_csis_async_ops;
 
 	ret = v4l2_async_notifier_register(&state->v4l2_dev,
 					&state->subdev_notifier);
