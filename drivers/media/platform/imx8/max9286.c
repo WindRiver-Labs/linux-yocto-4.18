@@ -2735,44 +2735,20 @@ static int ov10635_change_mode(struct sensor_data *max9286_data)
 	return retval;
 }
 
-static int max9286_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int max9286_g_frame_interval(struct v4l2_subdev *sd,
+					struct v4l2_subdev_frame_interval *ival)
 {
-	struct v4l2_captureparm *cparm = &a->parm.capture;
 	struct sensor_data *max9286_data = subdev_to_sensor_data(sd);
 	int ret = 0;
 
-	switch (a->type) {
-	/* This is the only case currently handled. */
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		memset(a, 0, sizeof(*a));
-		a->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		cparm->capability = max9286_data->streamcap.capability;
-		cparm->timeperframe = max9286_data->streamcap.timeperframe;
-		cparm->capturemode = max9286_data->streamcap.capturemode;
-		ret = 0;
-		break;
-
-	/* These are all the possible cases. */
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
-	case V4L2_BUF_TYPE_VIDEO_OVERLAY:
-	case V4L2_BUF_TYPE_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_VBI_OUTPUT:
-	case V4L2_BUF_TYPE_SLICED_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_SLICED_VBI_OUTPUT:
-		ret = -EINVAL;
-		break;
-	default:
-		pr_debug("   type is unknown - %d\n", a->type);
-		ret = -EINVAL;
-		break;
-	}
+	ival->interval.numerator = max9286_data->streamcap.timeperframe.numerator;
+	ival->interval.denominator = max9286_data->streamcap.timeperframe.denominator;
 
 	return ret;
 }
 
 /*!
- * ioctl_s_parm - V4L2 sensor interface handler for VIDIOC_S_PARM ioctl
+ * ioctl_s_frame_interval - V4L2 sensor interface handler for VIDIOC_S_PARM ioctl
  * @s: pointer to standard V4L2 device structure
  * @a: pointer to standard V4L2 VIDIOC_S_PARM ioctl structure
  *
@@ -2780,79 +2756,49 @@ static int max9286_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
  * not possible, reverts to the old parameters and returns the
  * appropriate error code.
  */
-static int max9286_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *a)
+static int max9286_s_frame_interval(struct v4l2_subdev *sd,
+					struct v4l2_subdev_frame_interval *ival)
 {
 	struct sensor_data *max9286_data = subdev_to_sensor_data(sd);
-	struct v4l2_fract *timeperframe = &a->parm.capture.timeperframe;
+	struct v4l2_fract *timeperframe = &ival->interval;
 	enum ov10635_frame_rate frame_rate;
-	enum ov10635_mode mode = a->parm.capture.capturemode;
 	u32 tgt_fps;
 	int ret = 0;
 
-	switch (a->type) {
-	/* This is the only case currently handled. */
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		/* Check that the new frame rate is allowed. */
-		if ((timeperframe->numerator == 0) ||
-		    (timeperframe->denominator == 0)) {
-			timeperframe->denominator = DEFAULT_FPS;
-			timeperframe->numerator = 1;
-		}
-
-		tgt_fps = timeperframe->denominator /
-			  timeperframe->numerator;
-
-		if (tgt_fps > MAX_FPS) {
-			timeperframe->denominator = MAX_FPS;
-			timeperframe->numerator = 1;
-		} else if (tgt_fps < MIN_FPS) {
-			timeperframe->denominator = MIN_FPS;
-			timeperframe->numerator = 1;
-		}
-
-		/* Actual frame rate we use */
-		tgt_fps = timeperframe->denominator /
-			  timeperframe->numerator;
-
-		if (tgt_fps == 30)
-			frame_rate = OV10635_30_FPS;
-		if (tgt_fps == 15)
-			frame_rate = OV10635_15_FPS;
-
-		if (frame_rate != OV10635_30_FPS && frame_rate != OV10635_15_FPS) {
-			pr_err(" The camera %d frame rate is not supported!\n", frame_rate);
-			return -EINVAL;
-		}
-
-		if (mode > ov10635_mode_MAX || mode < ov10635_mode_MIN) {
-			pr_err("The camera mode[%d] is not supported!\n", mode);
-			return -EINVAL;
-		}
-
-		max9286_data->streamcap.timeperframe = *timeperframe;
-		max9286_data->streamcap.capturemode = a->parm.capture.capturemode;
-		max9286_data->format.reserved[0] = 72 * 8;
-		break;
-
-	/* These are all the possible cases. */
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
-	case V4L2_BUF_TYPE_VIDEO_OVERLAY:
-	case V4L2_BUF_TYPE_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_VBI_OUTPUT:
-	case V4L2_BUF_TYPE_SLICED_VBI_CAPTURE:
-	case V4L2_BUF_TYPE_SLICED_VBI_OUTPUT:
-		pr_debug("   type is not "\
-				 "V4L2_BUF_TYPE_VIDEO_CAPTURE but %d\n",
-			a->type);
-		ret = -EINVAL;
-		break;
-
-	default:
-		pr_debug("   type is unknown - %d\n", a->type);
-		ret = -EINVAL;
-		break;
+	/* Check that the new frame rate is allowed. */
+	if ((timeperframe->numerator == 0) ||
+		(timeperframe->denominator == 0)) {
+		timeperframe->denominator = DEFAULT_FPS;
+		timeperframe->numerator = 1;
 	}
+
+	tgt_fps = timeperframe->denominator /
+		  timeperframe->numerator;
+
+	if (tgt_fps > MAX_FPS) {
+		timeperframe->denominator = MAX_FPS;
+		timeperframe->numerator = 1;
+	} else if (tgt_fps < MIN_FPS) {
+		timeperframe->denominator = MIN_FPS;
+		timeperframe->numerator = 1;
+	}
+
+	/* Actual frame rate we use */
+	tgt_fps = timeperframe->denominator /
+		  timeperframe->numerator;
+
+	if (tgt_fps == 30)
+		frame_rate = OV10635_30_FPS;
+	if (tgt_fps == 15)
+		frame_rate = OV10635_15_FPS;
+
+	if (frame_rate != OV10635_30_FPS && frame_rate != OV10635_15_FPS) {
+		pr_err(" The camera %d frame rate is not supported!\n", frame_rate);
+		return -EINVAL;
+	}
+
+	max9286_data->streamcap.timeperframe = *timeperframe;
+	max9286_data->format.reserved[0] = 72 * 8;
 
 	return ret;
 }
@@ -3127,8 +3073,8 @@ static const struct v4l2_subdev_core_ops max9286_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
-	.s_parm =	max9286_s_parm,
-	.g_parm =	max9286_g_parm,
+	.s_frame_interval =	max9286_s_frame_interval,
+	.g_frame_interval =	max9286_g_frame_interval,
 	.s_stream		= max9286_s_stream,
 };
 

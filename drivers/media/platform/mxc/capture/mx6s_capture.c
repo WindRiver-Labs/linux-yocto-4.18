@@ -1621,7 +1621,7 @@ static int mx6s_vidioc_s_parm(struct file *file, void *priv,
 	struct mx6s_csi_dev *csi_dev = video_drvdata(file);
 	struct v4l2_subdev *sd = csi_dev->sd;
 
-	return v4l2_g_parm_cap(video_devdata(file), sd, a);
+	return v4l2_s_parm_cap(video_devdata(file), sd, a);
 }
 
 static int mx6s_vidioc_enum_framesizes(struct file *file, void *priv,
