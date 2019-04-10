@@ -563,6 +563,7 @@ static int tcpci_init(struct tcpc_dev *tcpc)
 irqreturn_t tcpci_irq(struct tcpci *tcpci)
 {
 	u16 status;
+	unsigned int reg;
 
 	tcpci_read16(tcpci, TCPC_ALERT, &status);
 
@@ -858,17 +859,17 @@ struct tcpci *tcpci_register_port(struct device *dev, struct tcpci_data *data)
 	tcpci->tcpc.pd_transmit = tcpci_pd_transmit;
 
 	/* Allocate extcon device */
-	tcpci->edev = devm_extcon_dev_allocate(&client->dev,
+	tcpci->edev = devm_extcon_dev_allocate(dev,
 					tcpci_extcon_cable);
 	if (IS_ERR(tcpci->edev)) {
-		dev_err(&client->dev, "failed to allocate extcon dev.\n");
-		return -ENOMEM;
+		dev_err(dev, "failed to allocate extcon dev.\n");
+		return ERR_PTR(-ENOMEM);
 	}
 
-	err = devm_extcon_dev_register(&client->dev, tcpci->edev);
+	err = devm_extcon_dev_register(dev, tcpci->edev);
 	if (err) {
-		dev_err(&client->dev, "failed to register extcon dev.\n");
-		return err;
+		dev_err(dev, "failed to register extcon dev.\n");
+		return ERR_PTR(err);
 	}
 
 	err = tcpci_parse_config(tcpci);
@@ -915,7 +916,10 @@ static int tcpci_probe(struct i2c_client *client,
 		return PTR_ERR(chip->data.regmap);
 
 	/* Clear and disable chip interrupts */
-	tcpci_write16(tcpci, TCPC_ALERT, 0xffff);
+	val = 0xffff;
+	err = regmap_raw_write(chip->data.regmap, TCPC_ALERT, &val,
+			       sizeof(u16));
+	val = 0x0;
 	/* Disable chip interrupts before requesting irq */
 	err = regmap_raw_write(chip->data.regmap, TCPC_ALERT_MASK, &val,
 			       sizeof(u16));
@@ -948,20 +952,16 @@ static int tcpci_remove(struct i2c_client *client)
 
 static int tcpci_suspend(struct device *dev)
 {
-	struct tcpci *tcpci = dev_get_drvdata(dev);
-
 	if (device_may_wakeup(dev))
-		enable_irq_wake(tcpci->client->irq);
+		enable_irq_wake(to_i2c_client(dev)->irq);
 
 	return 0;
 }
 
 static int tcpci_resume(struct device *dev)
 {
-	struct tcpci *tcpci = dev_get_drvdata(dev);
-
 	if (device_may_wakeup(dev))
-		disable_irq_wake(tcpci->client->irq);
+		disable_irq_wake(to_i2c_client(dev)->irq);
 
 	return 0;
 }
