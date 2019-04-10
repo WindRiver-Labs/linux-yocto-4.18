@@ -755,9 +755,6 @@ static int tcpci_parse_config(struct tcpci *tcpci)
 					PDO_FIXED_EXTPOWER |
 					PDO_FIXED_USB_COMM |
 					PDO_FIXED_DATA_SWAP);
-		tcfg->max_snk_mv = 5000;
-		tcfg->max_snk_ma = 2000;
-		tcfg->max_snk_mw = 10000;
 		tcfg->operating_snk_mw = 500;
 
 		return 0;
@@ -789,13 +786,7 @@ sink:
 	}
 
 	/* Get the max-snk-mv max-snk-ma op-snk-mw */
-	if (device_property_read_u32(tcpci->dev, "max-snk-mv",
-						&tcfg->max_snk_mv) ||
-		device_property_read_u32(tcpci->dev, "max-snk-ma",
-						&tcfg->max_snk_ma) ||
-		device_property_read_u32(tcpci->dev, "max-snk-mw",
-						&tcfg->max_snk_mw) ||
-		device_property_read_u32(tcpci->dev, "op-snk-mw",
+	if (device_property_read_u32(tcpci->dev, "op-snk-mw",
 						&tcfg->operating_snk_mw)) {
 		ret = -EINVAL;
 		goto snk_setting_wrong;
