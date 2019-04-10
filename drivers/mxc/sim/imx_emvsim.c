@@ -29,6 +29,7 @@
 #include <linux/spinlock.h>
 #include <linux/time.h>
 #include <linux/types.h>
+#include <linux/pinctrl/consumer.h>
 
 #define	DRIVER_NAME	"mxc_emvsim"
 
