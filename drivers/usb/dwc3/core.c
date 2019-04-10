@@ -1339,7 +1339,7 @@ static int dwc3_probe(struct platform_device *pdev)
 		ret = of_usb_update_otg_caps(dev->of_node,
 					&dwc->otg_caps);
 		if (ret)
-			goto err0;
+			return ret;
 	}
 
 	dwc->reset = devm_reset_control_get_optional_shared(dev, NULL);
