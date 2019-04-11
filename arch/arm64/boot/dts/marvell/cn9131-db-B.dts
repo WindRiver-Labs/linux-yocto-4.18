@@ -1,0 +1,41 @@
+/*
+ * Copyright (C) 2019 Marvell International Ltd.
+ *
+ * SPDX-License-Identifier:    GPL-2.0
+ * https://spdx.org/licenses
+ */
+
+#include "cn9130-db-B.dts"
+#include "cn9131-db.dtsi"
+
+/ {
+	model = "Marvell CN9131 development board (CP NAND) setup(B)";
+	compatible = "marvell,cn9131-db-B", "marvell,armada-ap807-quad",
+		     "marvell,armada-ap807";
+};
+
+/* RJ45 CON55 via 3310 */
+&cp1_eth0 {
+	status = "okay";
+	phy-mode = "10gbase-kr";
+	phy = <&phy8>;
+	phys = <&cp1_comphy2 0>;
+};
+
+/* CON50 */
+&cp1_eth1 {
+	status = "okay";
+	phy-mode = "sgmii";
+	/* Generic PHY, providing serdes lanes */
+	phys = <&cp1_comphy4 1>;
+	managed = "in-band-status";
+	sfp = <&cp1_sfp_eth1>;
+};
+
+&cp1_xmdio {
+	status = "okay";
+	phy8: ethernet-phy@8 {
+		compatible = "ethernet-phy-ieee802.3-c45";
+		reg = <8>;
+	};
+};
