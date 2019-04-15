@@ -56,7 +56,6 @@
 struct virtproc_info {
 	struct virtio_device *vdev;
 	struct virtqueue *rvq, *svq;
-	struct device *bufs_dev;
 	void *rbufs, *sbufs;
 	unsigned int num_bufs;
 	unsigned int buf_size;
@@ -917,16 +916,9 @@ static int rpmsg_probe(struct virtio_device *vdev)
 				     total_buf_space, &vrp->bufs_dma,
 				     GFP_KERNEL);
 	if (!bufs_va) {
-		bufs_va = dma_alloc_coherent(vdev->dev.parent,
-					     total_buf_space, &vrp->bufs_dma,
-					     GFP_KERNEL);
-		if (!bufs_va) {
-			err = -ENOMEM;
-			goto vqs_del;
-		} else
-			vrp->bufs_dev = vdev->dev.parent;
-	} else
-		vrp->bufs_dev = vdev->dev.parent->parent;
+		err = -ENOMEM;
+		goto vqs_del;
+	}
 
 	dev_dbg(&vdev->dev, "buffers: va %p, dma %pad\n",
 		bufs_va, &vrp->bufs_dma);
@@ -988,7 +980,7 @@ static int rpmsg_probe(struct virtio_device *vdev)
 	return 0;
 
 free_coherent:
-	dma_free_coherent(vrp->bufs_dev, total_buf_space,
+	dma_free_coherent(vdev->dev.parent->parent, total_buf_space,
 			  bufs_va, vrp->bufs_dma);
 vqs_del:
 	vdev->config->del_vqs(vrp->vdev);
@@ -1023,7 +1015,7 @@ static void rpmsg_remove(struct virtio_device *vdev)
 
 	vdev->config->del_vqs(vrp->vdev);
 
-	dma_free_coherent(vrp->bufs_dev, total_buf_space,
+	dma_free_coherent(vdev->dev.parent->parent, total_buf_space,
 			  vrp->rbufs, vrp->bufs_dma);
 
 	kfree(vrp);
