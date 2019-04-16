@@ -7091,16 +7091,6 @@ static int mvpp2_probe(struct platform_device *pdev)
 		priv->swth_base[i] = base + i * addr_space_sz;
 	}
 
-	if (priv->hw_version != MVPP21) {
-		if (mvpp2_read(priv, MVPP2_VER_ID_REG) == MVPP2_VER_PP23)
-			priv->hw_version = MVPP23;
-	}
-
-	if (priv->hw_version == MVPP21)
-		priv->max_port_rxqs = 8;
-	else
-		priv->max_port_rxqs = 32;
-
 	if (dev_of_node(&pdev->dev)) {
 		priv->pp_clk = devm_clk_get(&pdev->dev, "pp_clk");
 		if (IS_ERR(priv->pp_clk))
@@ -7158,6 +7148,16 @@ static int mvpp2_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "missing clock-frequency value\n");
 		return -EINVAL;
 	}
+
+	if (priv->hw_version != MVPP21) {
+		if (mvpp2_read(priv, MVPP2_VER_ID_REG) == MVPP2_VER_PP23)
+			priv->hw_version = MVPP23;
+	}
+
+	if (priv->hw_version == MVPP21)
+		priv->max_port_rxqs = 8;
+	else
+		priv->max_port_rxqs = 32;
 
 	priv->custom_dma_mask = false;
 	if (priv->hw_version != MVPP21) {
