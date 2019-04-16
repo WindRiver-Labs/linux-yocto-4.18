@@ -13,3 +13,17 @@
 	compatible = "marvell,cn9131-db-A", "marvell,armada-ap807-quad",
 		     "marvell,armada-ap807";
 };
+
+&cp1_ethernet {
+	status = "okay";
+};
+
+/* CON50 */
+&cp1_eth0 {
+	status = "okay";
+	phy-mode = "10gbase-kr";
+	/* Generic PHY, providing serdes lanes */
+	phys = <&cp1_comphy4 0>;
+	managed = "in-band-status";
+	sfp = <&cp1_sfp_eth1>;
+};

@@ -65,29 +65,6 @@
 	status = "okay";
 };
 
-&cp1_ethernet {
-	status = "okay";
-};
-
-/* CON50 */
-&cp1_eth0 {
-	status = "okay";
-	phy-mode = "10gbase-kr";
-	/* Generic PHY, providing serdes lanes */
-	phys = <&cp1_comphy4 0>;
-	managed = "in-band-status";
-	sfp = <&cp1_sfp_eth1>;
-};
-
-/* RJ45 CON55 via 3310 */
-&cp1_eth1 {
-	status = "disabled";
-	phy-mode = "10gbase-kr";
-	phy = <&phy8>;
-	/* TODO: regarding to the spec comphy2 can be used with port 0 only */
-	phys = <&cp1_comphy2 1>;
-};
-
 &cp1_gpio1 {
 	status = "okay";
 };
