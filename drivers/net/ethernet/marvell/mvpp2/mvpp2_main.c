@@ -5332,6 +5332,7 @@ static int mvpp2_port_musdk_cfg(struct net_device *dev, bool ena)
 	} *us;
 
 	struct mvpp2_port *port = netdev_priv(dev);
+	int rxq;
 
 	if (ena) {
 		/* Disable Queues and IntVec allocations for MUSDK,
