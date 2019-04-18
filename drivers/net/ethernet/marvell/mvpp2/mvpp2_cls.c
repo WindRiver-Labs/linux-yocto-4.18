@@ -625,11 +625,13 @@ int mvpp2_cls_flow_hash_find(struct mvpp2_port *port,
 			     struct mvpp2_cls_flow_entry *fe,
 			     int *flow_index)
 {
-	int engine, is_last, flow_offset, port_bm, idx = 0;
+	int engine, flow_offset, port_bm, idx = 0, is_last = 0;
 
 	flow_offset = 0;
 	do {
 		idx = MVPP2_PORT_FLOW_INDEX(flow_offset, flow->flow_id);
+		if (idx >= MVPP2_CLS_FLOWS_TBL_SIZE)
+			break;
 		mvpp2_cls_flow_read(port->priv, idx, fe);
 		engine = mvpp2_cls_flow_eng_get(fe);
 		port_bm = mvpp2_cls_flow_port_get(fe);
