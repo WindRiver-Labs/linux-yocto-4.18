@@ -1438,7 +1438,7 @@ int enetc_setup_tc(struct net_device *ndev, enum tc_setup_type type,
 	u8 num_tc;
 	u32 val;
 
-	if (type != TC_SETUP_MQPRIO)
+	if (type != TC_SETUP_QDISC_MQPRIO)
 		return -EOPNOTSUPP;
 
 	mqprio->hw = TC_MQPRIO_HW_OFFLOAD_TCS;
