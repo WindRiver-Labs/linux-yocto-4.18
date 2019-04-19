@@ -4264,7 +4264,8 @@ out:
 		/* Enable transmit; RX-to-TX may be deferred with Bulk-timer */
 		deferred_tx = (frags == 1) &&
 			MVPP2_RXTX_HASH_IS_OK_TX(skb, skb_get_hash_raw(skb)) &&
-			(aggr_txq->pending < (txq->done_pkts_coal / 2));
+			(aggr_txq->pending < min(MVPP2_TX_BULK_MAX_PACKETS,
+					       (int)(txq->done_pkts_coal / 2)));
 
 		if (deferred_tx) {
 			aggr_txq->pending += frags;

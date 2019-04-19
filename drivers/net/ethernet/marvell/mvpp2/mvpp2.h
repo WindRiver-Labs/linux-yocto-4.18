@@ -552,6 +552,7 @@
 #define MVPP2_RX_COAL_PKTS		32
 #define MVPP2_RX_COAL_USEC		64
 #define MVPP2_TX_BULK_TIME		(50 * NSEC_PER_USEC)
+#define MVPP2_TX_BULK_MAX_PACKETS	(MVPP2_AGGR_TXQ_SIZE / MVPP2_MAX_PORTS)
 
 /* The two bytes Marvell header. Either contains a special value used
  * by Marvell switches when a specific hardware mode is enabled (not
