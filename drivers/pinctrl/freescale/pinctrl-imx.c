@@ -584,12 +584,6 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (info->gpr_compatible) {
-		gpr = syscon_regmap_lookup_by_compatible(info->gpr_compatible);
-		if (!IS_ERR(gpr))
-			regmap_attach_dev(&pdev->dev, gpr, &config);
-	}
-
 	/* Create state holders etc for this driver */
 	ipctl = devm_kzalloc(&pdev->dev, sizeof(*ipctl), GFP_KERNEL);
 	if (!ipctl)
