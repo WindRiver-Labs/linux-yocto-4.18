@@ -235,7 +235,7 @@ static rx_handler_result_t felix_frm_ext_handler(struct sk_buff **pskb)
 	struct net_device *ndev = (*pskb)->dev;
 	struct sk_buff *skb = *pskb;
 	struct skb_shared_hwtstamps *shhwtstamps;
-	struct timespec64 ts;
+	struct timespec64 ts = { 0 };
 	struct ocelot_port *port = NULL;
 	struct ocelot *ocelot = NULL;
 	char *start = skb->data;
