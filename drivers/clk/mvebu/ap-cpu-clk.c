@@ -29,6 +29,26 @@
 
 #define APN806_MAX_DIVIDER		32
 
+/*
+ * struct cpu_dfs_regs: CPU DFS register mapping
+ * @divider_reg: Full Integer Ratio from PLL-out
+ * frequency to CPU clock frequency
+ * @force_reg: Request to force new ratio regardless
+ * of relation to other clocks
+ * @ratio_reg: Central request to switch ratios
+ */
+struct cpu_dfs_regs {
+	unsigned int divider_reg;
+	unsigned int force_reg;
+	unsigned int ratio_reg;
+	unsigned int divider_mask;
+	unsigned int cluster_offset;
+	unsigned int force_mask;
+	int divider_offset;
+	int ratio_offset;
+	int ratio_state_offset;
+};
+
 /* AP806 CPU DFS register mapping*/
 #define AP806_CA72MP2_0_PLL_CR_0_REG_OFFSET		0x278
 #define AP806_CA72MP2_0_PLL_CR_1_REG_OFFSET		0x280
@@ -50,6 +70,18 @@
 
 #define to_ap_cpu_clk(_hw) container_of(_hw, struct ap_cpu_clk, hw)
 
+struct cpu_dfs_regs ap806_dfs_regs = {
+	AP806_CA72MP2_0_PLL_CR_0_REG_OFFSET,
+	AP806_CA72MP2_0_PLL_CR_1_REG_OFFSET,
+	AP806_CA72MP2_0_PLL_CR_2_REG_OFFSET,
+	AP806_PLL_CR_0_CPU_CLK_DIV_RATIO_MASK,
+	AP806_CA72MP2_0_PLL_CR_CLUSTER_OFFSET,
+	AP806_PLL_CR_0_CPU_CLK_RELOAD_FORCE_MASK,
+	AP806_PLL_CR_0_CPU_CLK_DIV_RATIO_OFFSET,
+	AP806_PLL_CR_0_CPU_CLK_RELOAD_RATIO_OFFSET,
+	AP806_CA72MP2_0_PLL_RATIO_STATE
+};
+
 /*
  * struct ap806_clk: CPU cluster clock controller instance
  * @cluster: Cluster clock controller index
@@ -64,6 +96,7 @@ struct ap_cpu_clk {
 	struct device *dev;
 	struct clk_hw hw;
 	struct regmap *pll_cr_base;
+	struct cpu_dfs_regs *pll_regs;
 };
 
 static unsigned long ap_cpu_clk_recalc_rate(struct clk_hw *hw,
@@ -73,11 +106,11 @@ static unsigned long ap_cpu_clk_recalc_rate(struct clk_hw *hw,
 	unsigned int cpu_clkdiv_reg;
 	int cpu_clkdiv_ratio;
 
-	cpu_clkdiv_reg = AP806_CA72MP2_0_PLL_CR_0_REG_OFFSET +
-		(clk->cluster * AP806_CA72MP2_0_PLL_CR_CLUSTER_OFFSET);
+	cpu_clkdiv_reg = clk->pll_regs->divider_reg +
+		(clk->cluster * clk->pll_regs->cluster_offset);
 	regmap_read(clk->pll_cr_base, cpu_clkdiv_reg, &cpu_clkdiv_ratio);
-	cpu_clkdiv_ratio &= AP806_PLL_CR_0_CPU_CLK_DIV_RATIO_MASK;
-	cpu_clkdiv_ratio >>= AP806_PLL_CR_0_CPU_CLK_DIV_RATIO_OFFSET;
+	cpu_clkdiv_ratio &= clk->pll_regs->divider_mask;
+	cpu_clkdiv_ratio >>= clk->pll_regs->divider_offset;
 
 	return parent_rate / cpu_clkdiv_ratio;
 }
@@ -89,26 +122,26 @@ static int ap_cpu_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 	int ret, reg, divider = parent_rate / rate;
 	unsigned int cpu_clkdiv_reg, cpu_force_reg, cpu_ratio_reg, stable_bit;
 
-	cpu_clkdiv_reg = AP806_CA72MP2_0_PLL_CR_0_REG_OFFSET +
-		(clk->cluster * AP806_CA72MP2_0_PLL_CR_CLUSTER_OFFSET);
-	cpu_force_reg = AP806_CA72MP2_0_PLL_CR_1_REG_OFFSET +
-		(clk->cluster * AP806_CA72MP2_0_PLL_CR_CLUSTER_OFFSET);
-	cpu_ratio_reg = AP806_CA72MP2_0_PLL_CR_2_REG_OFFSET +
-		(clk->cluster * AP806_CA72MP2_0_PLL_CR_CLUSTER_OFFSET);
+	cpu_clkdiv_reg = clk->pll_regs->divider_reg +
+		(clk->cluster * clk->pll_regs->cluster_offset);
+	cpu_force_reg = clk->pll_regs->force_reg +
+		(clk->cluster * clk->pll_regs->cluster_offset);
+	cpu_ratio_reg = clk->pll_regs->ratio_reg +
+		(clk->cluster * clk->pll_regs->cluster_offset);
 
 	regmap_update_bits(clk->pll_cr_base, cpu_clkdiv_reg,
-			   AP806_PLL_CR_0_CPU_CLK_DIV_RATIO_MASK, divider);
+			   clk->pll_regs->divider_mask, divider);
 
 	regmap_update_bits(clk->pll_cr_base, cpu_force_reg,
-			   AP806_PLL_CR_0_CPU_CLK_RELOAD_FORCE_MASK,
-			   AP806_PLL_CR_0_CPU_CLK_RELOAD_FORCE_MASK);
+			   clk->pll_regs->force_mask,
+			   clk->pll_regs->force_mask);
 
 	regmap_update_bits(clk->pll_cr_base, cpu_ratio_reg,
-			   BIT(AP806_PLL_CR_0_CPU_CLK_RELOAD_RATIO_OFFSET),
-			   BIT(AP806_PLL_CR_0_CPU_CLK_RELOAD_RATIO_OFFSET));
+			   BIT(clk->pll_regs->ratio_offset),
+			   BIT(clk->pll_regs->ratio_offset));
 
-	stable_bit = BIT(clk->cluster * AP806_CA72MP2_0_PLL_RATIO_STATE),
-
+	stable_bit = BIT(clk->cluster *
+			 clk->pll_regs->ratio_state_offset),
 	ret = regmap_read_poll_timeout(clk->pll_cr_base,
 				       AP806_CA72MP2_0_PLL_SR_REG_OFFSET, reg,
 				       reg & stable_bit, STATUS_POLL_PERIOD_US,
@@ -117,7 +150,7 @@ static int ap_cpu_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 		return ret;
 
 	regmap_update_bits(clk->pll_cr_base, cpu_ratio_reg,
-			   BIT(AP806_PLL_CR_0_CPU_CLK_RELOAD_RATIO_OFFSET), 0);
+			   BIT(clk->pll_regs->ratio_offset), 0);
 
 	return 0;
 }
@@ -222,7 +255,7 @@ static int ap_cpu_clock_probe(struct platform_device *pdev)
 		ap_cpu_clk[cluster_index].pll_cr_base = regmap;
 		ap_cpu_clk[cluster_index].hw.init = &init;
 		ap_cpu_clk[cluster_index].dev = dev;
-
+		ap_cpu_clk[cluster_index].pll_regs = &ap806_dfs_regs;
 		init.name = ap_cpu_clk[cluster_index].clk_name;
 		init.ops = &ap_cpu_clk_ops;
 		init.num_parents = 1;
