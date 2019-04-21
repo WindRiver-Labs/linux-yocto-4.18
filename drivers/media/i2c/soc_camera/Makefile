@@ -15,3 +15,4 @@ obj-$(CONFIG_SOC_CAMERA_OV106XX)	+= ov106xx.o
 obj-$(CONFIG_SOC_CAMERA_IMX219)		+= imx219.o
 obj-y					+= dummy.o
 
+obj-$(CONFIG_SOC_CAMERA_AR0147)		+= ar0147.o
