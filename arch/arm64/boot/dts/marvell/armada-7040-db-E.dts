@@ -20,6 +20,10 @@
 		ethernet0 = &cp0_eth0;
 		ethernet1 = &cp0_eth1;
 	};
+
+	sfp_eth0: sfp-eth0 {
+		compatible = "sff,sfp";
+	};
 };
 
 &uart0 {
@@ -76,9 +80,6 @@
 	phy0: ethernet-phy@0 {
 		reg = <0>;
 	};
-	phy1: ethernet-phy@2 {
-		reg = <1>;
-	};
 };
 
 &cp0_ethernet {
@@ -87,16 +88,16 @@
 
 &cp0_eth0 {
 	status = "okay";
-	/* Network PHY */
-	phy = <&phy0>;
 	phy-mode = "sgmii";
 	/* Generic PHY, providing serdes lanes */
 	phys = <&cp0_comphy2 0>;
+	managed = "in-band-status";
+	sfp = <&sfp_eth0>;
 };
 
 &cp0_eth1 {
 	status = "okay";
-	phy = <&phy1>;
+	phy = <&phy0>;
 	phy-mode = "rgmii-id";
 };
 
