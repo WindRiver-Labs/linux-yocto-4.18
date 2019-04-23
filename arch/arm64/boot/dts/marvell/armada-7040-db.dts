@@ -23,10 +23,6 @@
 		ethernet1 = &cp0_eth1;
 		ethernet2 = &cp0_eth2;
 	};
-
-	sfp_eth0: sfp-eth0 {
-		compatible = "sff,sfp";
-	};
 };
 
 &i2c0 {

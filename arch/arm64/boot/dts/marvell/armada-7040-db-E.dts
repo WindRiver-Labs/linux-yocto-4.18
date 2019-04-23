@@ -20,10 +20,6 @@
 		ethernet0 = &cp0_eth0;
 		ethernet1 = &cp0_eth1;
 	};
-
-	sfp_eth0: sfp-eth0 {
-		compatible = "sff,sfp";
-	};
 };
 
 &uart0 {
