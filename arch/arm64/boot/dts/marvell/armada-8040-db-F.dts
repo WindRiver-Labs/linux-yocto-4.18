@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2019 Marvell Technology Group Ltd.
+ *
+ * Device Tree file for Marvell Armada 8040 Development board
+ * This file supports option F configuration, which is the same as
+ * "armada-8040-db.dts" but with internal phy-mode configuration.
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include "armada-8040-db.dts"
+
+/ {
+	model = "Marvell Armada 8040 development board default (F) setup";
+	compatible = "marvell,armada8040-db-F", "marvell,armada8040-db",
+		"marvell,armada8040", "marvell,armada-ap806-quad",
+		"marvell,armada-ap806";
+};
+
+&cp0_eth0 {
+	phy-mode = "internal";
+};
+
+&cp1_eth0 {
+	phy-mode = "internal";
+};
