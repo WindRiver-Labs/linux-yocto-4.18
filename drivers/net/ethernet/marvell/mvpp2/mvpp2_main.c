@@ -1349,6 +1349,8 @@ static int mvpp22_gop_init(struct mvpp2_port *port)
 			goto invalid_conf;
 		mvpp22_gop_init_mpcs(port);
 		break;
+	case PHY_INTERFACE_MODE_INTERNAL:
+		return 0;
 	default:
 		goto unsupported_conf;
 	}
@@ -1393,7 +1395,8 @@ static void mvpp22_gop_unmask_irq(struct mvpp2_port *port)
 		/* Enable the XLG/GIG irqs for this port */
 		val = readl(port->base + MVPP22_XLG_EXT_INT_MASK);
 		if (port->phy_interface == PHY_INTERFACE_MODE_10GKR ||
-		    port->phy_interface == PHY_INTERFACE_MODE_5GKR)
+		    port->phy_interface == PHY_INTERFACE_MODE_5GKR ||
+		    port->phy_interface == PHY_INTERFACE_MODE_INTERNAL)
 			val |= MVPP22_XLG_EXT_INT_MASK_XLG;
 		else
 			val |= MVPP22_XLG_EXT_INT_MASK_GIG;
@@ -1472,6 +1475,9 @@ static void mvpp2_port_enable(struct mvpp2_port *port)
 {
 	u32 val;
 
+	if (port->phy_interface == PHY_INTERFACE_MODE_INTERNAL)
+		return;
+
 	if (port->has_xlg_mac &&
 	    (port->phy_interface == PHY_INTERFACE_MODE_RXAUI ||
 	     port->phy_interface == PHY_INTERFACE_MODE_10GKR ||
@@ -1492,6 +1498,9 @@ static void mvpp2_port_enable(struct mvpp2_port *port)
 static void mvpp2_port_disable(struct mvpp2_port *port)
 {
 	u32 val;
+
+	if (port->phy_interface == PHY_INTERFACE_MODE_INTERNAL)
+		return;
 
 	if (port->has_xlg_mac &&
 	    (port->phy_interface == PHY_INTERFACE_MODE_RXAUI ||
@@ -3070,7 +3079,8 @@ static irqreturn_t mvpp2_link_status_isr(int irq, void *dev_id)
 	if (port->has_xlg_mac &&
 	    (port->phy_interface == PHY_INTERFACE_MODE_RXAUI ||
 	     port->phy_interface == PHY_INTERFACE_MODE_10GKR ||
-	     port->phy_interface == PHY_INTERFACE_MODE_5GKR)) {
+	     port->phy_interface == PHY_INTERFACE_MODE_5GKR ||
+	     port->phy_interface == PHY_INTERFACE_MODE_INTERNAL)) {
 		val = readl(port->base + MVPP22_XLG_INT_STAT);
 		if (val & MVPP22_XLG_INT_STAT_LINK) {
 			event = true;
@@ -4391,6 +4401,9 @@ static void mvpp22_mode_reconfigure(struct mvpp2_port *port)
 
 	/* gop reconfiguration */
 	mvpp22_gop_init(port);
+
+	if  (port->phy_interface == PHY_INTERFACE_MODE_INTERNAL)
+		return;
 
 	if (port->has_xlg_mac) {
 		ctrl3 = readl(port->base + MVPP22_XLG_CTRL3_REG);
@@ -5824,6 +5837,7 @@ static void mvpp2_phylink_validate(struct net_device *dev,
 	switch (state->interface) {
 	case PHY_INTERFACE_MODE_10GKR:
 	case PHY_INTERFACE_MODE_5GKR:
+	case PHY_INTERFACE_MODE_INTERNAL:
 		if (!port->has_xlg_mac)
 			goto empty_set;
 		break;
@@ -5852,6 +5866,7 @@ static void mvpp2_phylink_validate(struct net_device *dev,
 	case PHY_INTERFACE_MODE_10GKR:
 	case PHY_INTERFACE_MODE_RXAUI:
 	case PHY_INTERFACE_MODE_NA:
+	case PHY_INTERFACE_MODE_INTERNAL:
 		if (port->has_xlg_mac) {
 			phylink_set(mask, 10000baseT_Full);
 			phylink_set(mask, 10000baseCR_Full);
@@ -6379,6 +6394,12 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 	port->dev = dev;
 	port->fwnode = port_fwnode;
 	port->has_phy = !!of_find_property(port_node, "phy", NULL);
+	if (port->has_phy && phy_mode == PHY_INTERFACE_MODE_INTERNAL) {
+		err = -EINVAL;
+		dev_err(&pdev->dev, "internal mode doesn't work with phy\n");
+		goto err_free_netdev;
+	}
+
 	port->ntxqs = ntxqs;
 	port->nrxqs = nrxqs;
 	port->priv = priv;
