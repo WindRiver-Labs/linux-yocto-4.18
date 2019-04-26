@@ -60,6 +60,7 @@ struct mvebu_comhy_conf {
 #define COMPHY_XFI_MODE		0x8
 #define COMPHY_SFI_MODE		0x9
 #define COMPHY_USB3_MODE	0xa
+#define COMPHY_AP_MODE		0xb
 
 /* COMPHY speed macro */
 #define COMPHY_SPEED_1_25G		0 /* SGMII 1G */
@@ -129,6 +130,7 @@ static const struct mvebu_comhy_conf mvebu_comphy_cp110_modes[] = {
 	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_2500BASEX),
 	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_10GKR),
 	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_5GKR),
+	MVEBU_COMPHY_CONF_ETH(2, 0, PHY_INTERFACE_MODE_INTERNAL),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_PCIE),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_USB_HOST),
 	MVEBU_COMPHY_CONF(2, 0, PHY_MODE_SATA),
@@ -146,6 +148,7 @@ static const struct mvebu_comhy_conf mvebu_comphy_cp110_modes[] = {
 	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_10GKR),
 	MVEBU_COMPHY_CONF_ETH(4, 1, PHY_INTERFACE_MODE_10GKR),
 	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_5GKR),
+	MVEBU_COMPHY_CONF_ETH(4, 0, PHY_INTERFACE_MODE_INTERNAL),
 	MVEBU_COMPHY_CONF_ETH(4, 1, PHY_INTERFACE_MODE_5GKR),
 	MVEBU_COMPHY_CONF_ETH(4, 1, PHY_INTERFACE_MODE_SGMII),
 	MVEBU_COMPHY_CONF(4, 1, PHY_MODE_PCIE),
@@ -251,6 +254,13 @@ static int mvebu_comphy_eth_power_on(struct phy *phy)
 		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
 				 lane->id,
 				 COMPHY_FW_NET_FORMAT(COMPHY_XFI_MODE,
+						      lane->port,
+						      COMPHY_SPEED_10_3125G));
+		break;
+	case PHY_INTERFACE_MODE_INTERNAL:
+		ret = data->comphy_smc(MV_SIP_COMPHY_POWER_ON, priv->phys,
+				 lane->id,
+				 COMPHY_FW_NET_FORMAT(COMPHY_AP_MODE,
 						      lane->port,
 						      COMPHY_SPEED_10_3125G));
 		break;
