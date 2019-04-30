@@ -63,6 +63,13 @@
 					#clock-cells = <1>;
 				};
 			};
+
+			ap_syscon0: system-controller@6f4000 {
+				ap_clk: clock {
+					compatible = "marvell,ap807-clock";
+					#clock-cells = <1>;
+				};
+			};
 		};
 	};
 };
