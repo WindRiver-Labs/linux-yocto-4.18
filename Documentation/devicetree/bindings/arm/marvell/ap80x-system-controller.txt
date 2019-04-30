@@ -28,7 +28,7 @@ a number of clocks:
 
 Required properties:
 
- - compatible: must be: "marvell,ap806-clock"
+ - compatible: must be: "marvell,ap806-clock" or "marvell,ap807-clock"
  - #clock-cells: must be set to 1
 
 Pinctrl:

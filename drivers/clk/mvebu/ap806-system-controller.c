@@ -19,6 +19,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <stdbool.h>
 
 #define AP806_SAR_REG			0x400
 #define AP806_SAR_CLKFREQ_MODE_MASK	0x1f
@@ -31,6 +32,108 @@ static struct clk_onecell_data ap806_clk_data = {
 	.clks = ap806_clks,
 	.clk_num = AP806_CLK_NUM,
 };
+
+static int ap806_get_sar_clocks(unsigned int freq_mode,
+				  unsigned int *cpuclk_freq,
+				  unsigned int *dclk_freq)
+{
+	int ret = 0;
+
+	switch (freq_mode) {
+	case 0x0:
+		*cpuclk_freq = 2000;
+		*dclk_freq = 600;
+		break;
+	case 0x1:
+		*cpuclk_freq = 2000;
+		*dclk_freq = 525;
+		break;
+	case 0x6:
+		*cpuclk_freq = 1800;
+		*dclk_freq = 600;
+		break;
+	case 0x7:
+		*cpuclk_freq = 1800;
+		*dclk_freq = 525;
+		break;
+	case 0x4:
+		*cpuclk_freq = 1600;
+		*dclk_freq = 400;
+		break;
+	case 0xB:
+		*cpuclk_freq = 1600;
+		*dclk_freq = 450;
+		break;
+	case 0xD:
+		*cpuclk_freq = 1600;
+		*dclk_freq = 525;
+		break;
+	case 0x1a:
+		*cpuclk_freq = 1400;
+		*dclk_freq = 400;
+		break;
+	case 0x14:
+		*cpuclk_freq = 1300;
+		*dclk_freq = 400;
+		break;
+	case 0x17:
+		*cpuclk_freq = 1300;
+		*dclk_freq = 325;
+		break;
+	case 0x19:
+		*cpuclk_freq = 1200;
+		*dclk_freq = 400;
+		break;
+	case 0x13:
+		*cpuclk_freq = 1000;
+		*dclk_freq = 325;
+		break;
+	case 0x1d:
+		*cpuclk_freq = 1000;
+		*dclk_freq = 400;
+		break;
+	case 0x1c:
+		*cpuclk_freq = 800;
+		*dclk_freq = 400;
+		break;
+	case 0x1b:
+		*cpuclk_freq = 600;
+		*dclk_freq = 400;
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int ap807_get_sar_clocks(unsigned int freq_mode,
+				  unsigned int *cpuclk_freq,
+				  unsigned int *dclk_freq)
+{
+	int ret = 0;
+
+	switch (freq_mode) {
+	case 0x0:
+		*cpuclk_freq = 2000;
+		*dclk_freq = 1200;
+		break;
+	case 0x6:
+		*cpuclk_freq = 2200;
+		*dclk_freq = 1200;
+		break;
+	case 0xD:
+		*cpuclk_freq = 1600;
+		*dclk_freq = 1200;
+		break;
+	default:
+		ret =  -EINVAL;
+		break;
+	}
+
+	return ret;
+}
 
 static int ap806_syscon_common_probe(struct platform_device *pdev,
 				     struct device_node *syscon_node)
@@ -56,72 +159,23 @@ static int ap806_syscon_common_probe(struct platform_device *pdev,
 	}
 
 	freq_mode = reg & AP806_SAR_CLKFREQ_MODE_MASK;
-	switch (freq_mode) {
-	case 0x0:
-	case 0x1:
-		cpuclk_freq = 2000;
-		break;
-	case 0x6:
-	case 0x7:
-		cpuclk_freq = 1800;
-		break;
-	case 0x4:
-	case 0xB:
-	case 0xD:
-		cpuclk_freq = 1600;
-		break;
-	case 0x1a:
-		cpuclk_freq = 1400;
-		break;
-	case 0x14:
-	case 0x17:
-		cpuclk_freq = 1300;
-		break;
-	case 0x19:
-		cpuclk_freq = 1200;
-		break;
-	case 0x13:
-	case 0x1d:
-		cpuclk_freq = 1000;
-		break;
-	case 0x1c:
-		cpuclk_freq = 800;
-		break;
-	case 0x1b:
-		cpuclk_freq = 600;
-		break;
-	default:
-		dev_err(dev, "invalid Sample at Reset value\n");
+
+	if (of_device_is_compatible(pdev->dev.of_node,
+				    "marvell,ap807-clock")) {
+		ret = ap807_get_sar_clocks(freq_mode, &cpuclk_freq,
+					   &dclk_freq);
+	} else if (of_device_is_compatible(pdev->dev.of_node,
+					   "marvell,ap806-clock")) {
+		ret = ap806_get_sar_clocks(freq_mode, &cpuclk_freq,
+					   &dclk_freq);
+	} else {
+		dev_err(dev, "no supported compatible device found\n");
 		return -EINVAL;
 	}
 
-	/* Get DCLK frequency (DCLK = 0.5*DDR_CLK) */
-	switch (freq_mode) {
-	case 0x0:
-	case 0x6:
-		dclk_freq = 600; /* DDR_CLK = 1200Mhz */
-		break;
-	case 0x1:
-	case 0x7:
-	case 0xD:
-		dclk_freq = 525; /* DDR_CLK = 1050Mhz */
-		break;
-	case 0x13:
-	case 0x17:
-		dclk_freq = 325; /* DDR_CLK = 650Mhz */
-		break;
-	case 0x4:
-	case 0x14:
-	case 0x19:
-	case 0x1A:
-	case 0x1B:
-	case 0x1C:
-	case 0x1D:
-		dclk_freq = 400; /* DDR_CLK = 800Mhz */
-		break;
-	default:
-		dclk_freq = 0;
-		pr_err("invalid Sample at Reset value\n");
+	if (ret) {
+		dev_err(dev, "invalid Sample at Reset value\n");
+		return ret;
 	}
 
 	/* Convert to hertz */
@@ -239,6 +293,7 @@ builtin_platform_driver(ap806_syscon_legacy_driver);
 
 static const struct of_device_id ap806_clock_of_match[] = {
 	{ .compatible = "marvell,ap806-clock", },
+	{ .compatible = "marvell,ap807-clock", },
 	{ }
 };
 
