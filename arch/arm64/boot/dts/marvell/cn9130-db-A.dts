@@ -38,6 +38,7 @@
 	pinctrl-names = "default";
 	bus-width = <8>;
 	status = "okay";
+	vqmmc-supply = <&ap0_reg_sd_vccq>;
 };
 
 /*
