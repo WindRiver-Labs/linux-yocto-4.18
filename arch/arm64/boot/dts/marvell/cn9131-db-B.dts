@@ -14,6 +14,10 @@
 		     "marvell,armada-ap807";
 };
 
+&cp1_ethernet {
+	status = "okay";
+};
+
 /* RJ45 CON55 via 3310 */
 &cp1_eth0 {
 	status = "okay";
