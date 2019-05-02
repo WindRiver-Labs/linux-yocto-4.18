@@ -19,6 +19,12 @@ Boards:
       when the board being used is the OcteonTX2 CN9130 Development board with
       Setup B.
 
+   - "marvell,cn9130-crb-A"
+      when the board being used is the OcteonTX2 CN9130 crb board with Setup A.
+
+   - "marvell,cn9130-crb-B"
+      when the board being used is the OcteonTX2 CN9130 crb board with Setup B.
+
    - "marvell,cn9131-db-A"
       when the board being used is the OcteonTX2 CN9131 Development board with
       Setup A.
