@@ -54,6 +54,7 @@
 #include <linux/cavium-tdm.h>
 
 #define DEVNAME	"tdm"
+#define CONFIG_CAVIUM_TDM_STATS /* low-overhead stats, optional */
 
 static struct proc_dir_entry *proc_tdm;
 
@@ -687,7 +688,7 @@ struct tdm_engine {
 	u64 lastirqs;	/* rolling (u4 state, u8 irq) log for debug */
 	int rxto; /* handover: rx valid to here (frames) */
 	int rxfrom; /* handover: rx valid from here (frames) */
-#ifdef CONFIG_CAVIUM_TDM_DEBUG
+#ifdef CONFIG_CAVIUM_TDM_STATS
 	int _irqstate[256]; /* detailed stats */
 #endif
 };
@@ -733,18 +734,24 @@ static inline void mark_done(void)
 }
 
 static unsigned long held;
+static void v_drop(unsigned int vno);
 
-/* bus state persistence, canceled by TDMSDROP */
+/* set/clear bus state persistence, canceled by TDMSDROP */
 static inline void hold(unsigned int vno, bool on)
 {
 	if (vno >= NR_TDM_BUSES)
 		return;
 	if (on && !test_and_set_bit(vno, &held)) {
 		__module_get(THIS_MODULE);
-	} else if (!on && test_and_clear_bit(vno, &held)) {
-		/* TODO: revert vno to module-load state? */
-		module_put(THIS_MODULE);
+
+	} else if (!on) {
+		v_drop(vno);
+		if (test_and_clear_bit(vno, &held))
+			module_put(THIS_MODULE);
 	}
+
+	tf("%cv%d held=0x%lx refs=%d\n", "+-"[!on], vno, held,
+		module_refcount(THIS_MODULE));
 }
 
 static inline u64 get_sclk(void)
@@ -1128,9 +1135,9 @@ static void geom_stats(struct tdm_bus *v, struct tdm_sess *s)
 static int show_tdm(struct seq_file *m, void *v)
 {
 	int clk, vno;
-#ifdef CONFIG_CAVIUM_TDM_DEBUG
+#ifdef CONFIG_CAVIUM_TDM_STATS
 	int eno, eold;
-#endif /*CONFIG_CAVIUM_TDM_DEBUG */
+#endif
 
 	seq_printf(m, "cavium-tdm v%d buses:%d engines:%d clocks:%d default_ring_frames:%d",
 		TDM_VER, NR_TDM_BUSES, NR_TDM_ENGINES, NR_CLKS, ring_frames);
@@ -1264,7 +1271,7 @@ static int show_tdm(struct seq_file *m, void *v)
 		}
 	}
 
-#ifdef CONFIG_CAVIUM_TDM_DEBUG
+#ifdef CONFIG_CAVIUM_TDM_STATS
 	for (eno = 0, eold = -1; eno < NR_TDM_ENGINES; eno++) {
 		struct tdm_engine *e = &eng[eno];
 		int i;
@@ -1281,8 +1288,10 @@ static int show_tdm(struct seq_file *m, void *v)
 			}
 		}
 	}
-#endif /*CONFIG_CAVIUM_TDM_DEBUG */
+#endif
+#ifdef CONFIG_CAVIUM_TDM_DEBUG
 	seq_printf(m, "trace %x\n", tdm_trace);
+#endif
 	seq_printf(m, "wide_rx %x\n", wide_rx);
 	seq_printf(m, "loop_rx %x\n", loop_rx);
 
@@ -1420,12 +1429,12 @@ static int _chk_clk(unsigned int vno, enum clkstate how, u64 arg, int line)
 
 	/* start clock, if fully configured */
 	if (!(valid_clk[clk] & c_cfg)) {
-		pr_info("TDM.CLK%d_CFG not set\n", clk);
+		pr_debug("TDM.CLK%d_CFG not set\n", clk);
 		err = -EINVAL;
 	}
 
 	if (!(valid_clk[clk] & c_gen)) {
-		pr_info("TDM.CLK%d_GEN not set\n", clk);
+		pr_debug("TDM.CLK%d_GEN not set\n", clk);
 		err = -EINVAL;
 	}
 
@@ -1630,7 +1639,7 @@ static int tdm_pre_probe(void)
 {
 	int i;
 
-#ifdef CONFIG_CAVIUM_TDM_DEBUG
+#ifdef CONFIG_CAVIUM_TDM_STATS
 	pr_info("TDM_VER %d ioctl generation, TDM_IOCTL='%c'=0x%2.2xxx\n",
 		TDM_VER, TDM_IOCTL, TDM_IOCTL);
 	pr_info("%d tdm engines, %d tdm buses\n",
@@ -2125,7 +2134,9 @@ static int tdm_enable(struct file *fi, int dir,
 
 	/* whole-engine start/stop, TODO: move some/all to kickstart/kickstop */
 	if (!err && enable && !active) {
-		tdm_irq_enable(eno, tdm_clkbits | xxbits[dir]);
+		tdm_irq_enable(eno, xxbits[dir]);
+		if (v->clksel >= 0 && (valid_clk[v->clksel] & c_ext))
+			tdm_irq_enable(eno, tdm_clkbits);
 		/* ignore any pending startup FSYNC errors */
 		tdm_irq_ack(eno, tdm_clkbits);
 	}
@@ -3131,6 +3142,50 @@ static bool change_mappings(struct tdm_engine *e, bool first)
 	return changed;
 }
 
+/* TDMSDROP: revert vno to module-load state */
+static void v_drop(unsigned int vno)
+{
+	struct tdm_bus *v = &veng[vno];
+	int dir, m, eb;
+	bool hard = false;
+
+	tf("TDMSDROP v%d held=0x%lx refs=%d\n",
+		vno, held, module_refcount(THIS_MODULE));
+
+	for_dir(dir) {
+		struct tdm_flow *fa = &FALL(v)[dir];
+		struct tdm_flow *fc = &FCUR(v)[dir];
+		struct tdm_flow *fo = &FOLD(v)[dir];
+
+		for (m = 0; m < MASK_REGS; m++) {
+			fa->fmask[m] = 0;
+			if (hard)
+				fc->fmask[m] = 0;
+			if (hard)
+				fo->fmask[m] = 0;
+		}
+
+		fa->fslots = 0;
+		if (hard)
+			fc->fslots = 0;
+		if (hard)
+			fo->fslots = 0;
+
+		for (eb = 0; eb < both; eb++)
+			tdm_irq_disable(v->e[eb]->eno,
+					tdm_txbits | tdm_rxbits);
+
+		/* fake a change to push out zero maps, cause irq disable */
+		if (!hard) {
+			FNEW(v)[dir].changed |= 1;
+			NEW_STATE(v, s_jump);
+			update_flows(v);
+			update_flows(v);
+			update_flows(v);
+		}
+	}
+}
+
 /*
  * jump_cut() - single-engine dynamic slotmap change (proxy==0)
  * try to change geometry, return false if timing wrong
@@ -3207,7 +3262,7 @@ irqreturn_t __tdm_handle_irq(struct tdm_engine *e,
 	old_state = v->hands;
 
 	e->cumsum |= sum;
-#ifdef CONFIG_CAVIUM_TDM_DEBUG
+#ifdef CONFIG_CAVIUM_TDM_STATS
 	e->_irqstate[sum]++;
 #endif
 	tdm_irq_ack(eno, sum);
