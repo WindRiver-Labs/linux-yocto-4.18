@@ -3606,6 +3606,8 @@ static int fec_enet_get_irq_cnt(struct platform_device *pdev)
 
 	if (irq_cnt > FEC_IRQ_NUM)
 		irq_cnt = FEC_IRQ_NUM;	/* last for pps */
+	else if (irq_cnt == 4)
+		irq_cnt = 3; /*last for pps on imx7*/
 	else if (irq_cnt == 2)
 		irq_cnt = 1;	/* last for pps */
 	else if (irq_cnt <= 0)
