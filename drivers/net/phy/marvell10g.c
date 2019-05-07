@@ -298,6 +298,46 @@ static int mv3310_suspend(struct phy_device *phydev)
 	return 0;
 }
 
+static void mv_set_adv_config_init(struct phy_device *phydev)
+{
+	u32 mask = MV_MGBASET_AN_FS_RETRAIN_10G | MV_MGBASET_AN_FS_RETRAIN_10G |
+		   MDIO_AN_10GBT_CTRL_ADV5G | MV_MGBASET_AN_FS_RETRAIN_5G |
+		   MDIO_AN_10GBT_CTRL_ADV2_5G | MV_MGBASET_AN_FS_RETRAIN_2_5G;
+
+	mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL, mask, 0);
+
+	switch (phydev->interface) {
+	case PHY_INTERFACE_MODE_10GKR:
+	case PHY_INTERFACE_MODE_RXAUI:
+	case PHY_INTERFACE_MODE_XAUI:
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MDIO_AN_10GBT_CTRL_ADV10G,
+			      MDIO_AN_10GBT_CTRL_ADV10G);
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MV_MGBASET_AN_FS_RETRAIN_10G,
+			      MV_MGBASET_AN_FS_RETRAIN_10G);
+		/* Fall-through */
+	case PHY_INTERFACE_MODE_5GKR:
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MDIO_AN_10GBT_CTRL_ADV5G,
+			      MDIO_AN_10GBT_CTRL_ADV5G);
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MV_MGBASET_AN_FS_RETRAIN_5G,
+			      MV_MGBASET_AN_FS_RETRAIN_5G);
+		/* Fall-through */
+	case PHY_INTERFACE_MODE_2500BASET:
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MDIO_AN_10GBT_CTRL_ADV2_5G,
+			      MDIO_AN_10GBT_CTRL_ADV2_5G);
+		mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
+			      MV_MGBASET_AN_FS_RETRAIN_2_5G,
+			      MV_MGBASET_AN_FS_RETRAIN_2_5G);
+		break;
+	default:
+		return;
+	}
+}
+
 static int mv3310_resume(struct phy_device *phydev)
 {
 	return mv3310_hwmon_config(phydev, true);
@@ -319,6 +359,7 @@ static int mv3310_config_init(struct phy_device *phydev)
 		return -ENODEV;
 
 	mv3310_of_config_init(phydev);
+	mv_set_adv_config_init(phydev);
 
 	__set_bit(ETHTOOL_LINK_MODE_Pause_BIT, supported);
 	__set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, supported);
