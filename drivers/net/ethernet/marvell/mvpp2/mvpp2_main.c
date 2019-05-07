@@ -1336,6 +1336,7 @@ static int mvpp22_gop_init(struct mvpp2_port *port)
 	case PHY_INTERFACE_MODE_SGMII:
 	case PHY_INTERFACE_MODE_1000BASEX:
 	case PHY_INTERFACE_MODE_2500BASEX:
+	case PHY_INTERFACE_MODE_2500BASET:
 		mvpp22_gop_init_sgmii(port);
 		break;
 	case PHY_INTERFACE_MODE_RXAUI:
@@ -1384,7 +1385,8 @@ static void mvpp22_gop_unmask_irq(struct mvpp2_port *port)
 
 	if (phy_interface_mode_is_rgmii(port->phy_interface) ||
 	    phy_interface_mode_is_8023z(port->phy_interface) ||
-	    port->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+	    port->phy_interface == PHY_INTERFACE_MODE_SGMII ||
+	    port->phy_interface == PHY_INTERFACE_MODE_2500BASET) {
 		/* Enable the GMAC link status irq for this port */
 		val = readl(port->base + MVPP22_GMAC_INT_SUM_MASK);
 		val |= MVPP22_GMAC_INT_SUM_MASK_LINK_STAT;
@@ -1417,7 +1419,8 @@ static void mvpp22_gop_mask_irq(struct mvpp2_port *port)
 
 	if (phy_interface_mode_is_rgmii(port->phy_interface) ||
 	    phy_interface_mode_is_8023z(port->phy_interface) ||
-	    port->phy_interface == PHY_INTERFACE_MODE_SGMII) {
+	    port->phy_interface == PHY_INTERFACE_MODE_SGMII ||
+	    port->phy_interface == PHY_INTERFACE_MODE_2500BASET) {
 		val = readl(port->base + MVPP22_GMAC_INT_SUM_MASK);
 		val &= ~MVPP22_GMAC_INT_SUM_MASK_LINK_STAT;
 		writel(val, port->base + MVPP22_GMAC_INT_SUM_MASK);
@@ -5881,6 +5884,9 @@ static void mvpp2_phylink_validate(struct net_device *dev,
 		if (port->has_xlg_mac)
 			phylink_set(mask, 5000baseT_Full);
 		/* Fall-through */
+	case PHY_INTERFACE_MODE_2500BASET:
+		phylink_set(mask, 2500baseT_Full);
+		/* Fall-through */
 	case PHY_INTERFACE_MODE_GMII:
 	case PHY_INTERFACE_MODE_RGMII:
 	case PHY_INTERFACE_MODE_RGMII_ID:
@@ -5951,6 +5957,7 @@ static void mvpp2_gmac_link_state(struct mvpp2_port *port,
 		state->speed = SPEED_1000;
 		break;
 	case PHY_INTERFACE_MODE_2500BASEX:
+	case PHY_INTERFACE_MODE_2500BASET:
 		state->speed = SPEED_2500;
 		break;
 	default:
@@ -6058,7 +6065,8 @@ static void mvpp2_gmac_config(struct mvpp2_port *port, unsigned int mode,
 		ctrl4 |= MVPP22_CTRL4_SYNC_BYPASS_DIS |
 			 MVPP22_CTRL4_DP_CLK_SEL |
 			 MVPP22_CTRL4_QSGMII_BYPASS_ACTIVE;
-	} else if (state->interface == PHY_INTERFACE_MODE_SGMII) {
+	} else if (state->interface == PHY_INTERFACE_MODE_SGMII ||
+		   state->interface == PHY_INTERFACE_MODE_2500BASET) {
 		ctrl2 |= MVPP2_GMAC_PCS_ENABLE_MASK | MVPP2_GMAC_INBAND_AN_MASK;
 		ctrl4 &= ~MVPP22_CTRL4_EXT_PIN_GMII_SEL;
 		ctrl4 |= MVPP22_CTRL4_SYNC_BYPASS_DIS |
@@ -6100,7 +6108,8 @@ static void mvpp2_gmac_config(struct mvpp2_port *port, unsigned int mode,
 		      MVPP2_GMAC_AN_SPEED_EN |
 		      MVPP2_GMAC_AN_DUPLEX_EN;
 
-	} else if (phy_interface_mode_is_8023z(state->interface)) {
+	} else if (phy_interface_mode_is_8023z(state->interface) ||
+		   state->interface == PHY_INTERFACE_MODE_2500BASET) {
 		/* 1000BaseX and 2500BaseX ports cannot negotiate speed nor can
 		 * they negotiate duplex: they are always operating with a fixed
 		 * speed of 1000/2500Mbps in full duplex, so force 1000/2500
@@ -6209,11 +6218,9 @@ static void mvpp2_mac_config(struct net_device *dev, unsigned int mode,
 	/* mac (re)configuration */
 	if (state->interface == PHY_INTERFACE_MODE_RXAUI ||
 	    state->interface == PHY_INTERFACE_MODE_10GKR ||
-	    state->interface == PHY_INTERFACE_MODE_5GKR)
+	    state->interface == PHY_INTERFACE_MODE_5GKR) {
 		mvpp2_xlg_config(port, mode, state);
-	else if (phy_interface_mode_is_rgmii(state->interface) ||
-		 phy_interface_mode_is_8023z(state->interface) ||
-		 state->interface == PHY_INTERFACE_MODE_SGMII) {
+	} else {
 		mvpp2_gmac_config(port, mode, state);
 		mvpp2_gmac_tx_fifo_configure(port, state->interface);
 	}
