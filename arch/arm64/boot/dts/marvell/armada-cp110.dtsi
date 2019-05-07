@@ -9,14 +9,15 @@
 
 #include "armada-common.dtsi"
 
-#define U64_TO_U32_H(addr)			(((addr) >> 32) & 0xffffffff)
-#define U64_TO_U32_L(addr)			((addr) & 0xffffffff)
+#define U64_TO_U32_H(addr)		(((addr) >> 32) & 0xffffffff)
+#define U64_TO_U32_L(addr)		((addr) & 0xffffffff)
 
-#define CP110_PCIEx_REG0_BASE(iface)		(CP110_BASE + 0x600000 + (iface) * 0x20000)
-#define CP110_PCIEx_REG1_BASE(iface)		(CP110_PCIEx_CPU_MEM_BASE(iface) + CP110_PCIE_MEM_SIZE)
+#define CP110_PCIEx_REG0_BASE(iface)	(CP110_BASE + 0x600000 + (iface) * 0x20000)
+#define CP110_PCIEx_REG1_BASE(iface)	(CP110_PCIEx_CPU_MEM_BASE(iface) + \
+					 CP110_PCIE_MEM_SIZE(iface))
 
-#define CP110_EIP197_INDEX			CP110_NUM
-#define CP110_SPI_BUS_ID(n)			((CP110_NUM * 2) + (n))
+#define CP110_EIP197_INDEX		CP110_NUM
+#define CP110_SPI_BUS_ID(n)		((CP110_NUM * 2) + (n))
 
 / {
 	/*
@@ -574,8 +575,8 @@
 			/* non-prefetchable memory */
 			CP110_PCIE_BUS_MEM_CFG U64_TO_U32_H(CP110_PCIEx_BUS_MEM_BASE(0))
 			U64_TO_U32_L(CP110_PCIEx_BUS_MEM_BASE(0)) U64_TO_U32_H(CP110_PCIEx_CPU_MEM_BASE(0))
-			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(0)) U64_TO_U32_H(CP110_PCIE_MEM_SIZE)
-			U64_TO_U32_L(CP110_PCIE_MEM_SIZE)>;
+			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(0))
+			U64_TO_U32_H(CP110_PCIE_MEM_SIZE(0)) U64_TO_U32_L(CP110_PCIE_MEM_SIZE(0))>;
 		interrupt-map-mask = <0 0 0 0>;
 		interrupt-map = <0 0 0 0 &CP110_LABEL(icu) ICU_GRP_NSR 22 IRQ_TYPE_LEVEL_HIGH>;
 		interrupts = <ICU_GRP_NSR 22 IRQ_TYPE_LEVEL_HIGH>;
@@ -607,8 +608,8 @@
 			/* non-prefetchable memory */
 			CP110_PCIE_BUS_MEM_CFG U64_TO_U32_H(CP110_PCIEx_BUS_MEM_BASE(1))
 			U64_TO_U32_L(CP110_PCIEx_BUS_MEM_BASE(1)) U64_TO_U32_H(CP110_PCIEx_CPU_MEM_BASE(1))
-			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(1)) U64_TO_U32_H(CP110_PCIE_MEM_SIZE)
-			U64_TO_U32_L(CP110_PCIE_MEM_SIZE)>;
+			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(1))
+			U64_TO_U32_H(CP110_PCIE_MEM_SIZE(1)) U64_TO_U32_L(CP110_PCIE_MEM_SIZE(1))>;
 		interrupt-map-mask = <0 0 0 0>;
 		interrupt-map = <0 0 0 0 &CP110_LABEL(icu) ICU_GRP_NSR 24 IRQ_TYPE_LEVEL_HIGH>;
 		interrupts = <ICU_GRP_NSR 24 IRQ_TYPE_LEVEL_HIGH>;
@@ -640,8 +641,8 @@
 			/* non-prefetchable memory */
 			CP110_PCIE_BUS_MEM_CFG U64_TO_U32_H(CP110_PCIEx_BUS_MEM_BASE(2))
 			U64_TO_U32_L(CP110_PCIEx_BUS_MEM_BASE(2)) U64_TO_U32_H(CP110_PCIEx_CPU_MEM_BASE(2))
-			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(2)) U64_TO_U32_H(CP110_PCIE_MEM_SIZE)
-			U64_TO_U32_L(CP110_PCIE_MEM_SIZE)>;
+			U64_TO_U32_L(CP110_PCIEx_CPU_MEM_BASE(2))
+			U64_TO_U32_H(CP110_PCIE_MEM_SIZE(2)) U64_TO_U32_L(CP110_PCIE_MEM_SIZE(2))>;
 		interrupt-map-mask = <0 0 0 0>;
 		interrupt-map = <0 0 0 0 &CP110_LABEL(icu) ICU_GRP_NSR 23 IRQ_TYPE_LEVEL_HIGH>;
 		interrupts = <ICU_GRP_NSR 23 IRQ_TYPE_LEVEL_HIGH>;
