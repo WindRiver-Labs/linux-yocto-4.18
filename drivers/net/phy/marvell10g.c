@@ -472,11 +472,13 @@ static int mv3310_aneg_done(struct phy_device *phydev)
 	return genphy_c45_aneg_done(phydev);
 }
 
-static void mv3310_update_interface(struct phy_device *phydev)
+static void mv_update_interface(struct phy_device *phydev)
 {
 	if ((phydev->interface == PHY_INTERFACE_MODE_SGMII ||
 	     phydev->interface == PHY_INTERFACE_MODE_10GKR ||
-	     phydev->interface == PHY_INTERFACE_MODE_5GKR) && phydev->link) {
+	     phydev->interface == PHY_INTERFACE_MODE_5GKR ||
+	     phydev->interface == PHY_INTERFACE_MODE_2500BASET) &&
+	    phydev->link) {
 		/* The PHY automatically switches its serdes interface (and
 		 * active PHYXS instance) between Cisco SGMII and 10GBase-KR
 		 * modes according to the speed.  Florian suggests setting
@@ -487,10 +489,41 @@ static void mv3310_update_interface(struct phy_device *phydev)
 			phydev->interface = PHY_INTERFACE_MODE_10GKR;
 		else if (phydev->speed == SPEED_5000)
 			phydev->interface = PHY_INTERFACE_MODE_5GKR;
+		else if (phydev->speed == SPEED_2500)
+			phydev->interface = PHY_INTERFACE_MODE_2500BASET;
 		else if (phydev->speed >= SPEED_10 &&
-			 phydev->speed < SPEED_10000)
+			 phydev->speed < SPEED_2500)
 			phydev->interface = PHY_INTERFACE_MODE_SGMII;
 	}
+}
+
+static void mv_set_speed_duplex(struct phy_device *phydev, int status)
+{
+	switch (status & MV_PHY_STATUS_SPD_MASK) {
+	case MV_PHY_STATUS_10000:
+		phydev->speed = SPEED_10000;
+		break;
+	case MV_PHY_STATUS_5000:
+		phydev->speed = SPEED_5000;
+		break;
+	case MV_PHY_STATUS_2500:
+		phydev->speed = SPEED_2500;
+		break;
+	case MV_PHY_STATUS_1000:
+		phydev->speed = SPEED_1000;
+		break;
+	case MV_PHY_STATUS_100:
+		phydev->speed = SPEED_100;
+		break;
+	default:
+		phydev->speed = SPEED_10;
+		break;
+	}
+
+	if (status & MV_PHY_STATUS_DUPLEX)
+		phydev->duplex = DUPLEX_FULL;
+	else
+		phydev->duplex = DUPLEX_HALF;
 }
 
 /* 10GBASE-ER,LR,LRM,SR do not support autonegotiation. */
@@ -500,7 +533,7 @@ static int mv3310_read_10gbr_status(struct phy_device *phydev)
 	phydev->speed = SPEED_10000;
 	phydev->duplex = DUPLEX_FULL;
 
-	mv3310_update_interface(phydev);
+	mv_update_interface(phydev);
 
 	return 0;
 }
@@ -508,7 +541,7 @@ static int mv3310_read_10gbr_status(struct phy_device *phydev)
 static int mv3310_read_status(struct phy_device *phydev)
 {
 	u32 mmd_mask = phydev->c45_ids.devices_in_package;
-	int val;
+	int val, status;
 
 	/* The vendor devads do not report link status.  Avoid the PHYXS
 	 * instance as there are three, and its status depends on the MAC
@@ -586,7 +619,12 @@ static int mv3310_read_status(struct phy_device *phydev)
 		}
 	}
 
-	mv3310_update_interface(phydev);
+	status = phy_read_mmd(phydev, MDIO_MMD_PCS, MV_PCS_COPPER_STATUS);
+	if (status < 0)
+		return status;
+
+	mv_set_speed_duplex(phydev, status);
+	mv_update_interface(phydev);
 
 	return 0;
 }
@@ -605,31 +643,12 @@ static int m88e2110_read_status(struct phy_device *phydev)
 	}
 
 	phydev->link = 1;
-	if (status & MV_PHY_STATUS_DUPLEX)
-		phydev->duplex = DUPLEX_FULL;
-	else
-		phydev->duplex = DUPLEX_HALF;
+	mv_set_speed_duplex(phydev, status);
 
 	phydev->pause = 0;
 	phydev->asym_pause = 0;
 
-	switch (status & MV_PHY_STATUS_SPD_MASK) {
-	case MV_PHY_STATUS_5000:
-		phydev->speed = SPEED_5000;
-		break;
-	case MV_PHY_STATUS_2500:
-		phydev->speed = SPEED_2500;
-		break;
-	case MV_PHY_STATUS_1000:
-		phydev->speed = SPEED_1000;
-		break;
-	case MV_PHY_STATUS_100:
-		phydev->speed = SPEED_100;
-		break;
-	default:
-		phydev->speed = SPEED_10;
-		break;
-	}
+	mv_update_interface(phydev);
 
 	if (phydev->autoneg == AUTONEG_ENABLE) {
 		lpa = phy_read_mmd(phydev, MDIO_MMD_AN, MV_PHY_AN_LPA);
