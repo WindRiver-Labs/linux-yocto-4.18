@@ -3532,7 +3532,7 @@ static int show_cmd_event_infos(struct vpu_statistic *statistic,
 
 	num += scnprintf(buf + num, size - num, "command/event:\n");
 
-	count = max(GTB_ENC_CMD_RESERVED, VID_API_ENC_EVENT_RESERVED);
+	count = max((int)GTB_ENC_CMD_RESERVED, (int)VID_API_ENC_EVENT_RESERVED);
 	for (i = 0; i <= count; i++)
 		num += show_cmd_event(statistic, i, buf + num, size - num);
 
