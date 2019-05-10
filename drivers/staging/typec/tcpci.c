@@ -694,7 +694,7 @@ static int tcpci_parse_config(struct tcpci *tcpci)
 		return -EINVAL;
 	}
 
-	if (tcfg->type == TYPEC_PORT_UFP)
+	if (tcfg->type == TYPEC_PORT_SNK)
 		goto sink;
 
 	/* Check source pdo array size */
@@ -720,7 +720,7 @@ static int tcpci_parse_config(struct tcpci *tcpci)
 		return -EINVAL;
 	}
 
-	if (tcfg->type == TYPEC_PORT_DFP)
+	if (tcfg->type == TYPEC_PORT_SRC)
 		return 0;
 
 	/* Get the default-role */
@@ -805,7 +805,7 @@ sink:
 
 snk_setting_wrong:
 	if (tcfg->type == TYPEC_PORT_DRP ||
-			tcfg->type == TYPEC_PORT_UFP)
+			tcfg->type == TYPEC_PORT_SNK)
 		dev_err(tcpci->dev, "Failed to read snk setting!\n");
 
 	return ret;
