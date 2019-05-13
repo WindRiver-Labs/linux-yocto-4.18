@@ -1086,13 +1086,9 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 		}
 
 		/* Remove port from old short & long pool */
-		port->pool_long = mvpp2_bm_pool_use(port, port->pool_long->id,
-						    port->pool_long->pkt_size);
 		port->pool_long->port_map &= ~BIT(port->id);
 		port->pool_long = NULL;
 
-		port->pool_short = mvpp2_bm_pool_use(port, port->pool_short->id,
-						     port->pool_short->pkt_size);
 		port->pool_short->port_map &= ~BIT(port->id);
 		port->pool_short = NULL;
 
