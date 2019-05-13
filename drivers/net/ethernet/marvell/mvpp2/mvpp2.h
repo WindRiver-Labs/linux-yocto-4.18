@@ -898,6 +898,7 @@ struct mvpp2 {
 
 	/* BM pools */
 	struct mvpp2_bm_pool *bm_pools;
+	struct mvpp2_bm_pool **pools_pcpu;
 
 	/* PRS shadow table */
 	struct mvpp2_prs_shadow *prs_shadow;
@@ -1304,7 +1305,8 @@ struct mvpp2_bm_pool {
 	u32 port_map;
 };
 
-#define MVPP2_BM_POOLS_NUM	3
+#define MVPP2_BM_POOLS_NUM	(recycle ? (2 + num_present_cpus()) : 3)
+#define MVPP2_BM_POOLS_NUM_MAX	8
 
 #define IS_TSO_HEADER(txq_pcpu, addr) \
 	((addr) >= (txq_pcpu)->tso_headers_dma && \

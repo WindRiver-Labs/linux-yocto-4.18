@@ -83,9 +83,9 @@ struct mvpp2_recycle_pool {
 
 struct mvpp2_recycle_pcpu {
 	/* All pool-indexes are in 1 cache-line */
-	short int idx[MVPP2_BM_POOLS_NUM + 1];
+	short int idx[MVPP2_BM_POOLS_NUM_MAX];
 	/* BM/SKB-buffer pools */
-	struct mvpp2_recycle_pool pool[MVPP2_BM_POOLS_NUM + 1];
+	struct mvpp2_recycle_pool pool[MVPP2_BM_POOLS_NUM_MAX];
 } __aligned(L1_CACHE_BYTES);
 
 struct mvpp2_share {
@@ -340,6 +340,8 @@ static int mvpp2_bm_pool_default_buf_num(enum mvpp2_bm_pool_type bm_pool_type)
  * POOL#0 - short packets
  * POOL#1 - jumbo packets
  * POOL#2 - long packets
+ * In case the KS recycling feature is enabled, ID = 2 is
+ * the first (CPU#0) out of the per-CPU pools for long packets.
  */
 static enum mvpp2_bm_pool_type mvpp2_bm_pool_get_type(int id)
 {
@@ -351,6 +353,8 @@ static enum mvpp2_bm_pool_type mvpp2_bm_pool_get_type(int id)
 	case 2:
 		return MVPP2_BM_LONG;
 	default:
+		if (recycle)
+			return MVPP2_BM_LONG;
 		return -EINVAL;
 	}
 }
@@ -360,6 +364,8 @@ static enum mvpp2_bm_pool_type mvpp2_bm_pool_get_type(int id)
  * Short packets - POOL#0
  * Jumbo packets - POOL#1
  * Long packets - POOL#2
+ * In case the KS recycling feature is enabled, ID = 2 is
+ * the first (CPU#0) out of the per-CPU pools for long packets.
  */
 static int mvpp2_bm_pool_get_id(enum mvpp2_bm_pool_type bm_pool_type)
 {
@@ -563,6 +569,15 @@ static int mvpp2_bm_pools_init(struct platform_device *pdev,
 {
 	int i, err, size, cpu;
 	struct mvpp2_bm_pool *bm_pool;
+
+	if (recycle) {
+		/* Allocate per-CPU long pools array */
+		priv->pools_pcpu = devm_kcalloc(&pdev->dev, num_present_cpus(),
+						sizeof(*priv->pools_pcpu),
+						GFP_KERNEL);
+		if (!priv->pools_pcpu)
+			return -ENOMEM;
+	}
 
 	/* Initialize Virtual with 0x0 */
 	for_each_present_cpu(cpu)
@@ -1009,6 +1024,102 @@ mvpp2_bm_pool_use(struct mvpp2_port *port, unsigned pool, int pkt_size)
 	return new_pool;
 }
 
+/* Create long pool per-CPU */
+static void mvpp2_bm_pool_pcpu_use(void *arg)
+{
+	struct mvpp2_port *port = arg;
+	struct mvpp2_bm_pool **pools_pcpu = port->priv->pools_pcpu;
+	int cpu = smp_processor_id();
+	int pool_id, pkt_size;
+
+	if (pools_pcpu[cpu])
+		return;
+
+	pool_id = mvpp2_bm_pool_get_id(MVPP2_BM_LONG) + cpu,
+	pkt_size = mvpp2_bm_pool_default_pkt_size(MVPP2_BM_LONG);
+
+	pools_pcpu[cpu] = mvpp2_bm_pool_use(port, pool_id, pkt_size);
+}
+
+/* Initialize pools for swf */
+static int mvpp2_swf_bm_pool_pcpu_init(struct mvpp2_port *port)
+{
+	enum mvpp2_bm_pool_type long_pool_type, short_pool_type;
+	int rxq, pkt_size, pool_id, cpu;
+
+	/* If port pkt_size is higher than 1518B:
+	 * HW Long pool - SW Jumbo pool, HW Short pool - SW Long pool
+	 * else: HW Long pool - SW Long pool, HW Short pool - SW Short pool
+	 */
+	if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE) {
+		long_pool_type = MVPP2_BM_JUMBO;
+		short_pool_type = MVPP2_BM_LONG;
+	} else {
+		long_pool_type = MVPP2_BM_LONG;
+		short_pool_type = MVPP2_BM_SHORT;
+	}
+
+	/* First handle the per-CPU long pools,
+	 * as they are used in both cases.
+	 */
+	on_each_cpu(mvpp2_bm_pool_pcpu_use, port, 1);
+	/* Sanity check */
+	for_each_present_cpu(cpu) {
+		if (!port->priv->pools_pcpu[cpu])
+			return -ENOMEM;
+	}
+
+	if (!port->pool_long && long_pool_type == MVPP2_BM_JUMBO) {
+		/* HW Long pool - SW Jumbo pool */
+		pool_id = mvpp2_bm_pool_get_id(long_pool_type);
+		pkt_size = mvpp2_bm_pool_default_pkt_size(long_pool_type);
+
+		port->pool_long = mvpp2_bm_pool_use(port, pool_id, pkt_size);
+		if (!port->pool_long)
+			return -ENOMEM;
+
+		port->pool_long->port_map |= BIT(port->id);
+
+		for (rxq = 0; rxq < port->nrxqs; rxq++)
+			mvpp2_rxq_long_pool_set(port, rxq, port->pool_long->id);
+
+		/* HW Short pool - SW Long pool (per-CPU) */
+		port->pool_short = port->priv->pools_pcpu[0];
+		for (rxq = 0; rxq < port->nrxqs; rxq++)
+			mvpp2_rxq_short_pool_set(port, rxq,
+						 port->pool_short->id + rxq);
+
+	} else if (!port->pool_long) {
+		/* HW Long pool - SW Long pool (per-CPU) */
+		port->pool_long = port->priv->pools_pcpu[0];
+		for (rxq = 0; rxq < port->nrxqs; rxq++)
+			mvpp2_rxq_long_pool_set(port, rxq,
+						port->pool_long->id + rxq);
+	}
+
+	if (!port->pool_short) {
+		/* HW Short pool - SW Short pool */
+		pool_id = mvpp2_bm_pool_get_id(short_pool_type);
+		pkt_size = mvpp2_bm_pool_default_pkt_size(short_pool_type);
+
+		port->pool_short = mvpp2_bm_pool_use(port, pool_id, pkt_size);
+		if (!port->pool_short)
+			return -ENOMEM;
+
+		port->pool_short->port_map |= BIT(port->id);
+
+		for (rxq = 0; rxq < port->nrxqs; rxq++)
+			mvpp2_rxq_short_pool_set(port, rxq,
+						 port->pool_short->id);
+	}
+
+	/* Fill per-CPU Long pools' port map */
+	for_each_present_cpu(cpu)
+		port->priv->pools_pcpu[cpu]->port_map |= BIT(port->id);
+
+	return 0;
+}
+
 /* Initialize pools for swf */
 static int mvpp2_swf_bm_pool_init(struct mvpp2_port *port)
 {
@@ -1063,7 +1174,9 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 {
 	struct mvpp2_port *port = netdev_priv(dev);
 	enum mvpp2_bm_pool_type new_long_pool_type;
+	struct mvpp2_bm_pool **pools_pcpu = port->priv->pools_pcpu;
 	int pkt_size = MVPP2_RX_PKT_SIZE(mtu);
+	int err, cpu;
 
 	/* If port MTU is higher than 1518B:
 	 * HW Long pool - SW Jumbo pool, HW Short pool - SW Long pool
@@ -1095,7 +1208,15 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 		port->pkt_size =  pkt_size;
 
 		/* Add port to new short & long pool */
-		mvpp2_swf_bm_pool_init(port);
+		if (recycle) {
+			for_each_present_cpu(cpu)
+				pools_pcpu[cpu]->port_map &= ~BIT(port->id);
+			err = mvpp2_swf_bm_pool_pcpu_init(port);
+		} else {
+			err = mvpp2_swf_bm_pool_init(port);
+		}
+		if (err)
+			return err;
 
 		if (port->tx_fc) {
 			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
@@ -5484,6 +5605,11 @@ static int mvpp22_set_priv_flags(struct net_device *dev, u32 priv_flags)
 	bool f_old, f_new;
 	int err = 0;
 
+	if (recycle && (priv_flags & MVPP22_F_IF_MUSDK_PRIV)) {
+		WARN(1, "Fail to enable MUSDK. KS recycling feature enabled.");
+		return -EOPNOTSUPP;
+	}
+
 	f_old = port->flags & MVPP22_F_IF_MUSDK;
 	f_new = priv_flags & MVPP22_F_IF_MUSDK_PRIV;
 	if (f_old != f_new)
@@ -5779,7 +5905,10 @@ static int mvpp2_port_init(struct mvpp2_port *port)
 	port->pkt_size = MVPP2_RX_PKT_SIZE(port->dev->mtu);
 
 	/* Initialize pools for swf */
-	err = mvpp2_swf_bm_pool_init(port);
+	if (recycle)
+		err = mvpp2_swf_bm_pool_pcpu_init(port);
+	else
+		err = mvpp2_swf_bm_pool_init(port);
 	if (err)
 		goto err_free_percpu;
 
