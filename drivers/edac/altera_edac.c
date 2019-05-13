@@ -2074,6 +2074,15 @@ static int altr_edac_a10_device_add(struct altr_arria10_edac *edac,
 		goto err_release_group1;
 	}
 
+#ifdef CONFIG_ARCH_STRATIX10
+	/* Use IRQ to determine SError origin instead of assigning IRQ */
+	rc = of_property_read_u32_index(np, "interrupts", 0, &altdev->db_irq);
+	if (rc) {
+		edac_printk(KERN_ERR, EDAC_DEVICE,
+			    "Unable to parse DB IRQ index\n");
+		goto err_release_group1;
+	}
+#else
 	altdev->db_irq = irq_of_parse_and_map(np, 1);
 	if (!altdev->db_irq) {
 		edac_printk(KERN_ERR, EDAC_DEVICE, "Error allocating DBIRQ\n");
@@ -2087,6 +2096,7 @@ static int altr_edac_a10_device_add(struct altr_arria10_edac *edac,
 		edac_printk(KERN_ERR, EDAC_DEVICE, "No DBERR IRQ resource\n");
 		goto err_release_group1;
 	}
+#endif
 
 	rc = edac_device_add_device(dci);
 	if (rc) {
@@ -2239,6 +2249,9 @@ module_platform_driver(altr_edac_a10_driver);
 
 #define to_s10edac(p, m) container_of(p, struct altr_stratix10_edac, m)
 
+/* panic routine issues reboot on non-zero panic_timeout */
+extern int panic_timeout;
+
 /*
  * The double bit error is handled through SError which is fatal. This is
  * called as a panic notifier to printout ECC error info as part of the panic.
@@ -2253,14 +2266,32 @@ static int s10_edac_dberr_handler(struct notifier_block *this,
 			       &dberror);
 	/* Remember the UE Errors for a reboot */
 	s10_protected_reg_write(edac, S10_SYSMGR_UE_VAL_OFST, dberror);
-	if (dberror & S10_DDR0_IRQ_MASK) {
-		s10_protected_reg_read(edac, S10_DERRADDR_OFST, &err_addr);
-		/* Remember the UE Error address */
-		s10_protected_reg_write(edac, S10_SYSMGR_UE_ADDR_OFST,
-					err_addr);
-		edac_printk(KERN_ERR, EDAC_MC,
-			    "EDAC: [Uncorrectable errors @ 0x%08X]\n\n",
-			    err_addr);
+	if (dberror & S10_DBE_IRQ_MASK) {
+		struct list_head *position;
+		struct altr_edac_device_dev *ed;
+		struct arm_smccc_res result;
+
+		/* Find the matching DBE in the list of devices */
+		list_for_each(position, &edac->s10_ecc_devices) {
+			ed = list_entry(position, struct altr_edac_device_dev,
+					next);
+			if (!(BIT(ed->db_irq) & dberror))
+				continue;
+
+			writel(ALTR_A10_ECC_DERRPENA,
+			       ed->base + ALTR_A10_ECC_INTSTAT_OFST);
+			err_addr = readl(ed->base + ALTR_S10_DERR_ADDRA_OFST);
+			s10_protected_reg_write(edac, S10_SYSMGR_UE_ADDR_OFST,
+			                        err_addr);
+			edac_printk(KERN_ERR, EDAC_DEVICE,
+				    "EDAC: [Fatal DBE on %s @ 0x%08X]\n",
+				    ed->edac_dev_name, err_addr);
+			break;
+		}
+		/* Notify the System through SMC. Reboot delay = 1 second */
+		panic_timeout = 1;
+		arm_smccc_smc(INTEL_SIP_SMC_ECC_DBE, dberror, 0, 0, 0, 0,
+			      0, 0, &result);
 	}
 
 	return NOTIFY_DONE;

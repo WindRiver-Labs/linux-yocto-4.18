@@ -317,6 +317,7 @@ struct altr_sdram_mc_data {
 #define ALTR_A10_ECC_INIT_WATCHDOG_10US      10000
 
 /************* Stratix10 Defines **************/
+#define ALTR_S10_DERR_ADDRA_OFST          0x2C
 
 /* Stratix10 ECC Manager Defines */
 #define S10_SYSMGR_ECC_INTMASK_VAL_OFST   0xFFD12090
@@ -327,6 +328,7 @@ struct altr_sdram_mc_data {
 #define S10_SYSMGR_ECC_INTSTAT_DERR_OFST  0xFFD120A0
 
 #define S10_DDR0_IRQ_MASK                 BIT(16)
+#define S10_DBE_IRQ_MASK                  0x3FE
 
 struct altr_edac_device_dev;
 
@@ -445,5 +447,23 @@ struct altr_stratix10_edac {
 	struct list_head	s10_ecc_devices;
 	struct notifier_block	panic_notifier;
 };
+
+/*
+ * Request INTEL_SIP_SMC_ECC_DBE
+ *
+ * Sync call used by service driver at EL1 alert EL3 that a Double Bit
+ * ECC error has occurred.
+ *
+ * Call register usage:
+ * a0 INTEL_SIP_SMC_ECC_DBE
+ * a1 SysManager Double Bit Error value
+ * a2-7 not used
+ *
+ * Return status
+ * a0 INTEL_SIP_SMC_STATUS_OK
+ */
+#define INTEL_SIP_SMC_FUNCID_ECC_DBE 13
+#define INTEL_SIP_SMC_ECC_DBE \
+	INTEL_SIP_SMC_FAST_CALL_VAL(INTEL_SIP_SMC_FUNCID_ECC_DBE)
 
 #endif	/* #ifndef _ALTERA_EDAC_H */
