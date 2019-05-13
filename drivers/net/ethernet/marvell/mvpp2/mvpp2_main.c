@@ -47,18 +47,6 @@
 #include "mvpp2_prs.h"
 #include "mvpp2_cls.h"
 
-enum mvpp2_bm_pool_log_num {
-	MVPP2_BM_SHORT,
-	MVPP2_BM_LONG,
-	MVPP2_BM_JUMBO,
-	MVPP2_BM_POOLS_NUM
-};
-
-static struct {
-	int pkt_size;
-	int buf_num;
-} mvpp2_pools[MVPP2_BM_POOLS_NUM];
-
 /* RX-TX fast-forwarding path optimization */
 #define MVPP2_RXTX_HASH			0xbac0
 #define MVPP2_RXTX_HASH_CONST_MASK	0xfff0
@@ -317,6 +305,76 @@ static void mvpp2_frag_free(const struct mvpp2_bm_pool *pool, void *data)
 
 /* Buffer Manager configuration routines */
 
+/* Get default packet size for given BM pool type */
+static int mvpp2_bm_pool_default_pkt_size(enum mvpp2_bm_pool_type bm_pool_type)
+{
+	switch (bm_pool_type) {
+	case MVPP2_BM_SHORT:
+		return MVPP2_BM_SHORT_PKT_SIZE;
+	case MVPP2_BM_JUMBO:
+		return MVPP2_BM_JUMBO_PKT_SIZE;
+	case MVPP2_BM_LONG:
+		return MVPP2_BM_LONG_PKT_SIZE;
+	default:
+		return -EINVAL;
+	}
+}
+
+/* Get default buffer count for given BM pool type */
+static int mvpp2_bm_pool_default_buf_num(enum mvpp2_bm_pool_type bm_pool_type)
+{
+	switch (bm_pool_type) {
+	case MVPP2_BM_SHORT:
+		return MVPP2_BM_SHORT_BUF_NUM;
+	case MVPP2_BM_JUMBO:
+		return MVPP2_BM_JUMBO_BUF_NUM;
+	case MVPP2_BM_LONG:
+		return MVPP2_BM_LONG_BUF_NUM;
+	default:
+		return -EINVAL;
+	}
+}
+
+/* Get BM pool type mapping - return the hardware Buffer Manager pools
+ * type according to the mapping to its ID:
+ * POOL#0 - short packets
+ * POOL#1 - jumbo packets
+ * POOL#2 - long packets
+ */
+static enum mvpp2_bm_pool_type mvpp2_bm_pool_get_type(int id)
+{
+	switch (id) {
+	case 0:
+		return MVPP2_BM_SHORT;
+	case 1:
+		return MVPP2_BM_JUMBO;
+	case 2:
+		return MVPP2_BM_LONG;
+	default:
+		return -EINVAL;
+	}
+}
+
+/* Get BM pool ID mapping - return the hardware Buffer Manager pools
+ * ID according to the mapping to its type:
+ * Short packets - POOL#0
+ * Jumbo packets - POOL#1
+ * Long packets - POOL#2
+ */
+static int mvpp2_bm_pool_get_id(enum mvpp2_bm_pool_type bm_pool_type)
+{
+	switch (bm_pool_type) {
+	case MVPP2_BM_SHORT:
+		return 0;
+	case MVPP2_BM_JUMBO:
+		return 1;
+	case MVPP2_BM_LONG:
+		return 2;
+	default:
+		return -EINVAL;
+	}
+}
+
 /* Create pool */
 static int mvpp2_bm_pool_create(struct platform_device *pdev,
 				struct mvpp2 *priv,
@@ -379,6 +437,7 @@ static int mvpp2_bm_pool_create(struct platform_device *pdev,
 	bm_pool->size = size;
 	bm_pool->pkt_size = 0;
 	bm_pool->buf_num = 0;
+	bm_pool->type = mvpp2_bm_pool_get_type(bm_pool->id);
 
 	return 0;
 }
@@ -562,21 +621,6 @@ static int mvpp2_bm_init(struct platform_device *pdev, struct mvpp2 *priv)
 	if (err < 0)
 		return err;
 	return 0;
-}
-
-static void mvpp2_setup_bm_pool(void)
-{
-	/* Short pool */
-	mvpp2_pools[MVPP2_BM_SHORT].buf_num  = MVPP2_BM_SHORT_BUF_NUM;
-	mvpp2_pools[MVPP2_BM_SHORT].pkt_size = MVPP2_BM_SHORT_PKT_SIZE;
-
-	/* Long pool */
-	mvpp2_pools[MVPP2_BM_LONG].buf_num  = MVPP2_BM_LONG_BUF_NUM;
-	mvpp2_pools[MVPP2_BM_LONG].pkt_size = MVPP2_BM_LONG_PKT_SIZE;
-
-	/* Jumbo pool */
-	mvpp2_pools[MVPP2_BM_JUMBO].buf_num  = MVPP2_BM_JUMBO_BUF_NUM;
-	mvpp2_pools[MVPP2_BM_JUMBO].pkt_size = MVPP2_BM_JUMBO_PKT_SIZE;
 }
 
 /* Attach long pool to rxq */
@@ -917,6 +961,7 @@ static struct mvpp2_bm_pool *
 mvpp2_bm_pool_use(struct mvpp2_port *port, unsigned pool, int pkt_size)
 {
 	struct mvpp2_bm_pool *new_pool = &port->priv->bm_pools[pool];
+	enum mvpp2_bm_pool_type pool_type = mvpp2_bm_pool_get_type(pool);
 	int num;
 
 	if (pool >= MVPP2_BM_POOLS_NUM) {
@@ -934,11 +979,14 @@ mvpp2_bm_pool_use(struct mvpp2_port *port, unsigned pool, int pkt_size)
 		 * the pool is not empty
 		 */
 		pkts_num = new_pool->buf_num;
-		if (pkts_num == 0)
-			pkts_num = mvpp2_pools[pool].buf_num;
-		else
+		if (pkts_num == 0) {
+			pkts_num = mvpp2_bm_pool_default_buf_num(pool_type);
+			if (pkts_num < 0)
+				return NULL;
+		} else {
 			mvpp2_bm_bufs_free(port->dev->dev.parent,
 					   port->priv, new_pool, pkts_num);
+		}
 
 		new_pool->pkt_size = pkt_size;
 		new_pool->frag_size =
@@ -964,25 +1012,26 @@ mvpp2_bm_pool_use(struct mvpp2_port *port, unsigned pool, int pkt_size)
 /* Initialize pools for swf */
 static int mvpp2_swf_bm_pool_init(struct mvpp2_port *port)
 {
+	enum mvpp2_bm_pool_type long_pool_type, short_pool_type;
 	int rxq;
-	enum mvpp2_bm_pool_log_num long_log_pool, short_log_pool;
 
 	/* If port pkt_size is higher than 1518B:
 	 * HW Long pool - SW Jumbo pool, HW Short pool - SW Long pool
 	 * else: HW Long pool - SW Long pool, HW Short pool - SW Short pool
 	 */
 	if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE) {
-		long_log_pool = MVPP2_BM_JUMBO;
-		short_log_pool = MVPP2_BM_LONG;
+		long_pool_type = MVPP2_BM_JUMBO;
+		short_pool_type = MVPP2_BM_LONG;
 	} else {
-		long_log_pool = MVPP2_BM_LONG;
-		short_log_pool = MVPP2_BM_SHORT;
+		long_pool_type = MVPP2_BM_LONG;
+		short_pool_type = MVPP2_BM_SHORT;
 	}
 
 	if (!port->pool_long) {
 		port->pool_long =
-			mvpp2_bm_pool_use(port, long_log_pool,
-					  mvpp2_pools[long_log_pool].pkt_size);
+			mvpp2_bm_pool_use(port,
+					  mvpp2_bm_pool_get_id(long_pool_type),
+				mvpp2_bm_pool_default_pkt_size(long_pool_type));
 		if (!port->pool_long)
 			return -ENOMEM;
 
@@ -994,8 +1043,9 @@ static int mvpp2_swf_bm_pool_init(struct mvpp2_port *port)
 
 	if (!port->pool_short) {
 		port->pool_short =
-			mvpp2_bm_pool_use(port, short_log_pool,
-					  mvpp2_pools[short_log_pool].pkt_size);
+			mvpp2_bm_pool_use(port,
+					  mvpp2_bm_pool_get_id(short_pool_type),
+			       mvpp2_bm_pool_default_pkt_size(short_pool_type));
 		if (!port->pool_short)
 			return -ENOMEM;
 
@@ -1012,7 +1062,7 @@ static int mvpp2_swf_bm_pool_init(struct mvpp2_port *port)
 static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 {
 	struct mvpp2_port *port = netdev_priv(dev);
-	enum mvpp2_bm_pool_log_num new_long_pool;
+	enum mvpp2_bm_pool_type new_long_pool_type;
 	int pkt_size = MVPP2_RX_PKT_SIZE(mtu);
 
 	/* If port MTU is higher than 1518B:
@@ -1020,11 +1070,11 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 	 * else: HW Long pool - SW Long pool, HW Short pool - SW Short pool
 	 */
 	if (pkt_size > MVPP2_BM_LONG_PKT_SIZE)
-		new_long_pool = MVPP2_BM_JUMBO;
+		new_long_pool_type = MVPP2_BM_JUMBO;
 	else
-		new_long_pool = MVPP2_BM_LONG;
+		new_long_pool_type = MVPP2_BM_LONG;
 
-	if (new_long_pool != port->pool_long->id) {
+	if (new_long_pool_type != port->pool_long->type) {
 		if (port->tx_fc) {
 			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
 				mvpp2_bm_pool_update_fc(port,
@@ -1061,7 +1111,7 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 		}
 
 		/* Update L4 checksum when jumbo enable/disable on port */
-		if (new_long_pool == MVPP2_BM_JUMBO && port->id != 0) {
+		if (new_long_pool_type == MVPP2_BM_JUMBO && port->id != 0) {
 			dev->features &= ~(NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
 			dev->hw_features &= ~(NETIF_F_IP_CSUM |
 					      NETIF_F_IPV6_CSUM);
@@ -3567,7 +3617,7 @@ static u32 mvpp2_skb_tx_csum(struct mvpp2_port *port, struct sk_buff *skb)
 void mvpp2_recycle_stats(void)
 {
 	int cpu;
-	enum mvpp2_bm_pool_log_num pl_id;
+	int pl_id;
 	struct mvpp2_recycle_pcpu *pcpu;
 
 	pr_info("Recycle-stats: %d open ports (on all CP110s)\n",
@@ -7139,9 +7189,6 @@ static int mvpp2_probe(struct platform_device *pdev)
 			 */
 			priv->sysctrl_base = NULL;
 	}
-
-	mvpp2_setup_bm_pool();
-
 
 	priv->nthreads = min_t(unsigned int, num_present_cpus(),
 			       MVPP2_MAX_THREADS);

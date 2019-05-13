@@ -1270,6 +1270,12 @@ struct mvpp2_rx_queue {
 
 } __aligned(L1_CACHE_BYTES);
 
+enum mvpp2_bm_pool_type {
+	MVPP2_BM_SHORT,
+	MVPP2_BM_JUMBO,
+	MVPP2_BM_LONG,
+};
+
 struct mvpp2_bm_pool {
 	/* Pool number in the range 0-7 */
 	int id;
@@ -1286,6 +1292,9 @@ struct mvpp2_bm_pool {
 	int pkt_size;
 	int frag_size;
 
+	/* Pool type (short/long/jumbo) */
+	enum mvpp2_bm_pool_type type;
+
 	/* BPPE virtual base address */
 	u32 *virt_addr;
 	/* BPPE DMA base address */
@@ -1294,6 +1303,8 @@ struct mvpp2_bm_pool {
 	/* Ports using BM pool */
 	u32 port_map;
 };
+
+#define MVPP2_BM_POOLS_NUM	3
 
 #define IS_TSO_HEADER(txq_pcpu, addr) \
 	((addr) >= (txq_pcpu)->tso_headers_dma && \
