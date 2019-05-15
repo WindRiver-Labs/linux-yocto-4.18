@@ -51,12 +51,20 @@ static struct mvebu_a8k_state a8k_state;
 		SYSREG_WRITE_ASM(v, code);	\
 	}
 
+#define DECLARE_RO_FUNC(code)			\
+	static u64 read_##code(void)		\
+	{					\
+		u64 v;				\
+		SYSREG_READ_ASM(v, code);	\
+		return v;			\
+	}
+
 /*
  * This will result in definining a read / write function for
  * each of the system registers below.
  */
-DECLARE_RD_WR_FUNC(midr_el1);
-DECLARE_RD_WR_FUNC(mpidr_el1);
+DECLARE_RO_FUNC(midr_el1);
+DECLARE_RO_FUNC(mpidr_el1);
 DECLARE_RD_WR_FUNC(sctlr_el1);
 DECLARE_RD_WR_FUNC(s3_1_c15_c0_0);
 DECLARE_RD_WR_FUNC(s3_1_c11_c0_2);
@@ -73,9 +81,16 @@ DECLARE_RD_WR_FUNC(s3_1_c15_c2_0);
 		.write_func = &write_##code	\
 	}
 
+#define SYSREG_RO_ENTRY(code, _desc)		\
+	{					\
+		.name = __stringify(code),	\
+		.desc = _desc,			\
+		.read_func = &read_##code, 	\
+	}
+
 static struct sysreg_entry sysregs_list[] = {
-	SYSREG_ENTRY(midr_el1, "Main ID"),
-	SYSREG_ENTRY(mpidr_el1, "Multiprocessor Affinity"),
+	SYSREG_RO_ENTRY(midr_el1, "Main ID"),
+	SYSREG_RO_ENTRY(mpidr_el1, "Multiprocessor Affinity"),
 	SYSREG_ENTRY(sctlr_el1, "System Ctrl"),
 	SYSREG_ENTRY(s3_1_c15_c0_0, "L2 Aux Ctrl"),
 	SYSREG_ENTRY(s3_1_c11_c0_2, "L2 Ctrl"),
@@ -142,7 +157,7 @@ static ssize_t mvebu_ap806_sysregs_debug_write(struct file *f,
 	while (start[0] == ' ')
 		start++;
 
-	if (found) {
+	if (found && sysregs_list[i].write_func) {
 		if (kstrtou32(start, 16, &val32)) {
 			pr_err("Bad value.\n");
 			return count;
@@ -156,7 +171,10 @@ static ssize_t mvebu_ap806_sysregs_debug_write(struct file *f,
 		pr_info("New value %s - 0x%016llx.\n", sysregs_list[i].name,
 				sysregs_list[i].read_func());
 	} else {
-		pr_err("Bad system register name.\n");
+		if (found)
+			pr_err("System register %s is read only\n", sysregs_list[i].name);
+		else
+			pr_err("Bad system register name.\n");
 	}
 
 	return count;
