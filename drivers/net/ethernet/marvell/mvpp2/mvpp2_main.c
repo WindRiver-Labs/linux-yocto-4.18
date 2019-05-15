@@ -140,6 +140,7 @@ static int queue_mode = MVPP2_QDIST_MULTI_MODE;
 static int tx_fifo_protection;
 static int bm_underrun_protect = 1;
 static int recycle;
+static u32 tx_fifo_map;
 
 module_param(queue_mode, int, 0444);
 MODULE_PARM_DESC(queue_mode, "Set queue_mode (single=0, multi=1)");
@@ -152,6 +153,9 @@ MODULE_PARM_DESC(bm_underrun_protect, "Set BM underrun protect feature (0-1), de
 
 module_param(recycle, int, 0444);
 MODULE_PARM_DESC(recycle, "Recycle: 0:disable(default), >=1:enable");
+
+module_param(tx_fifo_map, uint, 0444);
+MODULE_PARM_DESC(tx_fifo_map, "Set PPv2 TX FIFO ports map");
 
 static dma_addr_t mvpp2_txdesc_dma_addr_get(struct mvpp2_port *port,
 					    struct mvpp2_tx_desc *tx_desc)
@@ -6816,7 +6820,7 @@ static void mvpp22_tx_fifo_set_hw(struct mvpp2 *priv, int port, int size)
  * The 10G interface should use 10kB (which is maximum possible size
  * per single port).
  */
-static void mvpp22_tx_fifo_init(struct mvpp2 *priv)
+static void mvpp22_tx_fifo_init_default(struct mvpp2 *priv)
 {
 	int port, size;
 	unsigned long port_map;
@@ -6850,6 +6854,45 @@ static void mvpp22_tx_fifo_init(struct mvpp2 *priv)
 
 		mvpp22_tx_fifo_set_hw(priv, port, size);
 	}
+}
+
+static void mvpp22_tx_fifo_init_param(struct platform_device *pdev,
+				      struct mvpp2 *priv)
+{
+	unsigned long port_map;
+	int size_remainder;
+	int port, size;
+
+	/* The loopback requires fixed 1kB of the FIFO space assignment. */
+	mvpp22_tx_fifo_set_hw(priv, MVPP2_LOOPBACK_PORT_INDEX,
+			      MVPP22_TX_FIFO_DATA_SIZE_1KB);
+	port_map = priv->port_map & ~BIT(MVPP2_LOOPBACK_PORT_INDEX);
+
+	/* Set TX FIFO size to 0 for inactive ports. */
+	for_each_clear_bit(port, &port_map, MVPP2_LOOPBACK_PORT_INDEX) {
+		mvpp22_tx_fifo_set_hw(priv, port, 0);
+		if (MVPP22_TX_FIFO_EXTRA_PARAM_SIZE(port, tx_fifo_map))
+			goto error;
+	}
+
+	/* Assign remaining TX FIFO space among all active ports. */
+	size_remainder = MVPP22_TX_FIFO_DATA_SIZE_18KB;
+	for (port = 0; port < MVPP2_LOOPBACK_PORT_INDEX; port++) {
+		size = MVPP22_TX_FIFO_EXTRA_PARAM_SIZE(port, tx_fifo_map);
+		if (!size)
+			continue;
+		size_remainder -= size;
+		mvpp22_tx_fifo_set_hw(priv, port, size);
+	}
+
+	if (size_remainder)
+		goto error;
+
+	return;
+
+error:
+	dev_warn(&pdev->dev, "Fail to set TX FIFO from module_param, fallback to default\n");
+	mvpp22_tx_fifo_init_default(priv);
 }
 
 static void mvpp2_axi_init(struct mvpp2 *priv)
@@ -6961,7 +7004,10 @@ static int mvpp2_init(struct platform_device *pdev, struct mvpp2 *priv)
 		mvpp2_rx_fifo_init(priv);
 	} else {
 		mvpp22_rx_fifo_init(priv);
-		mvpp22_tx_fifo_init(priv);
+		if (tx_fifo_map)
+			mvpp22_tx_fifo_init_param(pdev, priv);
+		else
+			mvpp22_tx_fifo_init_default(priv);
 		if (priv->hw_version == MVPP23)
 			mvpp23_rx_fifo_fc_set_tresh(priv);
 	}
