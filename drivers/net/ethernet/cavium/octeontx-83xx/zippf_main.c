@@ -93,7 +93,7 @@ static int zip_pf_destroy_domain(u32 id, u16 domain_id, struct kobject *kobj)
 	return 0;
 }
 
-static int zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
+static u64 zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 				void *master, void *master_data,
 				struct kobject *kobj)
 {
@@ -103,12 +103,13 @@ static int zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 	u64 reg;
 	int i, vf_idx = 0, ret = 0;
 	struct pci_dev *virtfn;
+	unsigned long zip_mask = 0;
 
 	union zip_quex_sbuf_ctl		quex_sbuf_ctl;
 	union zip_quex_map		quex_map;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	mutex_lock(&octeontx_zip_devices_lock);
 	list_for_each_entry(curr, &octeontx_zip_devices, list) {
@@ -118,10 +119,8 @@ static int zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 		}
 	}
 
-	if (!zip) {
-		ret = -ENODEV;
+	if (!zip)
 		goto err_unlock;
-	}
 
 	for (i = 0; i < zip->total_vfs; i++) {
 		if (zip->vf[i].domain.in_use) {
@@ -195,6 +194,7 @@ static int zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 				zip->vf[i].domain.subdomain_id,
 				zip->vf[i].domain.gmid, vf_idx);
 
+			set_bit(i, &zip_mask);
 			vf_idx++;
 			if (vf_idx == num_vfs) {
 				zip->vfs_in_use += num_vfs;
@@ -205,14 +205,14 @@ static int zip_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 
 	mutex_unlock(&octeontx_zip_devices_lock);
 	if (vf_idx != num_vfs) {
-		ret = -ENODEV;
+		zip_mask = 0;
 		zip_pf_destroy_domain(id, domain_id, kobj);
 	}
-	return ret;
+	return zip_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_zip_devices_lock);
-	return ret;
+	return 0;
 }
 
 static void zip_vfx_reset(struct zippf *zip, int vf)

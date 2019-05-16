@@ -448,7 +448,7 @@ static int pki_destroy_domain(u32 id, u16 domain_id, struct kobject *kobj)
 	return 0;
 }
 
-static int pki_create_domain(u32 id, u16 domain_id,
+static u64 pki_create_domain(u32 id, u16 domain_id,
 			     struct octeontx_master_com_t *master_com,
 			     void *data, struct kobject *kobj)
 {
@@ -457,11 +457,12 @@ static int pki_create_domain(u32 id, u16 domain_id,
 	struct pci_dev *virtfn;
 	struct pki_t *curr;
 	int i, ret = 0, vf_idx = 0;
+	unsigned long pki_mask = 0;
 	u8 stream;
 	u64 cfg;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	mutex_lock(&octeontx_pki_devices_lock);
 	list_for_each_entry(curr, &octeontx_pki_devices, list) {
@@ -471,10 +472,8 @@ static int pki_create_domain(u32 id, u16 domain_id,
 		}
 	}
 
-	if (!pki) {
-		ret = -ENODEV;
+	if (!pki)
 		goto err_unlock;
-	}
 
 	for (i = 0; i < PKI_MAX_VF; i++) {
 		if (pki->vf[i].domain.in_use) {/* pki port config */
@@ -510,32 +509,28 @@ static int pki_create_domain(u32 id, u16 domain_id,
 			vf_start = PKI_VF_BASE(i);
 			pki->vf[i].domain.reg_base = ioremap(vf_start,
 							     PKI_VF_SIZE);
-			if (!pki->vf[i].domain.reg_base) {
-				ret = -ENOMEM;
+			if (!pki->vf[i].domain.reg_base)
 				goto err_unlock;
-			}
 
 			identify(&pki->vf[i], pki->vf[i].domain.domain_id,
 				 pki->vf[i].domain.subdomain_id);
 			vf_idx++;
+			set_bit(i, &pki_mask);
 			break;
 		}
 	}
 
-	if (!vf_idx) {
-		ret = -ENODEV;
+	if (!vf_idx)
 		goto err_unlock;
-	}
 
 	pki->vfs_in_use += vf_idx;
 	mutex_unlock(&octeontx_pki_devices_lock);
-	return ret;
+	return pki_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_pki_devices_lock);
 	pki_destroy_domain(id, domain_id, kobj);
-	return ret;
-	return ret;
+	return 0;
 }
 
 static int pki_receive_message(u32 id, u16 domain_id,

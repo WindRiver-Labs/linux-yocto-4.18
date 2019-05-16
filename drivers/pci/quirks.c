@@ -3784,50 +3784,100 @@ static int reset_chelsio_generic_dev(struct pci_dev *dev, int probe)
 #define PCI_DEVICE_ID_INTEL_IVB_M2_VGA     0x0166
 
 #define PCI_DEVICE_ID_OCTEONTX_SSO_VF	0xA04B
+#define PCI_DEVICE_ID_OCTEONTX_SSOW_VF	0xA04D
+#define PCI_DEVICE_ID_OCTEONTX_FPA_VF	0xA053
+#define PCI_DEVICE_ID_OCTEONTX_PKI_VF	0xA0DD
+#define PCI_DEVICE_ID_OCTEONTX_PKO_VF	0xA049
+#define PCI_DEVICE_ID_OCTEONTX_TIM_VF	0xA051
+#define PCI_DEVICE_ID_OCTEONTX_CPT_VF	0xA041
+#define PCI_DEVICE_ID_OCTEONTX_DPI_VF	0xA058
+#define PCI_DEVICE_ID_OCTEONTX_ZIP_VF	0xA037
 #define SSO_VF_VHGRPX_PF_MBOXX(x, y)	(0x200ULL | ((x) << 20) | ((y) << 3))
 #define MBOX_TRIGGER_OOB_RESET	0x01 /* OOB reset request */
 #define MBOX_TRIGGER_OOB_RES	0x80 /* OOB response mask */
 #define MBOX_OPERATION_TIMEOUT	1000 /* set timeout 1 second */
 
-atomic_t octtx_sso_reset[64] = ATOMIC_INIT(0);
-EXPORT_SYMBOL(octtx_sso_reset);
-#define SSO_VF_ID(x) (((x) >> 20) & 0x3f)
+enum octtx_coprocessor {
+	OCTTX_SSO,
+	OCTTX_SSOW,
+	OCTTX_FPA,
+	OCTTX_PKI,
+	OCTTX_PKO,
+	OCTTX_TIM,
+	OCTTX_CPT,
+	OCTTX_DPI,
+	OCTTX_ZIP,
+	OCTTX_COPROCESSOR_CNT
+};
+
+atomic64_t octtx_vf_reset[OCTTX_COPROCESSOR_CNT] = ATOMIC64_INIT(0);
+EXPORT_SYMBOL(octtx_vf_reset);
+
 /*
- * Device-specific reset method for Cavium OcteonTx SSO
- * It will notify the PF that VF had reset. PF in turn will reset the OcteonTX
- * domain.
+ * Device-specific reset method for Cavium OcteonTx VF devices.
+ * It will trigger a reset of the OcteonTX domain.
  */
 static int reset_cavium_octeon_vf(struct pci_dev *pdev, int probe)
 {
 	u64 val;
-	u64 addr;
 	int vf_id;
 	int count = 2000;
+	enum octtx_coprocessor cop;
 
-	dev_dbg(&pdev->dev, "reset_cavium_octeon_vf() called probe=%d\n",
-			probe);
+	switch (pdev->device) {
+	case PCI_DEVICE_ID_OCTEONTX_SSO_VF:
+		cop = OCTTX_SSO;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_SSOW_VF:
+		cop = OCTTX_SSOW;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_FPA_VF:
+		cop = OCTTX_FPA;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_PKI_VF:
+		cop = OCTTX_PKI;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_PKO_VF:
+		cop = OCTTX_PKO;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_TIM_VF:
+		cop = OCTTX_TIM;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_CPT_VF:
+		cop = OCTTX_CPT;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_DPI_VF:
+		cop = OCTTX_DPI;
+		break;
+	case PCI_DEVICE_ID_OCTEONTX_ZIP_VF:
+		cop = OCTTX_ZIP;
+		break;
+	default:
+		return -ENOTTY;
+	}
 
 	if (probe)
 		return 0;
 
-	addr = pci_resource_start(pdev, 0);
-	vf_id = SSO_VF_ID(addr);
-	atomic_set(&octtx_sso_reset[vf_id], 1);
+	vf_id = pdev->devfn - 1;
+	dev_dbg(&pdev->dev, "setting 0x%p bit %d\n",
+		&octtx_vf_reset[cop], vf_id);
+	atomic64_fetch_or(1 << vf_id, &octtx_vf_reset[cop]);
 	/* make sure other party reads it*/
 	mb();
 
 	while (count) {
 		usleep_range(1000, 2000);
-		val = atomic_read(&octtx_sso_reset[vf_id]);
-		if (!val)
+		val = atomic_read(&octtx_vf_reset[cop]);
+		if ((val & (1 << vf_id)) == 0)
 			goto exit;
 		count--;
 	}
-	dev_err(&pdev->dev, "reset_cavium_octeon_vf() reset timeout\n");
+	dev_err(&pdev->dev, "%s() reset timeout, vf_id %d, cop %u\n", __func__,
+		vf_id, cop);
 exit:
 	return 0;
 }
-
 
 static const struct pci_dev_reset_methods pci_dev_reset_methods[] = {
 	{ PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82599_SFP_VF,
@@ -3838,7 +3888,23 @@ static const struct pci_dev_reset_methods pci_dev_reset_methods[] = {
 		reset_ivb_igd },
 	{ PCI_VENDOR_ID_CHELSIO, PCI_ANY_ID,
 		reset_chelsio_generic_dev },
-	{ PCI_VENDOR_ID_CAVIUM, PCI_DEVICE_ID_OCTEONTX_SSO_VF,
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_SSO_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_SSOW_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_FPA_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_PKI_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_PKO_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_TIM_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_CPT_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_DPI_VF,
+		reset_cavium_octeon_vf },
+	{ PCI_VENDOR_ID_CAVIUM,	PCI_DEVICE_ID_OCTEONTX_ZIP_VF,
 		reset_cavium_octeon_vf },
 	{ 0 }
 };

@@ -84,7 +84,7 @@ unlock:
 	return ret;
 }
 
-static int ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
+static u64 ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
 				 void *master, void *master_data,
 				 struct kobject *kobj)
 {
@@ -94,9 +94,10 @@ static int ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
 	resource_size_t vf_start;
 	u64 i, reg;
 	int vf_idx = 0, ret = 0;
+	unsigned long ssow_mask = 0;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	mutex_lock(&octeontx_ssow_devices_lock);
 	list_for_each_entry(curr, &octeontx_ssow_devices, list) {
@@ -107,7 +108,7 @@ static int ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
 	}
 	if (!ssow) {
 		mutex_unlock(&octeontx_ssow_devices_lock);
-		return -ENODEV;
+		return 0;
 	}
 
 	for (i = 0; i < ssow->total_vfs; i++) {
@@ -163,6 +164,7 @@ static int ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
 
 			identify(&ssow->vf[i], domain_id, vf_idx);
 			vf_idx++;
+			set_bit(i, &ssow_mask);
 			if (vf_idx == vf_count) {
 				ssow->vfs_in_use += vf_count;
 				break;
@@ -173,12 +175,12 @@ static int ssow_pf_create_domain(u32 id, u16 domain_id, u32 vf_count,
 		goto err_unlock;
 
 	mutex_unlock(&octeontx_ssow_devices_lock);
-	return 0;
+	return ssow_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_ssow_devices_lock);
 	ssow_pf_destroy_domain(id, domain_id, kobj);
-	return -ENODEV;
+	return 0;
 }
 
 static int ssow_pf_get_ram_mbox_addr(u32 node, u16 domain_id,

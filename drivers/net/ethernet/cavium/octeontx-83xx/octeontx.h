@@ -164,7 +164,21 @@ struct octtx_lbk_port {
 #define LBK_PORT_GIDX_FULL_GEN(_i, _k) (((_i) << 4) | (_k))
 #define LBK_PORT_GIDX_PRIM(_p) ((_p)->glb_port_idx & 0x1FF)
 
-extern atomic_t octtx_sso_reset[];
+enum octtx_coprocessor {
+	OCTTX_SSO,
+	OCTTX_SSOW,
+	OCTTX_FPA,
+	OCTTX_PKI,
+	OCTTX_PKO,
+	OCTTX_TIM,
+	OCTTX_CPT,
+	OCTTX_DPI,
+	OCTTX_ZIP,
+	OCTTX_COPROCESSOR_CNT
+};
+
+extern atomic64_t octtx_vf_reset[];
+
 /* Domain internal (SDP) port */
 #define OCTTX_MAX_SDP_PORTS 1 /* Maximum SDP ports per System */
 

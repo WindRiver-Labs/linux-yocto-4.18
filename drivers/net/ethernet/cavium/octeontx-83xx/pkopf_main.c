@@ -359,7 +359,7 @@ static void pko_pf_gmctl_init(struct pkopf *pf, int vf, u16 gmid)
 	reg = pko_reg_read(pf, PKO_PF_VFX_GMCTL(vf));
 }
 
-static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
+static u64 pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 				struct octtx_bgx_port *bgx_port, int bgx_count,
 				struct octtx_lbk_port *lbk_port, int lbk_count,
 				struct octtx_sdp_port *sdp_port, int sdp_count,
@@ -374,9 +374,10 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 	int vf_idx = 0, port_idx = 0;
 	int mac_num, mac_mode, chan, ret = 0;
 	const u32 max_frame = 0xffff;
+	unsigned long pko_mask = 0;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	if (sdp_count)
 		pko_mac = PKO_MAC_HOST;
@@ -394,7 +395,6 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 	}
 
 	if (!pko) {
-		ret = -ENODEV;
 		goto err_unlock;
 	}
 
@@ -491,6 +491,7 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 
 			pko_pstree_setup(pko, i, max_frame,
 					 mac_num, mac_mode, chan);
+			set_bit(i, &pko_mask);
 			vf_idx++;
 			if (vf_idx == pko_vf_count) {
 				pko->vfs_in_use += pko_vf_count;
@@ -499,18 +500,16 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 		}
 	}
 
-	if (vf_idx != pko_vf_count) {
-		ret = -ENODEV;
+	if (vf_idx != pko_vf_count)
 		goto err_unlock;
-	}
 
 	mutex_unlock(&octeontx_pko_devices_lock);
-	return ret;
+	return pko_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_pko_devices_lock);
 	pko_pf_destroy_domain(id, domain_id, kobj);
-	return ret;
+	return 0;
 }
 
 /*caller is responsible for locks

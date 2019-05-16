@@ -320,7 +320,7 @@ struct pkopf {
 };
 
 struct pkopf_com_s {
-	int (*create_domain)(u32 id, u16 domain_id, u32 pko_vf_count,
+	u64 (*create_domain)(u32 id, u16 domain_id, u32 pko_vf_count,
 			     struct octtx_bgx_port *bgx_port, int bgx_count,
 			     struct octtx_lbk_port *lbk_port, int lbk_count,
 			     struct octtx_sdp_port *sdp_port, int sdp_count,

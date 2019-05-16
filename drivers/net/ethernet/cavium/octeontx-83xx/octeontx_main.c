@@ -91,8 +91,7 @@ struct octtx_domain {
 	int zip_vf_count;
 	int cpt_vf_count;
 
-	u64 aura_set;
-	u64 grp_mask;
+	u64 vf_mask[OCTTX_COPROCESSOR_CNT];
 
 	int bgx_count;
 	int lbk_count;
@@ -815,10 +814,11 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 
 	domain->fpa_vf_count = fpa_count;
 	if (domain->fpa_vf_count) {
-		domain->aura_set = fpapf->create_domain(node, domain_id,
-							domain->fpa_vf_count,
-							domain->kobj);
-		if (!domain->aura_set) {
+		domain->vf_mask[OCTTX_FPA] =
+			fpapf->create_domain(node, domain_id,
+					     domain->fpa_vf_count,
+					     domain->kobj);
+		if (!domain->vf_mask[OCTTX_FPA]) {
 			dev_err(octtx_device, "Failed to create FPA domain\n");
 			ret = -ENODEV;
 			goto error;
@@ -827,19 +827,21 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 	}
 
 	domain->ssow_vf_count = ssow_count;
-	ret = ssowpf->create_domain(node, domain_id, domain->ssow_vf_count,
-				    &octtx_master_com, domain, domain->kobj);
-	if (ret) {
+	domain->vf_mask[OCTTX_SSOW] =
+		ssowpf->create_domain(node, domain_id, domain->ssow_vf_count,
+				      &octtx_master_com, domain, domain->kobj);
+	if (!domain->vf_mask[OCTTX_SSOW]) {
 		dev_err(octtx_device, "Failed to create SSOW domain\n");
 		goto error;
 	}
 	domain->ssow_domain_created = true;
 
 	domain->sso_vf_count = sso_count;
-	domain->grp_mask = ssopf->create_domain(node, domain_id,
-				domain->sso_vf_count,
-				&octtx_master_com, domain, domain->kobj);
-	if (!domain->grp_mask) {
+	domain->vf_mask[OCTTX_SSO] = ssopf->create_domain(node, domain_id,
+							  domain->sso_vf_count,
+							  &octtx_master_com,
+							  domain, domain->kobj);
+	if (!domain->vf_mask[OCTTX_SSO]) {
 		dev_err(octtx_device, "Failed to create SSO domain\n");
 		goto error;
 	}
@@ -858,9 +860,10 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 		goto error;
 	}
 
-	ret = pki->create_domain(node, domain_id, &octtx_master_com, domain,
-				 domain->kobj);
-	if (ret) {
+	domain->vf_mask[OCTTX_PKI] = pki->create_domain(node, domain_id,
+							&octtx_master_com,
+							domain, domain->kobj);
+	if (!domain->vf_mask[OCTTX_PKI]) {
 		dev_err(octtx_device, "Failed to create PKI domain\n");
 		goto error;
 	}
@@ -1021,14 +1024,18 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 	/* remove this once PKO init extends for LBK. */
 	domain->pko_vf_count = port_count;
 	if (domain->pko_vf_count) {
-		ret = pkopf->create_domain(node, domain_id,
-					domain->pko_vf_count,
-					domain->bgx_port, domain->bgx_count,
-					domain->lbk_port, domain->lbk_count,
-					domain->sdp_port, domain->sdp_count,
-					&octtx_master_com, domain,
-					domain->kobj);
-		if (ret) {
+		domain->vf_mask[OCTTX_PKO] =
+			pkopf->create_domain(node, domain_id,
+					     domain->pko_vf_count,
+					     domain->bgx_port,
+					     domain->bgx_count,
+					     domain->lbk_port,
+					     domain->lbk_count,
+					     domain->sdp_port,
+					     domain->sdp_count,
+					     &octtx_master_com,
+					     domain, domain->kobj);
+		if (!domain->vf_mask[OCTTX_PKO]) {
 			dev_err(octtx_device, "Failed to create PKO domain\n");
 			goto error;
 		}
@@ -1037,10 +1044,12 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 
 	domain->tim_vf_count = tim_count;
 	if (domain->tim_vf_count) {
-		ret = timpf->create_domain(node, domain_id,
-			domain->tim_vf_count, &octtx_master_com, domain,
-			domain->kobj);
-		if (ret) {
+		domain->vf_mask[OCTTX_TIM] =
+			timpf->create_domain(node, domain_id,
+					     domain->tim_vf_count,
+					     &octtx_master_com,
+					     domain, domain->kobj);
+		if (!domain->vf_mask[OCTTX_TIM]) {
 			dev_err(octtx_device, "Failed to create TIM domain\n");
 			goto error;
 		}
@@ -1049,9 +1058,11 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 
 	domain->cpt_vf_count = cpt_count;
 	if (domain->cpt_vf_count > 0) {
-		ret = cptpf->create_domain(node, domain_id,
-					   domain->cpt_vf_count, domain->kobj);
-		if (ret) {
+		domain->vf_mask[OCTTX_CPT] =
+			cptpf->create_domain(node, domain_id,
+					     domain->cpt_vf_count,
+					     domain->kobj);
+		if (!domain->vf_mask[OCTTX_CPT]) {
 			dev_err(octtx_device, "Failed to create CPT domain\n");
 			goto error;
 		}
@@ -1060,11 +1071,12 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 
 	domain->dpi_vf_count = dpi_count;
 	if (domain->dpi_vf_count > 0) {
-		ret = dpipf->create_domain(node, domain_id,
-					   domain->dpi_vf_count,
-					   &octtx_master_com, domain,
-					   domain->kobj);
-		if (ret) {
+		domain->vf_mask[OCTTX_DPI] =
+			dpipf->create_domain(node, domain_id,
+					     domain->dpi_vf_count,
+					     &octtx_master_com,
+					     domain, domain->kobj);
+		if (!domain->vf_mask[OCTTX_DPI]) {
 			dev_err(octtx_device, "Failed to create DPI domain\n");
 			goto error;
 		}
@@ -1073,10 +1085,12 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 
 	domain->zip_vf_count = zip_count;
 	if (domain->zip_vf_count) {
-		ret = zippf->create_domain(node, domain_id,
-			domain->zip_vf_count, &octtx_master_com, domain,
-			domain->kobj);
-		if (ret) {
+		domain->vf_mask[OCTTX_ZIP] =
+			zippf->create_domain(node, domain_id,
+					     domain->zip_vf_count,
+					     &octtx_master_com, domain,
+					     domain->kobj);
+		if (!domain->vf_mask[OCTTX_ZIP]) {
 			dev_err(octtx_device, "Failed to create ZIP domain\n");
 			goto error;
 		}
@@ -1191,7 +1205,7 @@ static int octeontx_reset_domain(void *master_data)
 
 	if (domain->ssow_domain_created) {
 		ret = ssowpf->reset_domain(node, domain->domain_id,
-					   domain->grp_mask);
+					   domain->vf_mask[OCTTX_SSO]);
 		if (ret) {
 			dev_err(octtx_device,
 				"Failed to reset SSOW of domain %d on node %d.\n",
@@ -1288,34 +1302,44 @@ static void poll_for_link(struct work_struct *work)
 	queue_delayed_work(check_link, &dwork, HZ * 2);
 }
 
+static void octtx_vf_reset_domain(struct octtx_domain *domain,
+				  u64 *mask, enum octtx_coprocessor cop)
+{
+	u64 val = atomic64_read(&octtx_vf_reset[cop]);
+
+	if (val & domain->vf_mask[cop]) {
+		if (domain->in_use) {
+			mutex_unlock(&octeontx_domains_lock);
+			octeontx_reset_domain(domain);
+			mutex_lock(&octeontx_domains_lock);
+		}
+		atomic64_andnot(domain->vf_mask[cop],
+				&octtx_vf_reset[cop]);
+	}
+	*mask &= ~domain->vf_mask[cop];
+}
+
 void octtx_reset_domain(struct work_struct *work)
 {
 	struct octtx_domain *domain;
-	int i, master_sso;
-	u64 mask = -1;
-	u64 val;
+	u64 vf_mask[OCTTX_COPROCESSOR_CNT];
+	int i;
+
+	for (i = 0; i < OCTTX_COPROCESSOR_CNT; i++)
+		vf_mask[i] = -1;
 
 	mutex_lock(&octeontx_domains_lock);
 	list_for_each_entry(domain, &octeontx_domains, list) {
-		/* find first SSO from domain */
-		master_sso = __ffs(domain->grp_mask);
-		for_each_set_bit(i, (unsigned long *)&domain->grp_mask,
-				 sizeof(domain->grp_mask) * 8) {
-			val = atomic_read(&octtx_sso_reset[i]);
-			if ((master_sso == i) && val) {
-				mutex_unlock(&octeontx_domains_lock);
-				octeontx_reset_domain(domain);
-				mutex_lock(&octeontx_domains_lock);
-			}
-			atomic_set(&octtx_sso_reset[i], 0);
-		}
-		mask &= ~domain->grp_mask;
+		/* check all possible VFs */
+		for (i = 0; i < OCTTX_COPROCESSOR_CNT; i++)
+			octtx_vf_reset_domain(domain, &vf_mask[i], i);
 	}
 
-	for_each_set_bit(i, (unsigned long *)&mask, sizeof(mask) * 8) {
-		if (atomic_read(&octtx_sso_reset[i]))
-			atomic_set(&octtx_sso_reset[i], 0);
-	}
+	/* clear devices that don't belong to any domain but may have been
+	 * probed and are waiting for our response
+	 */
+	for (i = 0; i < OCTTX_COPROCESSOR_CNT; i++)
+		atomic64_andnot(vf_mask[i], &octtx_vf_reset[i]);
 
 	/*make sure the other end receives it*/
 	mb();

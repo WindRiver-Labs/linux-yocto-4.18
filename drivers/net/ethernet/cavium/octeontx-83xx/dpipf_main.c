@@ -113,7 +113,7 @@ static int dpi_pf_destroy_domain(u32 id, u16 domain_id, struct kobject *kobj)
 	return 0;
 }
 
-static int dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
+static u64 dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 				void *master, void *master_data,
 				struct kobject *kobj)
 {
@@ -123,9 +123,10 @@ static int dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 	int vf_idx = 0, ret = 0;
 	resource_size_t vf_start;
 	struct pci_dev *virtfn;
+	unsigned long dpi_mask = 0;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	mutex_lock(&octeontx_dpi_devices_lock);
 	list_for_each_entry(curr, &octeontx_dpi_devices, list) {
@@ -135,10 +136,8 @@ static int dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 		}
 	}
 
-	if (!dpi) {
-		ret = -ENODEV;
+	if (!dpi)
 		goto err_unlock;
-	}
 
 	for (i = 0; i < dpi->total_vfs; i++) {
 		if (dpi->vf[i].domain.in_use) {
@@ -196,6 +195,7 @@ static int dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 			dev_dbg(&dpi->pdev->dev, "DPI_DMA%llx_IDS: 0x%016llx\n",
 				i, dpi_reg_read(dpi, DPI_DMAX_IDS(i)));
 
+			set_bit(i, &dpi_mask);
 			vf_idx++;
 			if (vf_idx == num_vfs) {
 				dpi->vfs_in_use += num_vfs;
@@ -207,14 +207,14 @@ static int dpi_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 	mutex_unlock(&octeontx_dpi_devices_lock);
 
 	if (vf_idx != num_vfs) {
-		ret = -ENODEV;
+		dpi_mask = 0;
 		dpi_pf_destroy_domain(id, domain_id, kobj);
 	}
-	return ret;
+	return dpi_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_dpi_devices_lock);
-	return ret;
+	return 0;
 }
 
 static struct dpipf_vf *get_vf(u32 id, u16 domain_id, u16 subdomain_id,

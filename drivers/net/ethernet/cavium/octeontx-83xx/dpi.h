@@ -195,7 +195,7 @@ struct dpipf {
 };
 
 struct dpipf_com_s {
-	int (*create_domain)(u32 id, u16 domain_id, u32 num_vfs,
+	u64 (*create_domain)(u32 id, u16 domain_id, u32 num_vfs,
 			     void *master, void *master_data,
 			     struct kobject *kobj);
 	int (*destroy_domain)(u32 id, u16 domain_id, struct kobject *kobj);

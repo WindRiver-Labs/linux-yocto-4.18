@@ -14,7 +14,7 @@
 #include "octeontx.h"
 
 struct cptpf_com_s {
-	int (*create_domain)(u32, u16, u32, struct kobject *kobj);
+	u64 (*create_domain)(u32, u16, u32, struct kobject *kobj);
 	int (*destroy_domain)(u32 id, u16 domain_id, struct kobject *kobj);
 	int (*reset_domain)(u32, u16);
 };

@@ -492,7 +492,7 @@ struct pki_t {
 };
 
 struct pki_com_s {
-	int (*create_domain)(u32, u16, struct octeontx_master_com_t *, void *,
+	u64 (*create_domain)(u32, u16, struct octeontx_master_com_t *, void *,
 			     struct kobject *kobj);
 	int (*destroy_domain)(u32, u16, struct kobject *kobj);
 	int (*reset_domain)(u32, u16);

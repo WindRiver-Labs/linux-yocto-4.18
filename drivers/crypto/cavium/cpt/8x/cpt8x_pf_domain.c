@@ -83,7 +83,7 @@ static int cpt_pf_remove_domain(u32 node, u16 domain_id, struct kobject *kobj)
 	return 0;
 }
 
-static int cpt_pf_create_domain(u32 node, u16 domain_id,
+static u64 cpt_pf_create_domain(u32 node, u16 domain_id,
 				u32 num_vfs, struct kobject *kobj)
 {
 	struct cpt_device *cpt = NULL;
@@ -93,9 +93,10 @@ static int cpt_pf_create_domain(u32 node, u16 domain_id,
 	resource_size_t vf_start;
 	int vf_idx = 0, ret = 0;
 	int i;
+	unsigned long cpt_mask = 0;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 
 	mutex_lock(&octeontx_cpt_devices_lock);
 	list_for_each_entry(curr, &octeontx_cpt_devices, list) {
@@ -105,10 +106,8 @@ static int cpt_pf_create_domain(u32 node, u16 domain_id,
 		}
 	}
 
-	if (!cpt) {
-		ret = -ENODEV;
+	if (!cpt)
 		goto err_unlock;
-	}
 
 	for (i = 0; i < cpt->vfs_enabled; i++) {
 		vf = &cpt->vf[i];
@@ -145,6 +144,7 @@ static int cpt_pf_create_domain(u32 node, u16 domain_id,
 		cpt_config_gmctl(cpt, i, i + 1, vf->domain.gmid);
 		identify(vf, domain_id, vf_idx);
 
+		set_bit(i, &cpt_mask);
 		vf_idx++;
 		if (vf_idx == num_vfs) {
 			cpt->vfs_in_use += num_vfs;
@@ -152,17 +152,16 @@ static int cpt_pf_create_domain(u32 node, u16 domain_id,
 		}
 	}
 
-	if (vf_idx != num_vfs) {
-		ret = -ENODEV;
+	if (vf_idx != num_vfs)
 		goto err_unlock;
-	}
+
 	mutex_unlock(&octeontx_cpt_devices_lock);
-	return ret;
+	return cpt_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_cpt_devices_lock);
 	cpt_pf_remove_domain(node, domain_id, kobj);
-	return ret;
+	return 0;
 }
 
 static int cpt_reset_domain(u32 node, u16 domain_id)

@@ -338,7 +338,7 @@ err_unlock:
 	return ret;
 }
 
-static int tim_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
+static u64 tim_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 				struct octeontx_master_com_t *com, void *domain,
 				struct kobject *kobj)
 {
@@ -349,9 +349,10 @@ static int tim_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 	resource_size_t ba;
 	u64 reg = 0, gmid;
 	int i, vf_idx = 0, ret = 0;
+	unsigned long tim_mask = 0;
 
 	if (!kobj)
-		return -EINVAL;
+		return 0;
 	gmid = get_gmid(domain_id);
 
 	mutex_lock(&octeontx_tim_dev_lock);
@@ -362,7 +363,6 @@ static int tim_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 		}
 	}
 	if (!tim) {
-		ret = -ENODEV;
 		goto err_unlock;
 	}
 	for (i = 0; i < tim->total_vfs; i++) {
@@ -395,23 +395,23 @@ static int tim_pf_create_domain(u32 id, u16 domain_id, u32 num_vfs,
 		tim_reg_write(tim, TIM_RING_GMCTL(i), reg);
 
 		identify(vf, domain_id, vf_idx);
+		set_bit(i, &tim_mask);
 		vf_idx++;
 		if (vf_idx == num_vfs) {
 			tim->vfs_in_use += num_vfs;
 			break;
 		}
 	}
-	if (vf_idx != num_vfs) {
-		ret = -ENODEV;
+	if (vf_idx != num_vfs)
 		goto err_unlock;
-	}
+
 	mutex_unlock(&octeontx_tim_dev_lock);
-	return ret;
+	return tim_mask;
 
 err_unlock:
 	mutex_unlock(&octeontx_tim_dev_lock);
 	tim_pf_destroy_domain(id, domain_id, kobj);
-	return ret;
+	return 0;
 }
 
 static int tim_ring_reset(struct timpf *tim, int ring)
