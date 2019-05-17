@@ -193,6 +193,7 @@ static ssize_t octtx_create_domain_store(struct device *dev,
 	long int bgx_port[OCTTX_MAX_BGX_PORTS];
 	long int sdp_port[OCTTX_MAX_SDP_PORTS];
 	char *errmsg = "Wrong domain specification format.";
+	long i, k;
 
 	end = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	ptr = end;
@@ -273,6 +274,30 @@ static ssize_t octtx_create_domain_store(struct device *dev,
 				goto error;
 			if (kstrtol(strim(start), 10, &lbk_port[lbk_count]))
 				goto error;
+			lbk_count++;
+		} else if (!strncmp(strim(start), "lbk", sizeof("lbk") - 1)) {
+			/* lbk:X:X - LBK port format is */
+			/* LBK<device_id>:<channel_num> */
+			temp = strsep(&start, ":");
+			if (!start)
+				goto error;
+			temp = strsep(&start, ":");
+			if (!temp)
+				goto error;
+			if (kstrtol(strim(temp), 10, &i))
+				goto error;
+			if (start) {
+				if (kstrtol(strim(start), 10, &k))
+					goto error;
+			} else {
+				k = LBK_PORT_INVAL;
+			}
+			if (i != LBK0_DEVICE && i != LBK1_DEVICE)
+				goto error;
+			if (k < LBK_PORT_PP_BASE_IDX ||
+			    k > (LBK_PORT_PP_MAX - 1))
+				goto error;
+			lbk_port[lbk_count] = LBK_PORT_GIDX_FULL_GEN(i, k);
 			lbk_count++;
 		} else if (!strncmp(start, "dpi", sizeof("dpi") - 1)) {
 			temp = strsep(&start, ":");
@@ -849,7 +874,7 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 	 */
 	domain->lbk_count = 0;
 	for (i = 0; i < lbk_count; i++) {
-		if (lbk_port[i] > 1) {
+		if (lbk_port[i] > LBK_PORT_PN_BASE_IDX) {
 			dev_err(octtx_device, "LBK invalid port g%ld\n",
 				lbk_port[i]);
 			goto error;

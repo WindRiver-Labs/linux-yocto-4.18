@@ -130,7 +130,18 @@ struct octtx_bgx_port {
 };
 
 /* Domain internal (LBK) port */
-#define OCTTX_MAX_LBK_PORTS 2 /* Maximum LBK ports per System */
+#define LBK_PORT_INVAL     0xFF
+/* Number of LBK1/LBK2 port */
+#define LBK_PORT_PN_MAX        1
+/* Number of LBK0 ports */
+#define LBK_PORT_PP_MAX        BIT(4)
+/* Index of LBK1/LBK2 port */
+#define LBK_PORT_PN_BASE_IDX   16
+/* Base port index of lbk0 port */
+#define LBK_PORT_PP_BASE_IDX   0
+#define LBK0_DEVICE   0
+#define LBK1_DEVICE   1
+#define OCTTX_MAX_LBK_PORTS    (LBK_PORT_PN_MAX + LBK_PORT_PP_MAX)
 
 struct octtx_lbk_port {
 	struct list_head list;
@@ -148,6 +159,10 @@ struct octtx_lbk_port {
 	int	pkind; /* PKI port number */
 	void	*vnic; /* NIC port descriptor */
 };
+
+/* LBK port/peer global indexes: (8-bit peer << 8) | 8-bit port. */
+#define LBK_PORT_GIDX_FULL_GEN(_i, _k) (((_i) << 4) | (_k))
+#define LBK_PORT_GIDX_PRIM(_p) ((_p)->glb_port_idx & 0x1FF)
 
 extern atomic_t octtx_sso_reset[];
 /* Domain internal (SDP) port */

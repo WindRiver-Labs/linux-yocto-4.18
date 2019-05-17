@@ -94,9 +94,18 @@ static int pko_get_sdp_mac(int sdp, int lmac)
 	return lmac;
 }
 
-static int pko_get_lbk_chan(int lbk, int chan)
+static int pko_get_lbk_chan(int lbk_base_chan, int lbk_port)
 {
-	return LBK_CHAN_BASE + (LBK_CHAN_RANGE * lbk) + chan;
+	int chan;
+
+	/* lbk0 ports are 0-15 and are cross connected in PKO channels */
+	/* i.e channel 0 connected to 1 and vice versa and so on until */
+	/* channel 15 */
+	if (lbk_port < LBK_PORT_PN_BASE_IDX)
+		chan = (lbk_port & 0x1) ? (lbk_port - 1) : (lbk_port + 1);
+	else /* lbk1/lbk2 port is connected to base channel id */
+		chan = lbk_base_chan;
+	return chan;
 }
 
 static int pko_get_lbk_mac(int lbk)
@@ -459,7 +468,8 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 				mac_num = pko_get_lbk_mac(
 						lbk_port[port_idx].olbk);
 				chan = pko_get_lbk_chan(
-						lbk_port[port_idx].olbk, 0);
+				lbk_port[port_idx].olbk_base_chan,
+				lbk_port[port_idx].glb_port_idx);
 				mac_mode = 0;
 				port_idx++;
 			} else {

@@ -114,7 +114,7 @@ int assign_pkind_lbk(struct pkipf_vf *vf, struct octtx_lbk_port *port)
 	if (vf->lbk_port[port->dom_port_idx].valid)
 		return -EEXIST;
 
-	pkind = LBK_PKIND_BASE + port->glb_port_idx;
+	pkind = LBK_PKIND_BASE + LBK_PORT_GIDX_PRIM(port);
 
 	if (pkind > (LBK_PKIND_BASE + MAX_LBK_PKIND))
 		return -EINVAL;
