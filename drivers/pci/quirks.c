@@ -1011,6 +1011,7 @@ static void quirk_cavium_sriov_rnm_link(struct pci_dev *dev)
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_CAVIUM, 0xa018, quirk_cavium_sriov_rnm_link);
 #endif
 
+#ifdef CONFIG_PCI_IOV
 /*
  * Cavium OcteonTx needs Multibyte atomic I/O (LDST) for some devices.
  * LDST needs LMTLINE and LMTCANCEL to be mapped along with devices,
@@ -1090,6 +1091,7 @@ static void quirk_octeontx_ssombox(struct pci_dev *dev)
 	dev_info(&dev->dev, "quirk(SSO MBOX): added at BAR 4\n");
 }
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_CAVIUM, 0XA04C, quirk_octeontx_ssombox);
+#endif
 
 /*
  * Some settings of MMRBC can lead to data corruption so block changes.
