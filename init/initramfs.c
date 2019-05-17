@@ -655,7 +655,7 @@ static int __init populate_rootfs(void)
 	 * If the initrd region is overlapped with crashkernel reserved region,
 	 * free only memory that is not part of crashkernel region.
 	 */
-	if (!do_retain_initrd && !kexec_free_initrd())
+	if (!do_retain_initrd && initrd_start && !kexec_free_initrd())
 		free_initrd_mem(initrd_start, initrd_end);
 	initrd_start = 0;
 	initrd_end = 0;
