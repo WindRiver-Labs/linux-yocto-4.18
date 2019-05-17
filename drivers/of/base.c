@@ -118,21 +118,19 @@ static void __of_free_phandle_cache(void)
 	for (k = 0; k < cache_entries; k++)
 		of_node_put(phandle_cache[k]);
 
+	shadow = phandle_cache;
 	phandle_cache = NULL;
 }
 
 int of_free_phandle_cache(void)
 {
 	unsigned long flags;
-	struct device_node **shadow;
 
 	raw_spin_lock_irqsave(&devtree_lock, flags);
 
-	shadow = phandle_cache;
 	__of_free_phandle_cache();
 
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
-	kfree(shadow);
 
 	return 0;
 }
@@ -172,7 +170,6 @@ void of_populate_phandle_cache(void)
 
 	raw_spin_lock_irqsave(&devtree_lock, flags);
 
-	shadow = phandle_cache;
 	__of_free_phandle_cache();
 
 	for_each_of_allnodes(np)
