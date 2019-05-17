@@ -513,6 +513,19 @@
 			status = "disabled";
 		};
 
+		CP110_LABEL(tdm): tdm@7a0000 {
+			compatible = "marvell,armada-a8k-tdm";
+			reg = <0x7a0000 0x20000>;
+			reg-names = "tdm_regs";
+			interrupts = <ICU_GRP_NSR 111 IRQ_TYPE_LEVEL_HIGH>,
+				     <ICU_GRP_NSR 112 IRQ_TYPE_LEVEL_HIGH>,
+				     <ICU_GRP_NSR 113 IRQ_TYPE_LEVEL_HIGH>;
+			clock-names = "core", "axi";
+			clocks = <&CP110_LABEL(clk) 1 1>,
+				 <&CP110_LABEL(clk) 1 17>;
+			status = "disabled";
+		};
+
 		CP110_LABEL(crypto): crypto@800000 {
 			compatible = "inside-secure,safexcel-eip197b";
 			reg = <0x800000 0x200000>;

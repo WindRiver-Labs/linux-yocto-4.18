@@ -88,6 +88,18 @@
 	cp1_pinctrl: pinctrl {
 		compatible = "marvell,armada-8k-cps-pinctrl";
 
+		cp1_spi0_pins: spi-pins-0 {
+			marvell,pins = "mpp7", "mpp8", "mpp9",
+				       "mpp10", "mpp11";
+			marvell,function = "spi0";
+		};
+
+		cp1_tdm_pins: tdm-pins {
+			marvell,pins = "mpp0", "mpp1", "mpp2",
+				       "mpp3", "mpp4", "mpp5";
+			marvell,function = "tdm";
+		};
+
 		nand_pins: nand-pins {
 			marvell,pins =
 			"mpp0", "mpp1", "mpp2", "mpp3",
