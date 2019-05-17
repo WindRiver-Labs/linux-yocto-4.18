@@ -106,18 +106,21 @@ static u32 phandle_cache_mask;
 /*
  * Caller must hold devtree_lock.
  */
-static void __of_free_phandle_cache(void)
+static struct device_node** __of_free_phandle_cache(void)
 {
 	u32 cache_entries = phandle_cache_mask + 1;
 	u32 k;
+	struct device_node **shadow;
 
 	if (!phandle_cache)
-		return;
+		return NULL;
 
 	for (k = 0; k < cache_entries; k++)
 		of_node_put(phandle_cache[k]);
 
+	shadow = phandle_cache;
 	phandle_cache = NULL;
+	return shadow;
 }
 
 int of_free_phandle_cache(void)
@@ -127,12 +130,10 @@ int of_free_phandle_cache(void)
 
 	raw_spin_lock_irqsave(&devtree_lock, flags);
 
-	shadow = phandle_cache;
-	__of_free_phandle_cache();
+	shadow = __of_free_phandle_cache();
 
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
 	kfree(shadow);
-
 	return 0;
 }
 #if !defined(CONFIG_MODULES)
@@ -171,28 +172,24 @@ void of_populate_phandle_cache(void)
 
 	raw_spin_lock_irqsave(&devtree_lock, flags);
 
-	shadow = phandle_cache;
-	__of_free_phandle_cache();
+	shadow = __of_free_phandle_cache();
 
 	for_each_of_allnodes(np)
 		if (np->phandle && np->phandle != OF_PHANDLE_ILLEGAL)
 			phandles++;
 
-	raw_spin_unlock_irqrestore(&devtree_lock, flags);
-	kfree(shadow);
-
 	if (!phandles)
-		return;
+		goto out;
+	raw_spin_unlock_irqrestore(&devtree_lock, flags);
 
 	cache_entries = roundup_pow_of_two(phandles);
 	phandle_cache_mask = cache_entries - 1;
 
-	shadow = kcalloc(cache_entries, sizeof(*phandle_cache), GFP_KERNEL);
-
-	if (!shadow)
-		return;
+	phandle_cache = kcalloc(cache_entries, sizeof(*phandle_cache),
+				GFP_ATOMIC);
 	raw_spin_lock_irqsave(&devtree_lock, flags);
-	phandle_cache = shadow;
+	if (!phandle_cache)
+		goto out;
 
 	for_each_of_allnodes(np)
 		if (np->phandle && np->phandle != OF_PHANDLE_ILLEGAL) {
@@ -200,7 +197,9 @@ void of_populate_phandle_cache(void)
 			phandle_cache[np->phandle & phandle_cache_mask] = np;
 		}
 
+out:
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
+	kfree(shadow);
 }
 
 void __init of_core_init(void)
