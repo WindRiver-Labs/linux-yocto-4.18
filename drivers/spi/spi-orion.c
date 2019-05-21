@@ -504,6 +504,16 @@ static int orion_spi_transfer_one(struct spi_master *master,
 
 static int orion_spi_setup(struct spi_device *spi)
 {
+	struct orion_spi *orion_spi = spi_master_get_devdata(spi->master);
+
+	/*
+	 * Make sure the clocks are enabled before
+	 * configuring the SPI controller.
+	 */
+	clk_prepare_enable(orion_spi->clk);
+	if (!IS_ERR(orion_spi->axi_clk))
+		clk_prepare_enable(orion_spi->axi_clk);
+
 	if (gpio_is_valid(spi->cs_gpio)) {
 		gpio_direction_output(spi->cs_gpio, !(spi->mode & SPI_CS_HIGH));
 	}
