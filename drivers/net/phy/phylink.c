@@ -904,7 +904,7 @@ void phylink_mac_change(struct phylink *pl, bool up)
 
 #if IS_ENABLED(CONFIG_SFP)
 	/* Make sure the event is propagated to the SFP layer. */
-	if (pl->sfp_bus) {
+	if (pl->sfp_bus && rtnl_is_locked()) {
 		if (up)
 			sfp_link_up(pl->sfp_bus);
 		else
