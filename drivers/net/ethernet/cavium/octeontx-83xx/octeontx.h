@@ -52,9 +52,9 @@ struct wqe_s {
 
 /* THUNDERX SMC definitons */
 /* X1 - gpio_num, X2 - sp, X3 - cpu, X4 - ttbr0 */
-#define THUNDERX_INSTALL_GPIO_INT       0x43000801
+#define THUNDERX_INSTALL_GPIO_INT       0xc2000801
 /* X1 - gpio_num */
-#define THUNDERX_REMOVE_GPIO_INT        0x43000802
+#define THUNDERX_REMOVE_GPIO_INT        0xc2000802
 
 struct intr_hand {
 	u64	mask;
