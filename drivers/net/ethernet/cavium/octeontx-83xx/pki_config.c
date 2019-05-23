@@ -262,7 +262,7 @@ int pki_port_open(struct pkipf_vf *vf, u16 vf_id,
 	for (i = 0; i < pki->max_cls; i++)
 		pki_reg_write(pki, PKI_CLX_PKINDX_STYLE(i, port->pkind), cfg);
 
-	if (port_data->port_type == OCTTX_PORT_TYPE_NET) {
+	if (port_data->port_type != OCTTX_PORT_TYPE_PCI) {
 		cfg = port->has_fcs ? (0x1ULL << PKI_PKIND_CFG_FCS_SHIFT) : 0;
 		for (i = 0; i < pki->max_cls; i++)
 			pki_reg_write(pki, PKI_CLX_PKINDX_CFG(i, port->pkind),
