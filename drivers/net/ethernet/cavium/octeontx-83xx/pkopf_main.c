@@ -370,13 +370,20 @@ static int pko_pf_create_domain(u32 id, u16 domain_id, u32 pko_vf_count,
 	struct pkopf *curr;
 	struct pci_dev *virtfn;
 	resource_size_t vf_start;
-	int i, pko_mac = sdp_count ? PKO_MAC_HOST : PKO_MAC_BGX;
+	int i, pko_mac;
 	int vf_idx = 0, port_idx = 0;
 	int mac_num, mac_mode, chan, ret = 0;
 	const u32 max_frame = 0xffff;
 
 	if (!kobj)
 		return -EINVAL;
+
+	if (sdp_count)
+		pko_mac = PKO_MAC_HOST;
+	else if (bgx_count)
+		pko_mac = PKO_MAC_BGX;
+	else
+		pko_mac = PKO_MAC_LBK;
 
 	mutex_lock(&octeontx_pko_devices_lock);
 	list_for_each_entry(curr, &octeontx_pko_devices, list) {
