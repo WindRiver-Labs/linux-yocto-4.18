@@ -505,6 +505,7 @@ int bgx_port_config(struct octtx_bgx_port *port, mbox_bgx_port_conf_t *conf)
 	reg = bgx_reg_read(bgx, port->lmac, BGX_CMRX_RX_DMAC_CTL);
 	conf->bcast_mode = reg & 0x1; /* BCAST_ACCEPT */
 	conf->mcast_mode = (reg >> 1) & 0x3; /* MCAST_MODE */
+	conf->promisc = !((reg >> 3) & 0x1); /* reverse of CAM_ACCEPT */
 
 	macaddr = thbgx->get_mac_addr(port->node, port->bgx, port->lmac);
 	memcpy(conf->macaddr, macaddr, 6);
