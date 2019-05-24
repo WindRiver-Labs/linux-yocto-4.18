@@ -1063,7 +1063,7 @@ static void imx_uart_break_ctl(struct uart_port *port, int break_state)
 
 static int imx_uart_setup_ufcr(struct imx_port *sport, unsigned int mode)
 {
-	unsigned int val;
+	unsigned int ufcr;
 	unsigned int rx_fifo_trig;
 
 	if (uart_console(&sport->port))
@@ -1072,9 +1072,10 @@ static int imx_uart_setup_ufcr(struct imx_port *sport, unsigned int mode)
 		rx_fifo_trig = RXTL_UART;
 
 	/* set receiver / transmitter trigger level */
-	val = readl(sport->port.membase + UFCR) & (UFCR_RFDIV | UFCR_DCEDTE);
-	val |= TXTL << UFCR_TXTL_SHF | rx_fifo_trig;
-	writel(val, sport->port.membase + UFCR);
+	ufcr = imx_uart_readl(sport, UFCR);
+	ufcr &= (UFCR_RFDIV | UFCR_DCEDTE);
+	ufcr |= TXTL << UFCR_TXTL_SHF | rx_fifo_trig;
+	imx_uart_writel(sport, ufcr, UFCR);
 	return 0;
 }
 
