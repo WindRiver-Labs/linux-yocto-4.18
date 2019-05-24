@@ -769,12 +769,13 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 			mss->first_vma_start = vma->vm_start;
 			mss->first = false;
 		}
-		last_vma = !m_next_vma(priv, vma);
 	} else {
 		rollup_mode = false;
 		memset(&mss_stack, 0, sizeof(mss_stack));
 		mss = &mss_stack;
 	}
+
+	last_vma = !m_next_vma(priv, vma);
 
 	smaps_walk.private = mss;
 
