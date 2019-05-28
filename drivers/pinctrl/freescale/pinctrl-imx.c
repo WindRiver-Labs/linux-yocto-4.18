@@ -576,7 +576,6 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 	struct device_node *np;
 	struct imx_pinctrl *ipctl;
 	struct resource *res;
-	struct regmap *gpr;
 	int ret, i;
 
 	if (!info || !info->pins || !info->npins) {
