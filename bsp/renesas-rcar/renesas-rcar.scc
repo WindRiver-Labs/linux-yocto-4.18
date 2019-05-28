@@ -1,0 +1,7 @@
+include cfg/usb-mass-storage.scc
+include cfg/fs/flash_fs.cfg
+include features/hugetlb/hugetlb.scc
+# enable the ability to run 32 bit apps
+include arch/arm/32bit-compat.scc
+
+kconf hardware renesas-rcar.cfg

@@ -1,0 +1,7 @@
+define KMACHINE renesas-rcar
+define KTYPE preempt-rt
+define KARCH arm64
+
+include ktypes/preempt-rt
+
+include renesas-rcar.scc
