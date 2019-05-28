@@ -1,0 +1,7 @@
+define KMACHINE renesas-rcar
+define KTYPE standard
+define KARCH arm64
+
+include ktypes/standard
+
+include renesas-rcar.scc
