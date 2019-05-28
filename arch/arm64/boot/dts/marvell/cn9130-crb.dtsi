@@ -134,9 +134,6 @@
 	phy0: ethernet-phy@0 {
 		reg = <0>;
 	};
-	switch6: ethernet-phy@6 {
-		reg = <6>;
-	};
 };
 
 &cp0_xmdio {
@@ -153,8 +150,8 @@
 
 &cp0_eth0 {
 	status = "okay";
-	phy = <&switch6>;
 	phy-mode = "10gbase-kr";
+	managed = "in-band-status";
 	phys = <&cp0_comphy4 0>;
 };
 
