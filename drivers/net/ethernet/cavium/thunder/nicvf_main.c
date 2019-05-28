@@ -1365,7 +1365,7 @@ static netdev_tx_t nicvf_xmit(struct sk_buff *skb, struct net_device *netdev)
 		return NETDEV_TX_OK;
 	}
 	/* Reroute packets from ethX, if interface belongs to Dataplane.*/
-	if (!nic->lbk_mode && nic->port_ctx == NIC_PORT_CTX_DATAPLANE) {
+	if (nic->port_ctx == NIC_PORT_CTX_DATAPLANE) {
 		/* Use LBK media */
 		netdev = snd_pkt_reroute(netdev, skb, &nic);
 		if (!netdev) {

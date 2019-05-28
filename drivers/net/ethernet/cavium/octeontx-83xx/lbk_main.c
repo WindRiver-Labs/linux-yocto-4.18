@@ -268,10 +268,13 @@ int lbk_port_start(struct octtx_lbk_port *port)
 		if (rc)
 			return -EIO;
 		pkind = thlbk->get_port_pkind();
+		i = 0; /* LBK channel to set PKIND for LBK1/2 port */
 	} else {
 		pkind = port->pkind;
+		/* LBK channel to set PKIND for LBK0 port */
+		i = port->glb_port_idx;
 	}
-	i = port->glb_port_idx;
+
 	lbk = get_lbk_dev(port->node, port->ilbk);
 	lbk_reg_write(lbk, LBK_CH_PKIND(i), port->pkind);
 	lbk = get_lbk_dev(port->node, port->olbk);
