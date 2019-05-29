@@ -181,3 +181,55 @@ Example for connecting 2 phones using mv-voice-tool::
 	>>  Please select option: 7
 	>>  Enter line #0: 1
 	>>  Enter line #1: 0
+
+generic mv-voice-tool
+---------------------
+User-space application which communicates via ioctl with the telephony driver.
+The application allows to configure the TDM interface TX/RX lines in
+internal loopback and check data integrity with sending/receiving incremental
+pattern. It doesn't require any external SLIC device and board modifications.
+
+In order to run mv-voice tool, run the following command::
+
+	# ./mv_voice_tool
+
+Example for connecting test 32 lines with 2-byte PCM sample size::
+
+	# ./mv_voice_tool
+
+	>>  Please enter total lines number: 32
+	>>  Please enter PCM sample size(1/2/4): 2
+
+	 !!! Remember to initialize TDM before running the test !!!
+
+	  Marvell Voice Tool:
+	  i. Initialize TDM device
+	  l. Internal loopback test
+	  d. Disable TDM device
+	  q. Quit
+
+	>>  Please select option: i
+	[  139.356516] mvebu_phone f47a0000.tdm: Loading Marvell Telephony Driver
+	[  139.363682] mvebu_phone f47a0000.tdm: enable internal loopback on TX/RX lines
+
+	  Marvell Voice Tool:
+	  i. Initialize TDM device
+	  l. Internal loopback test
+	  d. Disable TDM device
+	  q. Quit
+
+	>>  Please select option: l
+	>>  Enter number of iterations (minimum 4): 1000
+
+	Digital loopback test(32 lines) - PASS !!!
+
+	  Marvell Voice Tool:
+	  i. Initialize TDM device
+	  l. Internal loopback test
+	  d. Disable TDM device
+	  q. Quit
+
+	>>  Please select option: q
+
+	>>  TDM stopped
+	#
