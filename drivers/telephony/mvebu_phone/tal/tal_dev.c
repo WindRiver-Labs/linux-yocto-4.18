@@ -171,6 +171,8 @@ static long tal_dev_ioctl(struct file *file_p, unsigned int cmd,
 		tal_params.pcm_format = tal_dev_params.pcm_format;
 		tal_params.sampling_period = 10; /* ms */
 		tal_params.total_lines = tal_dev_params.total_lines;
+		tal_params.enable_internal_loopback =
+					tal_dev_params.enable_internal_loopback;
 		for (i = 0; i < TAL_MAX_PHONE_LINES; i++)
 			tal_params.pcm_slot[i] =
 					    (i + 1) * tal_dev_params.pcm_format;

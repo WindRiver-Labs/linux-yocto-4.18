@@ -19,6 +19,7 @@
 struct tal_dev_params {
 	unsigned char pcm_format;
 	unsigned short total_lines;
+	unsigned char enable_internal_loopback;
 };
 
 #define	TDM_DEV_TDM_TEST_MODE_ENABLE	_IO(TAL_DEV_IOCTL_MAGIC, 8)

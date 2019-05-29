@@ -34,6 +34,7 @@ struct tal_params {
 	u16 pcm_slot[TAL_MAX_PHONE_LINES];
 	u8 sampling_period;
 	u16 total_lines;
+	bool enable_internal_loopback;
 };
 
 struct tal_stats {

@@ -169,6 +169,8 @@
 #define TSD_NO_DELAY			(0 << TSD_OFFS)
 #define RSD_OFFS			27
 #define RSD_NO_DELAY			(0 << RSD_OFFS)
+#define TDM_TDIAG_OFFS			29
+#define TDM_TDIAG_MASK			(3 << TDM_TDIAG_OFFS)
 #define TDM_TEN_OFFS			31
 #define TDM_TEN_MASK			(1 << TDM_TEN_OFFS)
 

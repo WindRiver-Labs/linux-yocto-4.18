@@ -325,7 +325,7 @@ int tdmmc_init(void __iomem *base, struct device *dev,
 {
 	struct tdmmc_dram_entry *act_dpram_entry;
 	u32 buff_size, chan, total_rx_desc_size, total_tx_desc_size;
-	u32 max_poll, clk_sync_ctrl_reg, count;
+	u32 max_poll, clk_sync_ctrl_reg, count, reg_val;
 	u16 pcm_slot, index;
 	int ret;
 
@@ -639,9 +639,18 @@ int tdmmc_init(void __iomem *base, struct device *dev,
 	writel(clk_sync_ctrl_reg, tdmmc->regs + TDM_CLK_AND_SYNC_CONTROL_REG);
 
 	/* Set TDM TCR register */
-	writel((readl(tdmmc->regs + FLEX_TDM_CONFIG_REG) |
-	       CONFIG_FLEX_TDM_CONFIG),
-	       tdmmc->regs + FLEX_TDM_CONFIG_REG);
+	reg_val = readl(tdmmc->regs + FLEX_TDM_CONFIG_REG) |
+			CONFIG_FLEX_TDM_CONFIG;
+
+	if (tdm_params->enable_internal_loopback) {
+		dev_info(tdmmc->dev,
+			 "enable internal loopback on TX/RX lines\n");
+		reg_val |= TDM_TDIAG_MASK;
+	} else {
+		reg_val &= ~TDM_TDIAG_MASK;
+	}
+
+	writel(reg_val, tdmmc->regs + FLEX_TDM_CONFIG_REG);
 
 	/**********************************************************************/
 	/* Time Division Multiplexing(TDM) Interrupt Controller Configuration */

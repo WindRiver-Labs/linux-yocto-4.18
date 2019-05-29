@@ -114,6 +114,7 @@ struct mv_phone_params {
 	u16 pcm_slot[32];
 	u8 sampling_period;
 	u16 total_channels;
+	bool enable_internal_loopback;
 };
 
 struct mv_phone_dev {
