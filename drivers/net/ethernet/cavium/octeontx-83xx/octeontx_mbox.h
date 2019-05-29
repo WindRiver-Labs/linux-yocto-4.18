@@ -269,7 +269,7 @@ struct mbox_intf_ver {
 
 static const struct mbox_intf_ver MBOX_INTERFACE_VERSION = {
 	.platform = 0x01,
-	.major = 0x00,
+	.major = 0x01,
 	.minor = 0x01
 };
 
