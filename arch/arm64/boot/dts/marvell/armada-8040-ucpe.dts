@@ -224,7 +224,7 @@
 		eeprom-length = <65536>;
 
 		interrupt-parent = <&cp1_gpio1>;
-		interrupts = <30 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <30 IRQ_TYPE_EDGE_FALLING>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 
