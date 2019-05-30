@@ -339,7 +339,7 @@ static int __get_sso_group_pend(u32 id, u64 grp_mask)
 	u64 reg;
 
 	for_each_set_bit(i, (const unsigned long *)&grp_mask,
-			 sizeof(grp_mask)) {
+			 sizeof(grp_mask) * 8) {
 		aq_cnt = 0;
 		cq_cnt = 0;
 		ds_cnt = 0;
