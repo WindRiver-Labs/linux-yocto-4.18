@@ -359,8 +359,7 @@ int ssow_reset_domain(u32 id, u16 domain_id, u64 grp_mask)
 {
 	struct ssowpf *ssow = NULL;
 	struct ssowpf *curr;
-	int i, ret = 0;
-	bool de_sched = false;
+	int i, first_ssow = -1, ret = 0;
 	int retry = 0;
 	u64 addr;
 	int count = 0;
@@ -382,12 +381,14 @@ int ssow_reset_domain(u32 id, u16 domain_id, u64 grp_mask)
 
 	/* 0. Clear any active TAG switches
 	 * 1. Loop thorugh SSO_ENT_GRP and clear NSCHED
-	 * 2. do get_work on all HWS until VHGRP_INT_CNT and AQ_CNT == 0
+	 * 2. do get_work on first HWS until VHGRP_INT_CNT and AQ_CNT == 0
 	 */
 
 	for (i = 0; i < ssow->total_vfs; i++) {
 		if (ssow->vf[i].domain.in_use &&
 		    ssow->vf[i].domain.domain_id == domain_id) {
+			if (first_ssow == -1)
+				first_ssow = i;
 			sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(i, 0),
 					 grp_mask);
 			sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(i, 1),
@@ -401,9 +402,18 @@ int ssow_reset_domain(u32 id, u16 domain_id, u64 grp_mask)
 					writeq_relaxed(0x0, reg_base +
 						SSOW_VF_VHWSX_OP_DESCHED(0));
 			} else {
-				reg = readq_relaxed(reg_base +
-						    SSOW_VF_VHWSX_WQP(0));
-				if (reg) {
+				/* Perform GET_WORK: it implicitly untags any
+				 * WQP attached to the workslot, and we are also
+				 * sure that the WQP we receive with it belongs
+				 * to GGRP mapped to this domain
+				 */
+				addr = ((u64)ssow->vf[i].domain.reg_base +
+					SSOW_VF_VHWSX_OP_GET_WORK0(0));
+				wqe.work0 = 0;
+				wqe.work1 = 0;
+				ssow_vf_get_work(addr, &wqe);
+
+				if (wqe.work1 != 0) {
 					reg = readq_relaxed(reg_base +
 							SSOW_VF_VHWSX_TAG(0));
 
@@ -412,29 +422,38 @@ int ssow_reset_domain(u32 id, u16 domain_id, u64 grp_mask)
 					      SSOW_VF_VHWSX_OP_SWTAG_UNTAG(0));
 				}
 			}
-
-			if (!de_sched) {
-				ssow_clear_nosched(id, &ssow->vf[i], grp_mask);
-				de_sched = true;
-			}
-
-			addr = ((u64)ssow->vf[i].domain.reg_base +
-					SSOW_VF_VHWSX_OP_GET_WORK0(0));
-			retry = 0;
-			do {
-				wqe.work0 = 0;
-				wqe.work1 = 0;
-				ssow_vf_get_work(addr, &wqe);
-				if (wqe.work1 == 0)
-					retry++;
-				count = __get_sso_group_pend(id, grp_mask);
-			} while (count && retry < 1000);
 			sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(i, 0), 0);
 			sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(i, 1), 0);
 		}
 	}
-	if (count)
-		dev_err(&ssow->pdev->dev, "Failed to reset vf[%d]\n", i);
+
+	if (first_ssow >= 0) {
+		sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(first_ssow, 0),
+				 grp_mask);
+		sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(first_ssow, 1),
+				 grp_mask);
+
+		ssow_clear_nosched(id, &ssow->vf[first_ssow], grp_mask);
+
+		addr = ((u64)ssow->vf[first_ssow].domain.reg_base +
+				SSOW_VF_VHWSX_OP_GET_WORK0(0));
+		retry = 0;
+		do {
+			wqe.work0 = 0;
+			wqe.work1 = 0;
+			ssow_vf_get_work(addr, &wqe);
+			if (wqe.work1 == 0)
+				retry++;
+			count = __get_sso_group_pend(id, grp_mask);
+		} while (count && retry < 1000);
+
+		sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(first_ssow, 0), 0);
+		sso_pf_set_value(id, SSO_PF_HWSX_SX_GRPMASK(first_ssow, 1), 0);
+
+		if (count)
+			dev_err(&ssow->pdev->dev, "Failed to reset vf[%d]\n",
+				first_ssow);
+	}
 
 	for (i = 0; i < ssow->total_vfs; i++) {
 		if (ssow->vf[i].domain.in_use &&
