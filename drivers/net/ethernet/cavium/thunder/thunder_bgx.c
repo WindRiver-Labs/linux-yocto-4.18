@@ -85,6 +85,7 @@ static int lmac_count; /* Total no of LMACs in system */
 static int (*bgx_port_ctx_set)(int node, int bgx, int lmac,
 			       int ctx, int dp_idx);
 static int bgx_xaui_check_link(struct lmac *lmac);
+static int bgx_lmac_sgmii_init(struct bgx *bgx, struct lmac *lmac);
 
 /* Supported devices */
 static const struct pci_device_id bgx_id_table[] = {
@@ -600,6 +601,13 @@ static void bgx_sgmii_change_link_state(struct lmac *lmac)
 	}
 	bgx_reg_write(bgx, lmac->lmacid, BGX_GMP_PCS_MISCX_CTL, misc_ctl);
 	bgx_reg_write(bgx, lmac->lmacid, BGX_GMP_GMI_PRTX_CFG, port_cfg);
+
+	bgx_reg_modify(bgx, lmac->lmacid, BGX_GMP_PCS_MRX_CTL,
+		       PCS_MRX_CTL_RESET);
+	if (bgx_poll_reg(bgx, lmac->lmacid, BGX_GMP_PCS_MRX_CTL,
+			 PCS_MRX_CTL_RESET, true)) {
+		dev_err(&bgx->pdev->dev, "BGX PCS reset not completed\n");
+	}
 
 	/* Restore CMR config settings */
 	cmr_cfg |= (rx_en ? CMR_PKT_RX_EN : 0) | (tx_en ? CMR_PKT_TX_EN : 0);
