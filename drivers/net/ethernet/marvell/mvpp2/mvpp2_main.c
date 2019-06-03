@@ -7469,8 +7469,11 @@ static int mvpp2_probe(struct platform_device *pdev)
 	/* Configure branch prediction switch */
 	if (priv->hw_version == MVPP21)
 		static_branch_enable(&mvpp21_variant);
-	if (recycle)
+	if (recycle) {
+		dev_info(&pdev->dev,
+			 "kernel space packet recycling feature enabled\n");
 		static_branch_enable(&mvpp2_recycle_ena);
+	}
 	/* else - keep the DEFINE_STATIC_KEY_FALSE */
 
 	/* Map DTS-active ports. Should be done before FIFO mvpp2_init */
