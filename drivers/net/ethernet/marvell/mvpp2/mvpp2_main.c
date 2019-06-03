@@ -1189,7 +1189,12 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 
 	if (new_long_pool_type != port->pool_long->type) {
 		if (port->tx_fc) {
-			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
+			if (recycle) {
+				for_each_present_cpu(cpu)
+					mvpp2_bm_pool_update_fc(port,
+								pools_pcpu[cpu],
+								false);
+			} else if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
 				mvpp2_bm_pool_update_fc(port,
 							port->pool_short,
 							false);
@@ -1219,7 +1224,12 @@ static int mvpp2_bm_update_mtu(struct net_device *dev, int mtu)
 			return err;
 
 		if (port->tx_fc) {
-			if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
+			if (recycle) {
+				for_each_present_cpu(cpu)
+					mvpp2_bm_pool_update_fc(port,
+								pools_pcpu[cpu],
+								false);
+			} else if (port->pkt_size > MVPP2_BM_LONG_PKT_SIZE)
 				mvpp2_bm_pool_update_fc(port, port->pool_long,
 							true);
 			else
@@ -5344,6 +5354,29 @@ static void mvpp2_ethtool_get_pause_param(struct net_device *dev,
 	phylink_ethtool_get_pauseparam(port->phylink, pause);
 }
 
+static void mvpp2_reconfigure_fc(struct mvpp2_port *port)
+{
+	struct mvpp2_bm_pool **pools_pcpu = port->priv->pools_pcpu;
+	int cpu;
+
+	if (recycle) {
+		for_each_present_cpu(cpu)
+			mvpp2_bm_pool_update_fc(port, pools_pcpu[cpu],
+						port->tx_fc);
+		if (port->pool_long->type == MVPP2_BM_JUMBO)
+			mvpp2_bm_pool_update_fc(port,
+						port->pool_long, port->tx_fc);
+		else
+			mvpp2_bm_pool_update_fc(port,
+						port->pool_short, port->tx_fc);
+	} else {
+		mvpp2_bm_pool_update_fc(port, port->pool_long, port->tx_fc);
+		mvpp2_bm_pool_update_fc(port, port->pool_short, port->tx_fc);
+	}
+	if (port->priv->hw_version == MVPP23)
+		mvpp23_rx_fifo_fc_en(port->priv, port->id, port->tx_fc);
+}
+
 static int mvpp2_ethtool_set_pause_param(struct net_device *dev,
 					 struct ethtool_pauseparam *pause)
 {
@@ -5360,17 +5393,11 @@ static int mvpp2_ethtool_set_pause_param(struct net_device *dev,
 
 		port->tx_fc = true;
 		mvpp2_rxq_enable_fc(port);
-		mvpp2_bm_pool_update_fc(port, port->pool_long, true);
-		mvpp2_bm_pool_update_fc(port, port->pool_short, true);
-		if (port->priv->hw_version == MVPP23)
-			mvpp23_rx_fifo_fc_en(port->priv, port->id, true);
+		mvpp2_reconfigure_fc(port);
 	} else if (port->priv->global_tx_fc) {
 		port->tx_fc = false;
 		mvpp2_rxq_disable_fc(port);
-		mvpp2_bm_pool_update_fc(port, port->pool_long, false);
-		mvpp2_bm_pool_update_fc(port, port->pool_short, false);
-		if (port->priv->hw_version == MVPP23)
-			mvpp23_rx_fifo_fc_en(port->priv, port->id, false);
+		mvpp2_reconfigure_fc(port);
 	}
 
 	if (!port->phylink)
