@@ -1118,7 +1118,8 @@ mr_loop:
 #else
 			fq = (void *)(uintptr_t)be32_to_cpu(msg->ern.tag);
 #endif
-			fq->cb.ern(p, fq, &swapped_msg);
+			if (fq && fq->cb.ern)
+				fq->cb.ern(p, fq, &swapped_msg);
 		}
 		num++;
 		qm_mr_next(&p->p);
