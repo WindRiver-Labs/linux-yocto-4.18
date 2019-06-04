@@ -129,18 +129,6 @@ static int ov106xx_probe(struct i2c_client *client,
 		goto out;
 	}
 
-	ret = gw4200_probe(client, did);
-	if (!ret) {
-		chip_id = ID_GW4200_AR014X;
-		goto out;
-	}
-
-	ret = gw5200_probe(client, did);
-	if (!ret) {
-		chip_id = ID_GW5200_IMX390;
-		goto out;
-	}
-
 	ret = ov2775_probe(client, did);
 	if (!ret) {
 		chip_id = ID_OV2775;
@@ -168,6 +156,18 @@ static int ov106xx_probe(struct i2c_client *client,
 	ret = isx019_probe(client, did);
 	if (!ret) {
 		chip_id = ID_ISX019;
+		goto out;
+	}
+
+	ret = gw4200_probe(client, did);
+	if (!ret) {
+		chip_id = ID_GW4200_AR014X;
+		goto out;
+	}
+
+	ret = gw5200_probe(client, did);
+	if (!ret) {
+		chip_id = ID_GW5200_IMX390;
 		goto out;
 	}
 
