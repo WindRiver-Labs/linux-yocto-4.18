@@ -158,7 +158,8 @@ static void otg_hnp_polling_work(struct work_struct *work)
 	if (fsm->tst_maint &&
 		(__usb_get_extra_descriptor(udev->rawdescriptors[0],
 		le16_to_cpu(udev->config[0].desc.wTotalLength),
-				USB_DT_OTG, (void **) &desc) == 0)) {
+				USB_DT_OTG, (void **) &desc,
+				sizeof(*desc)) == 0)) {
 		/* shorter bLength of OTG 1.3 or earlier */
 		if (desc->bLength < 5) {
 			fsm->a_bus_req = 0;
