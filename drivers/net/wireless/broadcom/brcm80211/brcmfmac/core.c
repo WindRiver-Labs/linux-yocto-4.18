@@ -1098,9 +1098,6 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings)
 	struct wiphy *wiphy;
 	struct cfg80211_ops *ops;
 	struct brcmf_pub *drvr = NULL;
-	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
-	struct brcmf_sdio_dev *sdiod = bus_if->bus_priv.sdio;
-	struct brcmf_sdio *bus = sdiod->bus;
 	int ret = 0;
 	int i;
 
@@ -1143,16 +1140,10 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings)
 	/* attach firmware event handler */
 	brcmf_fweh_attach(drvr);
 
-	/* Waking up from deep sleep don't requirerd to reint the sdio bus
-	 * as all sdiod core registers will get restored by Firmware using
-	 * FCBS engine.
-	 */
-	if (!bus->sdiodev->ulp) {
-		ret = brcmf_bus_started(dev);
-		if (ret != 0) {
-			brcmf_err("dongle is not responding\n");
-			goto fail;
-		}
+	ret = brcmf_bus_started(drvr, ops);
+	if (ret != 0) {
+		brcmf_err("dongle is not responding: err=%d\n", ret);
+		goto fail;
 	}
 
 	drvr->config->ops = ops;
