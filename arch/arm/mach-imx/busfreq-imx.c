@@ -203,8 +203,10 @@ static void imx6ull_lower_cpu_rate(bool enter)
 
 	if (enter) {
 		org_arm_rate = clk_get_rate(arm_clk);
+#ifdef CONFIG_SOC_IMX6
 		origin_arm_volt = regulator_get_voltage(arm_reg);
 		origin_soc_volt = regulator_get_voltage(soc_reg);
+#endif
 	}
 
 	clk_set_parent(pll1_bypass_clk, pll1_bypass_src_clk);
@@ -215,6 +217,7 @@ static void imx6ull_lower_cpu_rate(bool enter)
 		clk_set_parent(step_clk, osc_clk);
 		clk_set_parent(pll1_sw_clk, step_clk);
 		clk_set_rate(arm_clk, LPAPM_CLK);
+#ifdef CONFIG_SOC_IMX6
 		if (cpu_is_imx6sll() && uart_from_osc) {
 			ret = regulator_set_voltage_tol(arm_reg, LOW_POWER_RUN_VOLTAGE, 0);
 			if (ret)
@@ -223,7 +226,9 @@ static void imx6ull_lower_cpu_rate(bool enter)
 			if (ret)
 				pr_err("set soc reg voltage failed\n");
 		}
+#endif
 	} else {
+#ifdef CONFIG_SOC_IMX6
 		if (uart_from_osc) {
 			ret = regulator_set_voltage_tol(soc_reg, origin_soc_volt, 0);
 			if (ret)
@@ -232,6 +237,7 @@ static void imx6ull_lower_cpu_rate(bool enter)
 			if (ret)
 				pr_err("set arm reg voltage failed\n");
 		}
+#endif
 		clk_set_parent(step_clk, origin_step_parent);
 		clk_set_parent(pll1_sw_clk, step_clk);
 		clk_set_rate(arm_clk, org_arm_rate);
