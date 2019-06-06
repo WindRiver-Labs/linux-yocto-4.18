@@ -268,11 +268,11 @@ static int init_freq_optee_smp(struct platform_device *busfreq_pdev)
 	if (wfe_iram_base & (FNCPY_ALIGN - 1))
 		wfe_iram_base += FNCPY_ALIGN -
 				((uintptr_t)wfe_iram_base % (FNCPY_ALIGN));
-
+#ifdef CONFIG_SOC_IMX6
 	wfe_change_freq = (void *)fncpy((void *)wfe_iram_base,
 				&imx_smp_wfe_optee,
 				((&imx_smp_wfe_end -&imx_smp_wfe_start) *4));
-
+#endif
 	return 0;
 
 }
