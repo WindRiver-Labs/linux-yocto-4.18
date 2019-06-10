@@ -294,6 +294,12 @@ static int dcss_clks_init(struct dcss_soc *dcss)
 
 	dcss->clks_on = true;
 
+	/* We must make sure that VIDEO_PLL2 enable clk output and clear power
+	 * down bit when finishing enabling clks, just as what dcss_runtime_resume
+	 * does, if not, kexec kernel will hang when accessing dcss dtg registers.
+	 */
+	dcss_pll_enable(dcss);
+
 	return 0;
 
 err:
