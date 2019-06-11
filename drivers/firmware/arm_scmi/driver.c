@@ -393,6 +393,10 @@ int scmi_do_xfer(const struct scmi_handle *handle, struct scmi_xfer *xfer)
 	if (unlikely(!cinfo))
 		return -EINVAL;
 
+#ifdef CONFIG_MVL_MHU
+	/* pollng mode */
+	xfer->hdr.poll_completion = true;
+#endif
 	ret = mbox_send_message(cinfo->chan, xfer);
 	if (ret < 0) {
 		dev_dbg(dev, "mbox send fail %d\n", ret);
@@ -477,6 +481,10 @@ int scmi_xfer_get_init(const struct scmi_handle *handle, u8 msg_id, u8 prot_id,
 	xfer->hdr.protocol_id = prot_id;
 	xfer->hdr.poll_completion = false;
 
+#ifdef CONFIG_MVL_MHU
+	/* Enable polling mode */
+	xfer->hdr.poll_completion = true;
+#endif
 	*p = xfer;
 
 	return 0;
