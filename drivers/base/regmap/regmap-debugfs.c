@@ -546,6 +546,12 @@ void regmap_debugfs_init(struct regmap *map, const char *name)
 		return;
 	}
 
+	/* If debugfs entry already created, just return */
+	if (map->debugfs) {
+		dev_dbg(map->dev, "already created debugfs entry\n");
+		return;
+	}
+
 	/* If we don't have the debugfs root yet, postpone init */
 	if (!regmap_debugfs_root) {
 		struct regmap_debugfs_node *node;
