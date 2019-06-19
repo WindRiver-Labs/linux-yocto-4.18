@@ -5296,6 +5296,8 @@ static int mvpp2_port_musdk_cfg(struct net_device *dev, bool ena)
 		}
 	} else {
 		/* Back to Kernel mode */
+		int queue;
+
 		us = port->us_cfg;
 		port->nqvecs = us->nqvecs;
 		port->nrxqs  = us->nrxqs;
@@ -5306,6 +5308,14 @@ static int mvpp2_port_musdk_cfg(struct net_device *dev, bool ena)
 		}
 		kfree(us);
 		port->us_cfg = NULL;
+
+		/* Restore the BM pool id of the rxq overrode by the MUSDK */
+		for (queue = 0; queue < port->nrxqs; queue++) {
+			mvpp2_rxq_short_pool_set(port, queue,
+						 port->pool_short->id);
+			mvpp2_rxq_long_pool_set(port, queue,
+						port->pool_long->id);
+		}
 	}
 	return 0;
 }
