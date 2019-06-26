@@ -132,7 +132,7 @@ struct octtx_bgx_port {
 /* Domain internal (LBK) port */
 #define LBK_PORT_INVAL     0xFF
 /* Number of LBK1/LBK2 port */
-#define LBK_PORT_PN_MAX        1
+#define LBK_PORT_PN_MAX        4
 /* Number of LBK0 ports */
 #define LBK_PORT_PP_MAX        BIT(4)
 /* Index of LBK1/LBK2 port */

@@ -877,7 +877,8 @@ int octeontx_create_domain(const char *name, int type, int sso_count,
 	 */
 	domain->lbk_count = 0;
 	for (i = 0; i < lbk_count; i++) {
-		if (lbk_port[i] > LBK_PORT_PN_BASE_IDX) {
+		if (lbk_port[i] > LBK_PORT_PN_BASE_IDX +
+				LBK_PORT_PN_MAX - 1) {
 			dev_err(octtx_device, "LBK invalid port g%ld\n",
 				lbk_port[i]);
 			goto error;

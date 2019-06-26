@@ -9,7 +9,7 @@
 #include "pki.h"
 
 #define MAX_BGX_PKIND	16
-#define MAX_LBK_PKIND	16
+#define MAX_LBK_PKIND	19
 #define MAX_SDP_PKIND	16
 
 #define BGX_PKIND_BASE	1

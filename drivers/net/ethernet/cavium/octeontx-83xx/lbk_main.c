@@ -27,7 +27,8 @@
 #define LBK_DEV_PER_CPU		BIT(LBK_NODE_SHIFT)
 #define LBK_DEV_MASK		(LBK_DEV_PER_CPU - 1)
 #define LBK0_MAX_PORTS      16
-#define LBK1_MAX_PORTS      1
+#define LBK1_MAX_PORTS      4
+#define LBK2_MAX_PORTS      4
 /* 16 ports in lbk0 device and 1 port in lbk1/lbk2 device */
 #define LBK_MAX_PORTS		(LBK0_MAX_PORTS + LBK1_MAX_PORTS)
 #define LBK_INVALID_ID		(-1)
@@ -72,23 +73,32 @@ struct lbkpf {
 static DEFINE_MUTEX(octeontx_lbk_lock);
 static LIST_HEAD(octeontx_lbk_devices);
 static struct octtx_lbk_port octeontx_lbk_ports[LBK_MAX_PORTS] = {
-	{.glb_port_idx = 0, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 1, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 2, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 3, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 4, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 5, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 6, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 7, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 8, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 9, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 10, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 11, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 12, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 13, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 14, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 15, .domain_id = LBK_INVALID_ID},
-	{.glb_port_idx = 16, .domain_id = LBK_INVALID_ID}
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 1, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 2, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 3, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 4, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 5, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 6, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 7, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 8, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 9, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 10,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 11,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 12,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 13,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 14,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PP_BASE_IDX + 15,
+		.domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PN_BASE_IDX, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PN_BASE_IDX + 1, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PN_BASE_IDX + 2, .domain_id = LBK_INVALID_ID},
+	{.glb_port_idx = LBK_PORT_PN_BASE_IDX + 3, .domain_id = LBK_INVALID_ID}
 };
 
 /* Interface with Thunder NIC driver */
@@ -263,12 +273,14 @@ int lbk_port_start(struct octtx_lbk_port *port)
 	int rc, pkind, i;
 	struct lbkpf *lbk;
 
-	if (port->glb_port_idx == LBK_PORT_PN_BASE_IDX) {
+	if (port->glb_port_idx >= LBK_PORT_PN_BASE_IDX) {
 		rc = thlbk->port_start();
 		if (rc)
 			return -EIO;
+		/* LBK channel to set PKIND for LBK1/2 port */
+		i = port->glb_port_idx % LBK_PORT_PN_BASE_IDX;
+		/* All LBK1/2 ports use same PKIND */
 		pkind = thlbk->get_port_pkind();
-		i = 0; /* LBK channel to set PKIND for LBK1/2 port */
 	} else {
 		pkind = port->pkind;
 		/* LBK channel to set PKIND for LBK0 port */
@@ -482,6 +494,7 @@ static int lbk_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	struct lbkpf *lbk;
 	u64 ioaddr;
 	int err, node;
+	int i;
 
 	/* Setup LBK Device */
 	lbk = devm_kzalloc(dev, sizeof(*lbk), GFP_KERNEL);
@@ -537,16 +550,20 @@ static int lbk_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	} else if (lbk->iconn == LBK_CONNECT_E_PKI &&
 			lbk->oconn == LBK_CONNECT_E_NIC) {
 		/* LBK1/LBK2 has one port at index 16 */
-		port = &octeontx_lbk_ports[LBK_PORT_PN_BASE_IDX];
-		port->ilbk = lbk_index_from_id(lbk->id);
-		port->ilbk_base_chan = LBK_BASE_CHAN(port->ilbk);
-		port->ilbk_num_chans = LBK_NUM_CHANS;
+		for (i = 0; i < LBK1_MAX_PORTS; i++) {
+			port = &octeontx_lbk_ports[LBK_PORT_PN_BASE_IDX + i];
+			port->ilbk = lbk_index_from_id(lbk->id);
+			port->ilbk_base_chan = LBK_BASE_CHAN(port->ilbk) + i;
+			port->ilbk_num_chans = 1;
+		}
 	} else if (lbk->iconn == LBK_CONNECT_E_NIC &&
 			lbk->oconn == LBK_CONNECT_E_PKO) {
-		port = &octeontx_lbk_ports[LBK_PORT_PN_BASE_IDX];
-		port->olbk = lbk_index_from_id(lbk->id);
-		port->olbk_base_chan = LBK_BASE_CHAN(port->olbk);
-		port->olbk_num_chans = LBK_NUM_CHANS;
+		for (i = 0; i < LBK2_MAX_PORTS; i++) {
+			port = &octeontx_lbk_ports[LBK_PORT_PN_BASE_IDX + i];
+			port->olbk = lbk_index_from_id(lbk->id);
+			port->olbk_base_chan = LBK_BASE_CHAN(port->olbk) + i;
+			port->olbk_num_chans = 1;
+		}
 	} else {
 		/* LBK:NIC-to-NIC is not used.*/
 		return 0;
