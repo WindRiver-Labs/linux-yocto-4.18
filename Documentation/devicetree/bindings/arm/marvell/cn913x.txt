@@ -11,35 +11,21 @@ SoC:
       when the SoC being used is the CN9130
 
 Boards:
-   - "marvell,cn9130-db-A"
+   - "marvell,cn9130-db-A", "marvell,cn9130-db-B", "marvell,cn9130-db-D"
       when the board being used is the OcteonTX2 CN9130 Development board with
-      Setup A.
+      Setup A, B or D.
 
-   - "marvell,cn9130-db-B"
-      when the board being used is the OcteonTX2 CN9130 Development board with
-      Setup B.
+   - "marvell,cn9130-crb-A", "marvell,cn9130-crb-B"
+      when the board being used is the OcteonTX2 CN9130 crb board with Setup A
+      or B.
 
-   - "marvell,cn9130-crb-A"
-      when the board being used is the OcteonTX2 CN9130 crb board with Setup A.
-
-   - "marvell,cn9130-crb-B"
-      when the board being used is the OcteonTX2 CN9130 crb board with Setup B.
-
-   - "marvell,cn9131-db-A"
+   - "marvell,cn9131-db-A", "marvell,cn9131-db-B", "marvell,cn9131-db-D"
       when the board being used is the OcteonTX2 CN9131 Development board with
-      Setup A.
+      Setup A, B or D.
 
-   - "marvell,cn9131-db-B"
-      when the board being used is the OcteonTX2 CN9131 Development board with
-      Setup B.
-
-   - "marvell,cn9132-db-A", "marvell,cn9132-db"
-      when the board being used is the OcteonTX2 CN9132 Development board with
-      Setup A.
-
-   - "marvell,cn9132-db-B"
-      when the board being used is the OcteonTX2 CN9132 Development board with
-      Setup B.
+   - "marvell,cn9132-db-A", "marvell,cn9132-db-B", "marvell,cn9132-db-D",
+     "marvell,cn9132-db" when the board being used is the OcteonTX2 CN9132
+     Development board with Setup A, B or D.
 
 Example:
 
