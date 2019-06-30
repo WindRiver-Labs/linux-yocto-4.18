@@ -171,7 +171,12 @@ static void xenon_reset_exit(struct sdhci_host *host,
 	/* Disable tuning request and auto-retuning again */
 	xenon_retune_setup(host);
 
-	xenon_set_acg(host, true);
+	/*
+	 * The ACG should be turned off at init time, in order to solve
+	 * 1.8v regulator stability problem. it turned On in later stage.
+	 * ACG is Automatic Clock Gating used for Power Reduction.
+	 */
+	xenon_set_acg(host, false);
 
 	xenon_set_sdclk_off_idle(host, sdhc_id, false);
 
