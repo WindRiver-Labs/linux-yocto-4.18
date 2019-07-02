@@ -188,7 +188,19 @@ static struct platform_driver mvebu_pic_driver = {
 		.of_match_table = mvebu_pic_of_match,
 	},
 };
-module_platform_driver(mvebu_pic_driver);
+
+static int __init mvebu_pic_driver_init(void)
+{
+	return platform_driver_register(&mvebu_pic_driver);
+}
+
+static void __exit mvebu_pic_driver_exit(void)
+{
+	return platform_driver_unregister(&mvebu_pic_driver);
+}
+
+arch_initcall(mvebu_pic_driver_init)
+module_exit(mvebu_pic_driver_exit)
 
 MODULE_AUTHOR("Yehuda Yitschak <yehuday@marvell.com>");
 MODULE_AUTHOR("Thomas Petazzoni <thomas.petazzoni@free-electrons.com>");
