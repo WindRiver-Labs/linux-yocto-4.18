@@ -2152,6 +2152,31 @@ static int ravb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void ravb_shutdown(struct platform_device *pdev)
+{
+	struct net_device *ndev = platform_get_drvdata(pdev);
+	struct ravb_private *priv = netdev_priv(ndev);
+
+	/* Stop PTP Clock driver */
+	if (priv->chip_id != RCAR_GEN2)
+		ravb_ptp_stop(ndev);
+
+	dma_free_coherent(ndev->dev.parent, priv->desc_bat_size, priv->desc_bat,
+			  priv->desc_bat_dma);
+	/* Set reset mode */
+	ravb_write(ndev, CCC_OPC_RESET, CCC);
+	pm_runtime_put_sync(&pdev->dev);
+	unregister_netdev(ndev);
+	netif_napi_del(&priv->napi[RAVB_NC]);
+	netif_napi_del(&priv->napi[RAVB_BE]);
+	ravb_mdio_release(priv);
+	pm_runtime_disable(&pdev->dev);
+	free_netdev(ndev);
+	platform_set_drvdata(pdev, NULL);
+
+	return;
+}
+
 static int ravb_wol_setup(struct net_device *ndev)
 {
 	struct ravb_private *priv = netdev_priv(ndev);
@@ -2289,6 +2314,7 @@ static struct platform_driver ravb_driver = {
 		.pm	= &ravb_dev_pm_ops,
 		.of_match_table = ravb_match_table,
 	},
+	.shutdown	= ravb_shutdown,
 };
 
 module_platform_driver(ravb_driver);
