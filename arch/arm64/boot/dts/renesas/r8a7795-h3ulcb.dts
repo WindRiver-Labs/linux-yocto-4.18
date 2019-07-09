@@ -43,14 +43,16 @@
 		/* device specific region for Lossy Decompression */
 		lossy_decompress: linux,lossy_decompress@54000000 {
 			no-map;
-			reg = <0x00000000 0x54000000 0x0 0x03000000>;
+			alloc-ranges = <0x0 0x6d000000 0x0 0x03000000>;
+			size = <0x0 0x03000000>;
 		};
 
 		/* global autoconfigured region for contiguous allocations */
 		linux,cma@57000000 {
 			compatible = "shared-dma-pool";
 			reusable;
-			reg = <0x00000000 0x57000000 0x0 0x19000000>;
+			alloc-ranges = <0x0 0x70000000 0x0 0x8000000>;
+			size = <0x0 0x8000000>;
 			linux,cma-default;
 		};
 
@@ -58,7 +60,8 @@
 		mmp_reserved: linux,multimedia@70000000 {
 			compatible = "shared-dma-pool";
 			reusable;
-			reg = <0x00000000 0x70000000 0x0 0x10000000>;
+			alloc-ranges = <0x0 0x78000000 0x0 0x8000000>;
+			size = <0x0 0x8000000>;
 		};
 	};
 
