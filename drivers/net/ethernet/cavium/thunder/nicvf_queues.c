@@ -214,18 +214,11 @@ ret:
 	} else {
 		/* HW will ensure data coherency, CPU sync not required */
 
-#ifdef CONFIG_CAVIUM_IPFWD_OFFLOAD
 		*rbuf = (u64)dma_map_page_attrs(&nic->pdev->dev, nic->rb_page,
-			nic->rb_page_offset + CAVIUM_IPFWD_OFFLOAD_HEADROOM,
-						buf_len,
+			nic->rb_page_offset + NICVF_HEADROOM,
+						buf_len - NICVF_HEADROOM,
 						DMA_FROM_DEVICE,
 						DMA_ATTR_SKIP_CPU_SYNC);
-#else
-		*rbuf = (u64)dma_map_page_attrs(&nic->pdev->dev, nic->rb_page,
-						nic->rb_page_offset, buf_len,
-						DMA_FROM_DEVICE,
-						DMA_ATTR_SKIP_CPU_SYNC);
-#endif
 		if (dma_mapping_error(&nic->pdev->dev, (dma_addr_t)*rbuf)) {
 			if (!nic->rb_page_offset)
 				__free_pages(nic->rb_page, 0);
@@ -248,14 +241,7 @@ static struct sk_buff *nicvf_rb_ptr_to_skb(struct nicvf *nic,
 	struct sk_buff *skb;
 
 	data = phys_to_virt(rb_ptr);
-
-#ifdef CONFIG_CAVIUM_IPFWD_OFFLOAD
-	/* This extra headroom has been allocated in nicvf_alloc_rcv_buffer
-	 * and memory pointer has been moved up already.
-	 * Move the pointer down so extra headroom can be usd.
-	 */
-	data -= CAVIUM_IPFWD_OFFLOAD_HEADROOM;
-#endif
+	data -= NICVF_HEADROOM;
 
 	/* Now build an skb to give to stack */
 	skb = build_skb(data, RCV_FRAG_LEN);
@@ -264,10 +250,7 @@ static struct sk_buff *nicvf_rb_ptr_to_skb(struct nicvf *nic,
 		return NULL;
 	}
 
-#ifdef CONFIG_CAVIUM_IPFWD_OFFLOAD
-	skb_reserve(skb, CAVIUM_IPFWD_OFFLOAD_HEADROOM);
-#endif
-
+	skb_reserve(skb, NICVF_HEADROOM);
 	prefetch(skb->data);
 	return skb;
 }
