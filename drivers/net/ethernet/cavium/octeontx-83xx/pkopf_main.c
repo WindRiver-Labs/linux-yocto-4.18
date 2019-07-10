@@ -923,15 +923,12 @@ static void pko_pq_init(struct pkopf *pko, int vf, int mac_num, u32 max_frame)
 	u64 queue_base = vf * 8;
 	u64 reg;
 
-	if (mac_num != SDP_MAC_NUM) { /* BGX MAC specific configuration */
-		/* If single child PRIORITY must be 0xF */
-		reg = (mac_num << 16) |
-			(queue_base << 32) |
-			(0xFull << 1);
-	} else { /* SDP MAC specific configuration */
-		reg = (mac_num << 16) |
-			(queue_base << 32);
-	}
+	/* Non-BGX links perform DDWR on prio 0 */
+	reg = (mac_num << 16) | (queue_base << 32);
+	/* BGX MACs have only a single child, so PRIO must be 0xF */
+	if (mac_num > SDP_MAC_NUM)
+		reg |= 0xFull << 1;
+
 	pko_reg_write(pko, PKO_PF_L1_SQX_TOPOLOGY(mac_num), reg);
 
 	dev_dbg(&pko->pdev->dev, "PKO: VF[%d] L1_SQ[%d]_TOPOLOGY ::0x%llx\n",
