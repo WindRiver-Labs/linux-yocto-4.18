@@ -7070,6 +7070,14 @@ static void mvpp22_tx_fifo_init_param(struct platform_device *pdev,
 			goto error;
 	}
 
+	/* The physical port requires minimum 3kB */
+	for_each_set_bit(port, &port_map, MVPP2_LOOPBACK_PORT_INDEX) {
+		size = MVPP22_TX_FIFO_EXTRA_PARAM_SIZE(port, tx_fifo_map);
+		if (size < MVPP22_TX_FIFO_DATA_SIZE_MIN ||
+		    size > MVPP22_TX_FIFO_DATA_SIZE_MAX)
+			goto error;
+	}
+
 	/* Assign remaining TX FIFO space among all active ports. */
 	size_remainder = MVPP22_TX_FIFO_DATA_SIZE_18KB;
 	for (port = 0; port < MVPP2_LOOPBACK_PORT_INDEX; port++) {
