@@ -921,11 +921,21 @@ static void rcar_msi_teardown_irq(struct msi_controller *chip, unsigned int irq)
 	rcar_msi_free(msi, d->hwirq);
 }
 
+static void rcar_msi_mask_irq(struct irq_data *data)
+{
+	struct msi_desc *desc = irq_data_get_msi_desc(data);
+
+	if (!desc)
+		return;
+
+	pci_msi_mask_irq(data);
+}
+
 static struct irq_chip rcar_msi_irq_chip = {
 	.name = "R-Car PCIe MSI",
 	.irq_enable = pci_msi_unmask_irq,
 	.irq_disable = pci_msi_mask_irq,
-	.irq_mask = pci_msi_mask_irq,
+	.irq_mask = rcar_msi_mask_irq,
 	.irq_unmask = pci_msi_unmask_irq,
 };
 
