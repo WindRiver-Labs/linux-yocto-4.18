@@ -2818,11 +2818,36 @@ static void rvu_remove(struct pci_dev *pdev)
 	devm_kfree(&pdev->dev, rvu);
 }
 
+static void rvu_shutdown(struct pci_dev *pdev)
+{
+	struct rvu *rvu = pci_get_drvdata(pdev);
+
+	rvu_reset_msix(rvu);
+}
+
 static struct pci_driver rvu_driver = {
 	.name = DRV_NAME,
 	.id_table = rvu_id_table,
 	.probe = rvu_probe,
 	.remove = rvu_remove,
+	.shutdown = rvu_shutdown,
+};
+
+static int rvu_reset(struct notifier_block *self, unsigned long v, void *p)
+{
+	struct pci_dev *pdev = NULL;
+	struct rvu *rvu;
+
+	while ((pdev = pci_get_device(PCI_VENDOR_ID_CAVIUM,
+				     PCI_DEVID_OCTEONTX2_RVU_AF, pdev))) {
+		rvu = pci_get_drvdata(pdev);
+		rvu_reset_msix(rvu);
+	}
+	return 0;
+}
+
+static struct notifier_block rvu_reset_notifer = {
+	.notifier_call = rvu_reset
 };
 
 static int __init rvu_init_module(void)
@@ -2843,6 +2868,8 @@ static int __init rvu_init_module(void)
 	if (err < 0)
 		goto rvu_err;
 
+	atomic_notifier_chain_register(&panic_notifier_list,
+				       &rvu_reset_notifer);
 	return 0;
 rvu_err:
 	pci_unregister_driver(&ptp_driver);
