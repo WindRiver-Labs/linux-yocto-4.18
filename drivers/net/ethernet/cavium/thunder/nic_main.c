@@ -72,7 +72,7 @@ struct nicpf {
 	u8			num_vec;
 	bool			irq_allocated[NIC_PF_MSIX_VECTORS];
 	char			irq_name[NIC_PF_MSIX_VECTORS][20];
-	int			lbk_vf[NUM_LBK_IFS];
+	u16			lbk_vf[NUM_LBK_IFS];
 };
 
 /* Supported devices */
@@ -248,6 +248,11 @@ static void nic_create_lbk_interface(struct nicpf *nic)
 	u64 lmac_credit;
 	u16 sdevid;
 	int i, num_lbk_ifs, numvfs;
+
+	nic->lbk_vf[0] = INVALID_VF; /* Default No lbk interface assigned*/
+	nic->lbk_vf[1] = INVALID_VF; /* Default No lbk interface assigned*/
+	nic->lbk_vf[2] = INVALID_VF; /* Default No lbk interface assigned*/
+	nic->lbk_vf[3] = INVALID_VF; /* Default No lbk interface assigned*/
 
 	pci_read_config_word(nic->pdev, PCI_SUBSYSTEM_ID, &sdevid);
 	if (sdevid != PCI_SUBSYS_DEVID_83XX_NIC_PF)
@@ -1721,10 +1726,6 @@ static int nic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 
 	nic->node = nic_get_node_id(pdev);
-	nic->lbk_vf[0] = -1; /* Default No lbk interface assigned*/
-	nic->lbk_vf[1] = -1; /* Default No lbk interface assigned*/
-	nic->lbk_vf[2] = -1; /* Default No lbk interface assigned*/
-	nic->lbk_vf[3] = -1; /* Default No lbk interface assigned*/
 
 	/* Get HW capability info */
 	nic_get_hw_info(nic);
