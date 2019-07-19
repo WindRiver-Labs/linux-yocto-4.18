@@ -1462,8 +1462,11 @@ static void otx2_free_hw_resources(struct otx2_nic *pf)
 		cq = &qset->cq[qidx];
 		cqe_count = otx2_read64(pf, NIX_LF_CINTX_CNT(cq->cint_idx));
 		cqe_count &= 0xFFFFFFFF;
-		if (cqe_count)
+		if (cqe_count) {
+			local_bh_disable();
 			otx2_napi_handler(cq, pf, cqe_count);
+			local_bh_enable();
+		}
 	}
 
 	/* Free RQ buffer pointers*/
