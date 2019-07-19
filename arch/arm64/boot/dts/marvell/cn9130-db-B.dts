@@ -26,6 +26,12 @@
 		device_type = "memory";
 		reg = <0x0 0x0 0x0 0x80000000>;
 	};
+
+	mmcoops {
+		compatible = "mmcoops";
+		start-offset = <14680064>;	/* 14680064 * 512B = 7GB */
+		size = <20>;			/* 20 * 512B = 10KiB */
+	};
 };
 
 &uart0 {
