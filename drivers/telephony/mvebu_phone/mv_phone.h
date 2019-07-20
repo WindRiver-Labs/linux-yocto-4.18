@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/mbus.h>
 #include <linux/module.h>
@@ -171,6 +172,11 @@ struct mv_phone_dev {
 
 	/* TDMMC silicon revision */
 	enum tdmmc_ip_version tdmmc_ip_ver;
+
+	/* Tasklets */
+	struct tasklet_struct tdm_if_rx_tasklet;
+	struct tasklet_struct tdm_if_tx_tasklet;
+	struct tasklet_struct tdm2c_if_reset_tasklet;
 };
 
 /* This enumerator defines the Marvell Units ID */

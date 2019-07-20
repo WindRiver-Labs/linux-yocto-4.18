@@ -18,23 +18,8 @@
 
 #define DRV_NAME "mvebu_phone"
 
-/* TDM Interrupt Service Routine */
-static irqreturn_t tdm_if_isr(int irq, void *dev_id);
-
-/* Rx/Tx Tasklets  */
-static void tdm2c_if_pcm_rx_process(unsigned long arg);
-static void tdmmc_if_pcm_rx_process(unsigned long arg);
-static void tdm2c_if_pcm_tx_process(unsigned long arg);
-static void tdmmc_if_pcm_tx_process(unsigned long arg);
-static void tdm2c_if_reset_channels(unsigned long arg);
-
 /* Globals */
 static struct mv_phone_dev *priv;
-static DECLARE_TASKLET(tdm2c_if_rx_tasklet, tdm2c_if_pcm_rx_process, 0);
-static DECLARE_TASKLET(tdmmc_if_rx_tasklet, tdmmc_if_pcm_rx_process, 0);
-static DECLARE_TASKLET(tdm2c_if_tx_tasklet, tdm2c_if_pcm_tx_process, 0);
-static DECLARE_TASKLET(tdmmc_if_tx_tasklet, tdmmc_if_pcm_tx_process, 0);
-static DECLARE_TASKLET(tdm2c_if_reset_tasklet, tdm2c_if_reset_channels, 0);
 
 /* Statistic printout in userspace via /proc/tdm */
 static int mv_phone_status_show(struct seq_file *m, void *v)
@@ -253,6 +238,286 @@ static int tdm_hw_init(struct mv_phone_params *tdm_params)
 	return ret;
 }
 
+/* Main interrupt handler and RX/TX tasklet callback routines */
+
+/* Common interrupt top-half handler */
+static irqreturn_t tdm_if_isr(int irq, void *dev_id)
+{
+	struct mv_phone_intr_info tdm_int_info;
+	u32 int_type;
+	int ret = 0;
+
+	/* Extract interrupt information from low level ISR */
+	switch (priv->tdm_type) {
+	case MV_TDM_UNIT_TDM2C:
+		ret = tdm2c_intr_low(&tdm_int_info);
+		break;
+	case MV_TDM_UNIT_TDMMC:
+		tdmmc_intr_low(&tdm_int_info);
+		break;
+	default:
+		dev_err(&priv->parent->dev,
+			"%s: undefined TDM type\n", __func__);
+		return IRQ_NONE;
+	}
+
+	int_type = tdm_int_info.int_type;
+
+	/* Nothing to do - return */
+	if (int_type == MV_EMPTY_INT)
+		return IRQ_HANDLED;
+
+	/* Handle ZSI interrupts */
+	if (mv_phone_get_slic_board_type() == MV_BOARD_SLIC_ZSI_ID)
+		zarlink_if_zsi_interrupt();
+	/* Handle ISI interrupts */
+	else if (mv_phone_get_slic_board_type() == MV_BOARD_SLIC_ISI_ID)
+		silabs_if_isi_interrupt();
+
+	if (ret && !priv->pcm_stop_status) {
+		priv->pcm_stop_status = true;
+
+		/*
+		 * If Rx/Tx tasklets are already scheduled,
+		 * let them do the work.
+		 */
+		if (!priv->rx_buff && !priv->tx_buff) {
+			dev_dbg(priv->dev, "Stopping the TDM\n");
+			tdm2c_if_pcm_stop();
+			priv->pcm_stop_flag = false;
+			tasklet_hi_schedule(&priv->tdm2c_if_reset_tasklet);
+		} else {
+			dev_dbg(priv->dev, "Tasklet already running\n");
+			priv->pcm_stop_flag = true;
+		}
+	}
+
+	/* Restarting PCM, skip Rx/Tx handling */
+	if (priv->pcm_stop_status)
+		goto skip_rx_tx;
+
+	/* Support multiple interrupt handling */
+	/* RX interrupt */
+	if (int_type & MV_RX_INT) {
+		if (priv->rx_buff) {
+			priv->rx_miss++;
+			dev_dbg(priv->dev, "%s: Rx buffer not ready\n",
+				__func__);
+		} else {
+			priv->rx_buff = tdm_int_info.tdm_rx_buff;
+			/* Schedule Rx processing within SOFT_IRQ context */
+			dev_dbg(priv->dev, "%s: schedule Rx tasklet\n",
+				__func__);
+			tasklet_hi_schedule(&priv->tdm_if_rx_tasklet);
+		}
+	}
+
+	/* TX interrupt */
+	if (int_type & MV_TX_INT) {
+		if (priv->tx_buff) {
+			priv->tx_miss++;
+			dev_dbg(priv->dev, "%s: Tx buffer not ready\n",
+				__func__);
+		} else {
+			priv->tx_buff = tdm_int_info.tdm_tx_buff;
+			/* Schedule Tx processing within SOFT_IRQ context */
+			dev_dbg(priv->dev, "%s: schedule Tx tasklet\n",
+				__func__);
+			tasklet_hi_schedule(&priv->tdm_if_tx_tasklet);
+		}
+	}
+
+
+	/* TDM2CH PCM channels stop indication */
+	if ((int_type & MV_CHAN_STOP_INT) && (tdm_int_info.data == 4)) {
+		dev_dbg(priv->dev, "%s: Received MV_CHAN_STOP_INT indication\n",
+			__func__);
+		priv->pcm_is_stopping = false;
+		if (priv->pcm_start_stop_state) {
+			dev_dbg(priv->dev, "%s: Resetting controller\n",
+				__func__);
+			priv->pcm_enable = false;
+			/* Issue SW reset */
+			tasklet_hi_schedule(&priv->tdm2c_if_reset_tasklet);
+		}
+	}
+
+skip_rx_tx:
+	/* PHONE interrupt, Lantiq specific */
+	if (int_type & MV_PHONE_INT)
+		drv_dxt_if_signal_interrupt();
+
+	/* ERROR interrupt */
+	if (int_type & MV_RX_ERROR_INT)
+		priv->rx_over++;
+
+	if (int_type & MV_TX_ERROR_INT)
+		priv->tx_under++;
+
+	return IRQ_HANDLED;
+}
+
+/* Rx tasklets */
+static void tdm2c_if_pcm_rx_process(unsigned long arg)
+{
+	unsigned long flags;
+
+	if (priv->pcm_enable) {
+		if (!priv->rx_buff) {
+			dev_warn(priv->dev, "%s: Error, empty Rx processing\n",
+				 __func__);
+			return;
+		}
+
+		/* Fill TDM Rx aggregated buffer */
+		if (tdm2c_rx(priv->rx_buff) == 0)
+			/* Dispatch Rx handler */
+			tal_mmp_rx(priv->rx_buff, priv->buff_size);
+		else
+			dev_warn(priv->dev, "%s: Could not fill Rx buffer\n",
+				 __func__);
+	}
+
+	spin_lock_irqsave(&priv->lock, flags);
+	/* Clear Rx buff for next iteration */
+	priv->rx_buff = NULL;
+	spin_unlock_irqrestore(&priv->lock, flags);
+
+	if (priv->pcm_stop_flag && !priv->tx_buff) {
+		dev_dbg(priv->dev, "Stopping TDM from Rx tasklet\n");
+		tdm2c_if_pcm_stop();
+		spin_lock_irqsave(&priv->lock, flags);
+		priv->pcm_stop_flag = false;
+		spin_unlock_irqrestore(&priv->lock, flags);
+		tasklet_hi_schedule(&priv->tdm2c_if_reset_tasklet);
+	}
+}
+
+static void tdmmc_if_pcm_rx_process(unsigned long arg)
+{
+	unsigned long flags;
+
+	if (priv->pcm_enable) {
+		if (!priv->rx_buff) {
+			dev_warn(priv->dev, "%s: Error, empty Rx processing\n",
+				 __func__);
+			return;
+		}
+
+		if (tdmmc_rx(priv->rx_buff) == 0)
+			/* Dispatch Rx handler */
+			tal_mmp_rx(priv->rx_buff, priv->buff_size);
+		else
+			dev_warn(priv->dev, "%s: could not fill Rx buffer\n",
+				 __func__);
+	}
+
+	spin_lock_irqsave(&priv->lock, flags);
+	/* Clear priv->rx_buff for next iteration */
+	priv->rx_buff = NULL;
+	spin_unlock_irqrestore(&priv->lock, flags);
+}
+
+/* Tx tasklets */
+static void tdm2c_if_pcm_tx_process(unsigned long arg)
+{
+	unsigned long flags;
+
+	if (priv->pcm_enable) {
+		if (!priv->tx_buff) {
+			dev_warn(priv->dev, "%s: Error, empty Tx processing\n",
+				 __func__);
+			return;
+		}
+
+		/* Dispatch Tx handler */
+		tal_mmp_tx(priv->tx_buff, priv->buff_size);
+
+		if (!priv->test_enable) {
+			/* Fill Tx aggregated buffer */
+			if (tdm2c_tx(priv->tx_buff) != 0)
+				dev_warn(priv->dev,
+					 "%s: Could not fill Tx buffer\n",
+					 __func__);
+		}
+	}
+
+	spin_lock_irqsave(&priv->lock, flags);
+	/* Clear Tx buff for next iteration */
+	priv->tx_buff = NULL;
+	spin_unlock_irqrestore(&priv->lock, flags);
+
+	if (priv->pcm_stop_flag && !priv->rx_buff) {
+		dev_dbg(priv->dev, "Stopping TDM from Tx tasklet\n");
+		tdm2c_if_pcm_stop();
+		spin_lock_irqsave(&priv->lock, flags);
+		priv->pcm_stop_flag = false;
+		spin_unlock_irqrestore(&priv->lock, flags);
+		tasklet_hi_schedule(&priv->tdm2c_if_reset_tasklet);
+	}
+}
+
+static void tdmmc_if_pcm_tx_process(unsigned long arg)
+{
+	unsigned long flags;
+
+	if (priv->pcm_enable) {
+		if (!priv->tx_buff) {
+			dev_warn(priv->dev, "%s: Error, empty Tx processing\n",
+				 __func__);
+			return;
+		}
+
+		/* Dispatch Tx handler */
+		tal_mmp_tx(priv->tx_buff, priv->buff_size);
+
+		if (!priv->test_enable) {
+			if (tdmmc_tx(priv->tx_buff) != 0)
+				dev_warn(priv->dev,
+					 "%s: Could not fill Tx buffer\n",
+					 __func__);
+		}
+	}
+
+	spin_lock_irqsave(&priv->lock, flags);
+	/* Clear Tx buff for next iteration */
+	priv->tx_buff = NULL;
+	spin_unlock_irqrestore(&priv->lock, flags);
+}
+
+/* TDM2C restart channel callback */
+static void tdm2c_if_reset_channels(unsigned long arg)
+{
+	u32 max_poll = 0;
+	unsigned long flags;
+
+	/* Wait for all channels to stop  */
+	while (((readl(priv->tdm_base + CH_ENABLE_REG(0)) & CH_RXTX_EN_MASK) ||
+		(readl(priv->tdm_base + CH_ENABLE_REG(1)) & CH_RXTX_EN_MASK)) &&
+		(max_poll < MV_TDM_STOP_POLLING_TIMEOUT)) {
+
+		mdelay(1);
+		max_poll++;
+	}
+
+	dev_dbg(priv->dev, "Finished polling on channels disable\n");
+	if (max_poll >= MV_TDM_STOP_POLLING_TIMEOUT) {
+		writel(0, priv->tdm_base + CH_ENABLE_REG(0));
+		writel(0, priv->tdm_base + CH_ENABLE_REG(1));
+		dev_warn(priv->dev, "\n%s: Channels disabling timeout (%dms)\n",
+			 __func__, MV_TDM_STOP_POLLING_TIMEOUT);
+		priv->pcm_stop_fail++;
+		mdelay(10);
+	}
+
+	spin_lock_irqsave(&priv->lock, flags);
+	priv->pcm_is_stopping = false;
+	spin_unlock_irqrestore(&priv->lock, flags);
+
+	/* Restart channels */
+	tdm2c_if_pcm_start();
+}
+
 /* Main TDM initialization routine */
 int tdm_if_init(struct tal_params *tal_params)
 {
@@ -465,291 +730,7 @@ static struct tal_if tdmmc_if = {
 	.stats_get	= tdm_if_stats_get,
 };
 
-/* Interrupt handling and tasklet callbacks */
-
-/* Common interrupt top-half handler */
-static irqreturn_t tdm_if_isr(int irq, void *dev_id)
-{
-	struct mv_phone_intr_info tdm_int_info;
-	struct tasklet_struct *tdm_rx_tasklet = NULL;
-	struct tasklet_struct *tdm_tx_tasklet = NULL;
-	u32 int_type;
-	int ret = 0;
-
-	/* Extract interrupt information from low level ISR */
-	switch (priv->tdm_type) {
-	case MV_TDM_UNIT_TDM2C:
-		ret = tdm2c_intr_low(&tdm_int_info);
-		tdm_rx_tasklet = &tdm2c_if_rx_tasklet;
-		tdm_tx_tasklet = &tdm2c_if_tx_tasklet;
-		break;
-	case MV_TDM_UNIT_TDMMC:
-		tdmmc_intr_low(&tdm_int_info);
-		tdm_rx_tasklet = &tdmmc_if_rx_tasklet;
-		tdm_tx_tasklet = &tdmmc_if_tx_tasklet;
-		break;
-	default:
-		dev_err(&priv->parent->dev,
-			"%s: undefined TDM type\n", __func__);
-		return IRQ_NONE;
-	}
-
-	int_type = tdm_int_info.int_type;
-
-	/* Nothing to do - return */
-	if (int_type == MV_EMPTY_INT)
-		return IRQ_HANDLED;
-
-	/* Handle ZSI interrupts */
-	if (mv_phone_get_slic_board_type() == MV_BOARD_SLIC_ZSI_ID)
-		zarlink_if_zsi_interrupt();
-	/* Handle ISI interrupts */
-	else if (mv_phone_get_slic_board_type() == MV_BOARD_SLIC_ISI_ID)
-		silabs_if_isi_interrupt();
-
-	if (ret && !priv->pcm_stop_status)	{
-		priv->pcm_stop_status = true;
-
-		/*
-		 * If Rx/Tx tasklets are already scheduled,
-		 * let them do the work.
-		 */
-		if (!priv->rx_buff && !priv->tx_buff) {
-			dev_dbg(priv->dev, "Stopping the TDM\n");
-			tdm2c_if_pcm_stop();
-			priv->pcm_stop_flag = false;
-			tasklet_hi_schedule(&tdm2c_if_reset_tasklet);
-		} else {
-			dev_dbg(priv->dev, "Tasklet already running\n");
-			priv->pcm_stop_flag = true;
-		}
-	}
-
-	/* Restarting PCM, skip Rx/Tx handling */
-	if (priv->pcm_stop_status)
-		goto skip_rx_tx;
-
-	/* Support multiple interrupt handling */
-	/* RX interrupt */
-	if (int_type & MV_RX_INT) {
-		if (priv->rx_buff) {
-			priv->rx_miss++;
-			dev_dbg(priv->dev, "%s: Rx buffer not ready\n",
-				__func__);
-		} else {
-			priv->rx_buff = tdm_int_info.tdm_rx_buff;
-			/* Schedule Rx processing within SOFT_IRQ context */
-			dev_dbg(priv->dev, "%s: schedule Rx tasklet\n",
-				__func__);
-			tasklet_hi_schedule(tdm_rx_tasklet);
-		}
-	}
-
-	/* TX interrupt */
-	if (int_type & MV_TX_INT) {
-		if (priv->tx_buff) {
-			priv->tx_miss++;
-			dev_dbg(priv->dev, "%s: Tx buffer not ready\n",
-				__func__);
-		} else {
-			priv->tx_buff = tdm_int_info.tdm_tx_buff;
-			/* Schedule Tx processing within SOFT_IRQ context */
-			dev_dbg(priv->dev, "%s: schedule Tx tasklet\n",
-				__func__);
-			tasklet_hi_schedule(tdm_tx_tasklet);
-		}
-	}
-
-
-	/* TDM2CH PCM channels stop indication */
-	if ((int_type & MV_CHAN_STOP_INT) && (tdm_int_info.data == 4)) {
-		dev_dbg(priv->dev, "%s: Received MV_CHAN_STOP_INT indication\n",
-			__func__);
-		priv->pcm_is_stopping = false;
-		if (priv->pcm_start_stop_state) {
-			dev_dbg(priv->dev, "%s: Resetting controller\n",
-				__func__);
-			priv->pcm_enable = false;
-			/* Issue SW reset */
-			tasklet_hi_schedule(&tdm2c_if_reset_tasklet);
-		}
-	}
-
-skip_rx_tx:
-	/* PHONE interrupt, Lantiq specific */
-	if (int_type & MV_PHONE_INT)
-		drv_dxt_if_signal_interrupt();
-
-	/* ERROR interrupt */
-	if (int_type & MV_RX_ERROR_INT)
-		priv->rx_over++;
-
-	if (int_type & MV_TX_ERROR_INT)
-		priv->tx_under++;
-
-	return IRQ_HANDLED;
-}
-
-/* Rx tasklets */
-static void tdm2c_if_pcm_rx_process(unsigned long arg)
-{
-	unsigned long flags;
-
-	if (priv->pcm_enable) {
-		if (!priv->rx_buff) {
-			dev_warn(priv->dev, "%s: Error, empty Rx processing\n",
-				 __func__);
-			return;
-		}
-
-		/* Fill TDM Rx aggregated buffer */
-		if (tdm2c_rx(priv->rx_buff) == 0)
-			/* Dispatch Rx handler */
-			tal_mmp_rx(priv->rx_buff, priv->buff_size);
-		else
-			dev_warn(priv->dev, "%s: Could not fill Rx buffer\n",
-				 __func__);
-	}
-
-	spin_lock_irqsave(&priv->lock, flags);
-	/* Clear Rx buff for next iteration */
-	priv->rx_buff = NULL;
-	spin_unlock_irqrestore(&priv->lock, flags);
-
-	if (priv->pcm_stop_flag && !priv->tx_buff) {
-		dev_dbg(priv->dev, "Stopping TDM from Rx tasklet\n");
-		tdm2c_if_pcm_stop();
-		spin_lock_irqsave(&priv->lock, flags);
-		priv->pcm_stop_flag = false;
-		spin_unlock_irqrestore(&priv->lock, flags);
-		tasklet_hi_schedule(&tdm2c_if_reset_tasklet);
-	}
-}
-
-static void tdmmc_if_pcm_rx_process(unsigned long arg)
-{
-	unsigned long flags;
-
-	if (priv->pcm_enable) {
-		if (!priv->rx_buff) {
-			dev_warn(priv->dev, "%s: Error, empty Rx processing\n",
-				 __func__);
-			return;
-		}
-
-		if (tdmmc_rx(priv->rx_buff) == 0)
-			/* Dispatch Rx handler */
-			tal_mmp_rx(priv->rx_buff, priv->buff_size);
-		else
-			dev_warn(priv->dev, "%s: could not fill Rx buffer\n",
-				 __func__);
-	}
-
-	spin_lock_irqsave(&priv->lock, flags);
-	/* Clear priv->rx_buff for next iteration */
-	priv->rx_buff = NULL;
-	spin_unlock_irqrestore(&priv->lock, flags);
-}
-
-/* Tx tasklets */
-static void tdm2c_if_pcm_tx_process(unsigned long arg)
-{
-	unsigned long flags;
-
-	if (priv->pcm_enable) {
-		if (!priv->tx_buff) {
-			dev_warn(priv->dev, "%s: Error, empty Tx processing\n",
-				 __func__);
-			return;
-		}
-
-		/* Dispatch Tx handler */
-		tal_mmp_tx(priv->tx_buff, priv->buff_size);
-
-		if (!priv->test_enable) {
-			/* Fill Tx aggregated buffer */
-			if (tdm2c_tx(priv->tx_buff) != 0)
-				dev_warn(priv->dev,
-					 "%s: Could not fill Tx buffer\n",
-					 __func__);
-		}
-	}
-
-	spin_lock_irqsave(&priv->lock, flags);
-	/* Clear Tx buff for next iteration */
-	priv->tx_buff = NULL;
-	spin_unlock_irqrestore(&priv->lock, flags);
-
-	if (priv->pcm_stop_flag && !priv->rx_buff) {
-		dev_dbg(priv->dev, "Stopping TDM from Tx tasklet\n");
-		tdm2c_if_pcm_stop();
-		spin_lock_irqsave(&priv->lock, flags);
-		priv->pcm_stop_flag = false;
-		spin_unlock_irqrestore(&priv->lock, flags);
-		tasklet_hi_schedule(&tdm2c_if_reset_tasklet);
-	}
-}
-
-static void tdmmc_if_pcm_tx_process(unsigned long arg)
-{
-	unsigned long flags;
-
-	if (priv->pcm_enable) {
-		if (!priv->tx_buff) {
-			dev_warn(priv->dev, "%s: Error, empty Tx processing\n",
-				 __func__);
-			return;
-		}
-
-		/* Dispatch Tx handler */
-		tal_mmp_tx(priv->tx_buff, priv->buff_size);
-
-		if (!priv->test_enable) {
-			if (tdmmc_tx(priv->tx_buff) != 0)
-				dev_warn(priv->dev,
-					 "%s: Could not fill Tx buffer\n",
-					 __func__);
-		}
-	}
-
-	spin_lock_irqsave(&priv->lock, flags);
-	/* Clear Tx buff for next iteration */
-	priv->tx_buff = NULL;
-	spin_unlock_irqrestore(&priv->lock, flags);
-}
-
-/* TDM2C restart channel callback */
-static void tdm2c_if_reset_channels(unsigned long arg)
-{
-	u32 max_poll = 0;
-	unsigned long flags;
-
-	/* Wait for all channels to stop  */
-	while (((readl(priv->tdm_base + CH_ENABLE_REG(0)) & CH_RXTX_EN_MASK) ||
-		(readl(priv->tdm_base + CH_ENABLE_REG(1)) & CH_RXTX_EN_MASK)) &&
-		(max_poll < MV_TDM_STOP_POLLING_TIMEOUT)) {
-
-		mdelay(1);
-		max_poll++;
-	}
-
-	dev_dbg(priv->dev, "Finished polling on channels disable\n");
-	if (max_poll >= MV_TDM_STOP_POLLING_TIMEOUT) {
-		writel(0, priv->tdm_base + CH_ENABLE_REG(0));
-		writel(0, priv->tdm_base + CH_ENABLE_REG(1));
-		dev_warn(priv->dev, "\n%s: Channels disabling timeout (%dms)\n",
-			 __func__, MV_TDM_STOP_POLLING_TIMEOUT);
-		priv->pcm_stop_fail++;
-		mdelay(10);
-	}
-
-	spin_lock_irqsave(&priv->lock, flags);
-	priv->pcm_is_stopping = false;
-	spin_unlock_irqrestore(&priv->lock, flags);
-
-	/* Restart channels */
-	tdm2c_if_pcm_start();
-}
+/* Additional helper routines */
 
 /* Enable device interrupts. */
 void mv_phone_intr_enable(u8 dev_id)
@@ -1013,6 +994,19 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 #ifdef CONFIG_MV_TDM_EXT_STATS
 		priv->use_tdm_ext_stats = true;
 #endif
+		tasklet_init(&priv->tdm_if_rx_tasklet,
+			     tdm2c_if_pcm_rx_process, 0);
+		tasklet_init(&priv->tdm_if_tx_tasklet,
+			     tdm2c_if_pcm_tx_process, 0);
+		tasklet_init(&priv->tdm2c_if_reset_tasklet,
+			     tdm2c_if_reset_channels, 0);
+	}
+
+	if (priv->tdm_type == MV_TDM_UNIT_TDMMC) {
+		tasklet_init(&priv->tdm_if_rx_tasklet,
+			     tdmmc_if_pcm_rx_process, 0);
+		tasklet_init(&priv->tdm_if_tx_tasklet,
+			     tdmmc_if_pcm_tx_process, 0);
 	}
 
 	spin_lock_init(&priv->lock);
