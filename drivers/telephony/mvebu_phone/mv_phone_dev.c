@@ -898,6 +898,11 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 
 	priv->np = np;
 
+	if (of_property_read_u32(np, "cell-index", &priv->id)) {
+		dev_dbg(&pdev->dev, "using old DT, assume device ID = 0\n");
+		priv->id = 0;
+	}
+
 	mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tdm_regs");
 	priv->tdm_base = devm_ioremap_resource(&pdev->dev, mem);
 	if (IS_ERR(priv->tdm_base))
@@ -1008,6 +1013,8 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		tasklet_init(&priv->tdm_if_tx_tasklet,
 			     tdmmc_if_pcm_tx_process, 0);
 	}
+
+	dev_info(&pdev->dev, "Registered TDM controller #%d\n", priv->id);
 
 	spin_lock_init(&priv->lock);
 	priv->dev = &pdev->dev;

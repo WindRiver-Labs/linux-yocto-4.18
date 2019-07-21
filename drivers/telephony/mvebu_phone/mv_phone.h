@@ -119,6 +119,7 @@ struct mv_phone_params {
 };
 
 struct mv_phone_dev {
+	u32 id;
 	void __iomem *tdm_base;
 	void __iomem *pll_base;
 	void __iomem *dco_div_reg;
