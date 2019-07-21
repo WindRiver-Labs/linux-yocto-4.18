@@ -3614,7 +3614,7 @@ static void mvpp2_tx_done_init_on_open(struct mvpp2_port *port, bool open)
 			port_pcpu->guard_timer_scheduled = true;
 			tasklet_init(&port_pcpu->tx_done_tasklet,
 				     mvpp2_tx_done_proc_cb,
-				     (unsigned long)port);
+				     (unsigned long)port->dev);
 		}
 	}
 	return;
