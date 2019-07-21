@@ -17,6 +17,7 @@
 					 CP110_PCIE_MEM_SIZE(iface))
 
 #define CP110_EIP197_INDEX		CP110_NUM
+#define CP110_TDM_INDEX			CP110_NUM
 #define CP110_SPI_BUS_ID(n)		((CP110_NUM * 2) + (n))
 
 / {
@@ -521,6 +522,7 @@
 			interrupts = <ICU_GRP_NSR 111 IRQ_TYPE_LEVEL_HIGH>,
 				     <ICU_GRP_NSR 112 IRQ_TYPE_LEVEL_HIGH>,
 				     <ICU_GRP_NSR 113 IRQ_TYPE_LEVEL_HIGH>;
+			cell-index = <CP110_TDM_INDEX>;
 			clock-names = "core", "axi";
 			clocks = <&CP110_LABEL(clk) 1 1>,
 				 <&CP110_LABEL(clk) 1 17>;

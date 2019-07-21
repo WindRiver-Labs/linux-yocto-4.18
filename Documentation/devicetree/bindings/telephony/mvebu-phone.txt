@@ -16,6 +16,8 @@ Required properties:
 
 - interrupts - TDM controller interrupt
 
+- cell-index: TDM controller index
+
 - clocks: phandle for internal gate clock
 
 - clock-names: name associated to the clocks: "gateclk"
