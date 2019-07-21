@@ -562,7 +562,7 @@ int tdm_if_init(struct tal_params *tal_params)
 	}
 
 	/* Create TDM procfs statistics */
-	priv->tdm_stats = proc_mkdir("tdm", NULL);
+	priv->tdm_stats = proc_mkdir(dev_name(priv->dev), NULL);
 	if (priv->tdm_stats) {
 		if (!proc_create("tdm_stats", 0444,
 				 priv->tdm_stats, &mv_phone_operations))
@@ -572,7 +572,8 @@ int tdm_if_init(struct tal_params *tal_params)
 	/* Register TDM interrupts */
 	irqs_requested = 0;
 	for (i = 0; i < priv->irq_count; i++) {
-		ret = request_irq(priv->irq[i], tdm_if_isr, 0x0, "tdm", NULL);
+		ret = request_irq(priv->irq[i], tdm_if_isr, 0x0,
+				  dev_name(priv->dev), NULL);
 		if (ret) {
 			dev_err(priv->dev, "%s: Failed to connect irq(%d)\n",
 				__func__, priv->irq[i]);
@@ -651,7 +652,7 @@ void tdm_if_exit(void)
 
 		/* Remove proc directory & entries */
 		remove_proc_entry("tdm_stats", priv->tdm_stats);
-		remove_proc_entry("tdm", NULL);
+		remove_proc_entry(dev_name(priv->dev), NULL);
 
 		/* Release interrupt */
 		for (i = 0; i < priv->irq_count; i++)
