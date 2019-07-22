@@ -325,8 +325,11 @@ static int xenon_start_signal_voltage_switch(struct mmc_host *mmc,
 	 * If Vqmmc is fixed on platform, vqmmc regulator should be unavailable.
 	 * Thus SDHCI_CTRL_VDD_180 bit might not work then.
 	 * Skip the standard voltage switch to avoid any issue.
+	 *
+	 * When oops_in_progress skip voltage switching since it may required
+	 * i2c blocking operation in case when vqmmc is routed via io-expanders.
 	 */
-	if (PTR_ERR(mmc->supply.vqmmc) == -ENODEV)
+	if (PTR_ERR(mmc->supply.vqmmc) == -ENODEV || oops_in_progress)
 		return 0;
 
 	return sdhci_start_signal_voltage_switch(mmc, ios);
