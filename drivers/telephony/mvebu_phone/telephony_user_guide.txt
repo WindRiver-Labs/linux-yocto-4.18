@@ -50,6 +50,25 @@ For example::
 	> insmod silabs-si3226x.ko
 
 
+Accessing multiple TDM controllers
+----------------------------------
+In order to make use of the user-space telephony applications, it is
+possible to expose the TDM interfaces via /dev/talX character devices
+(X stands for the TDM controller id, as specified by 'cell-index'
+DT property).
+
+Above option is disabled by default. In order to enable it, pass
+mv_phone.enable_tal_dev=1" via U-Boot command line when booting
+the Linux kernel.
+
+The example uses already implemented driver:
+drivers/telephony/mvebu_phone/tal/tal_dev.c
+However, depending on the architecture and requirements, the TAL
+(Telephony Adaptation Layer) callback routines:
+  - tal_set_if()
+  - tal_dev_init/exit()
+allow to register and connect the TDM controllers with other drivers.
+
 mv-voice-tool
 -------------
 User-space application which communicates via ioctl with the telephony driver.

@@ -18,6 +18,12 @@
 
 #define DRV_NAME "mvebu_phone"
 
+/* Module parameters */
+static bool enable_tal_dev;
+module_param(enable_tal_dev, bool, 0444);
+MODULE_PARM_DESC(enable_tal_dev,
+		 "Expose TDM via char device: 0:disable(default), 1:enable");
+
 /* Statistic printout in userspace via /proc/tdm */
 static int mv_phone_status_show(struct seq_file *m, void *v)
 {
@@ -969,7 +975,7 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->irq_count = 1;
 
 		err = tal_set_if(&tdm2c_if, &pdev->dev, priv->id,
-				 &priv->miscdev, true);
+				 &priv->miscdev, enable_tal_dev);
 		if (err)
 			goto err_axi_clk;
 	}
@@ -984,7 +990,7 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->tdmmc_ip_ver = TDMMC_REV1;
 
 		err = tal_set_if(&tdmmc_if, &pdev->dev, priv->id,
-				 &priv->miscdev, true);
+				 &priv->miscdev, enable_tal_dev);
 		if (err)
 			goto err_axi_clk;
 	}
@@ -997,7 +1003,7 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->tdmmc_ip_ver = TDMMC_REV1;
 
 		err = tal_set_if(&tdmmc_if, &pdev->dev, priv->id,
-				 &priv->miscdev, true);
+				 &priv->miscdev, enable_tal_dev);
 		if (err)
 			goto err_axi_clk;
 	}
@@ -1063,7 +1069,7 @@ static int mvebu_phone_remove(struct platform_device *pdev)
 {
 	struct mv_phone_dev *priv = dev_get_drvdata(&pdev->dev);
 
-	tal_set_if(NULL, priv->dev, priv->id, &priv->miscdev, true);
+	tal_set_if(NULL, priv->dev, priv->id, &priv->miscdev, enable_tal_dev);
 
 	clk_disable_unprepare(priv->clk);
 	clk_disable_unprepare(priv->axi_clk);
