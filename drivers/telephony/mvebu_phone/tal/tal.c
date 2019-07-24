@@ -16,20 +16,20 @@ enum tal_status tal_init(struct device *dev, struct tal_params *tal_params,
 {
 	if (!tal_params || !mmp_ops) {
 		pr_err("%s: Error, bad parameters.\n", __func__);
-		return TAL_STAT_BAD_PARAM;
+		return TAL_STATUS_BAD_PARAM;
 	}
 
 	if (!mmp_ops->tal_mmp_rx_callback || !mmp_ops->tal_mmp_tx_callback) {
 		pr_err("%s: Error, MMP callbacks are missing.\n", __func__);
-		return TAL_STAT_BAD_PARAM;
+		return TAL_STATUS_BAD_PARAM;
 	}
 
 	tal_mmp = mmp_ops;
 	if (tal_if && tal_if->init)
 		if (tal_if->init(dev, tal_params) != 0)
-			return TAL_STAT_INIT_ERROR;
+			return TAL_STATUS_INIT_ERROR;
 
-	return TAL_STAT_OK;
+	return TAL_STATUS_OK;
 }
 EXPORT_SYMBOL(tal_init);
 
@@ -69,9 +69,9 @@ enum tal_status tal_write(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_if && tal_if->write)
 		if (tal_if->write(dev, buffer, size) != 0)
-			return TAL_STAT_BAD_PARAM;
+			return TAL_STATUS_BAD_PARAM;
 
-	return TAL_STAT_OK;
+	return TAL_STATUS_OK;
 }
 EXPORT_SYMBOL(tal_write);
 
@@ -79,10 +79,10 @@ enum tal_status tal_stats_get(struct device *dev, struct tal_stats *tal_stats)
 {
 	if (tal_stats && tal_if && tal_if->stats_get) {
 		tal_if->stats_get(dev, tal_stats);
-		return TAL_STAT_OK;
+		return TAL_STATUS_OK;
 	}
 
-	return TAL_STAT_BAD_PARAM;
+	return TAL_STATUS_BAD_PARAM;
 }
 EXPORT_SYMBOL(tal_stats_get);
 
@@ -93,7 +93,7 @@ enum tal_status tal_set_if(struct tal_if *interface, struct device *dev,
 	if (interface && (!interface->init || !interface->exit ||
 			  !interface->pcm_start || !interface->pcm_stop)) {
 		pr_err("%s: Error, TAL callbacks are missing.\n", __func__);
-		return TAL_STAT_BAD_PARAM;
+		return TAL_STATUS_BAD_PARAM;
 	}
 
 	tal_if = interface;
@@ -105,7 +105,7 @@ enum tal_status tal_set_if(struct tal_if *interface, struct device *dev,
 		tal_dev_exit(miscdev);
 	}
 
-	return TAL_STAT_OK;
+	return TAL_STATUS_OK;
 }
 EXPORT_SYMBOL(tal_set_if);
 
@@ -113,10 +113,10 @@ enum tal_status tal_mmp_rx(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_mmp && tal_mmp->tal_mmp_rx_callback) {
 		tal_mmp->tal_mmp_rx_callback(dev, buffer, size);
-		return TAL_STAT_OK;
+		return TAL_STATUS_OK;
 	}
 
-	return TAL_STAT_BAD_PARAM;
+	return TAL_STATUS_BAD_PARAM;
 }
 EXPORT_SYMBOL(tal_mmp_rx);
 
@@ -124,10 +124,10 @@ enum tal_status tal_mmp_tx(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_mmp && tal_mmp->tal_mmp_tx_callback) {
 		tal_mmp->tal_mmp_tx_callback(dev, buffer, size);
-		return TAL_STAT_OK;
+		return TAL_STATUS_OK;
 	}
 
-	return TAL_STAT_BAD_PARAM;
+	return TAL_STATUS_BAD_PARAM;
 }
 EXPORT_SYMBOL(tal_mmp_tx);
 

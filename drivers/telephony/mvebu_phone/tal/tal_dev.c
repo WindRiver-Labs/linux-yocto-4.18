@@ -96,7 +96,7 @@ static ssize_t tal_dev_write(struct file *file_p, const char __user *buf,
 		size = -EFAULT;
 
 	/* Pass the buffer to TAL */
-	if (tal_write(tal_dev->dev, tx_buff, size) != TAL_STAT_OK)
+	if (tal_write(tal_dev->dev, tx_buff, size) != TAL_STATUS_OK)
 		return -EIO;
 
 	return size;
@@ -183,7 +183,7 @@ static long tal_dev_ioctl(struct file *file_p, unsigned int cmd,
 					    (i + 1) * tal_dev_params.pcm_format;
 
 		if (tal_init(tal_dev->dev, &tal_dev->params, &tal_mmp_ops) !=
-		    TAL_STAT_OK)
+		    TAL_STATUS_OK)
 			return -EIO;
 
 		break;
@@ -243,7 +243,7 @@ enum tal_status tal_dev_init(struct device *dev, u32 tdm_index,
 	/* Initialize TAL device */
 	tal_dev = devm_kzalloc(dev, sizeof(*tal_dev), GFP_KERNEL);
 	if (!tal_dev)
-		return TAL_STAT_INIT_ERROR;
+		return TAL_STATUS_INIT_ERROR;
 
 	tal_dev->dev = dev;
 	init_waitqueue_head(&tal_dev->wait);
@@ -261,12 +261,12 @@ enum tal_status tal_dev_init(struct device *dev, u32 tdm_index,
 	status = misc_register(miscdev);
 	if (status < 0) {
 		dev_err(dev, "Failed to register %s device!\n", name);
-		return TAL_STAT_INIT_ERROR;
+		return TAL_STATUS_INIT_ERROR;
 	}
 
 	dev_info(dev, "register /dev/%s\n", name);
 
-	return TAL_STAT_OK;
+	return TAL_STATUS_OK;
 }
 
 void tal_dev_exit(struct miscdevice *miscdev)

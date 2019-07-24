@@ -23,9 +23,9 @@ enum tal_pcm_format {
 };
 
 enum tal_status {
-	TAL_STAT_OK = 0,
-	TAL_STAT_BAD_PARAM,
-	TAL_STAT_INIT_ERROR,
+	TAL_STATUS_OK = 0,
+	TAL_STATUS_BAD_PARAM,
+	TAL_STATUS_INIT_ERROR,
 };
 
 /* Structures */
