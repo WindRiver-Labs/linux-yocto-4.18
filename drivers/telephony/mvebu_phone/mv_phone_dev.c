@@ -564,8 +564,9 @@ int tdm_if_init(struct tal_params *tal_params)
 	/* Create TDM procfs statistics */
 	priv->tdm_stats = proc_mkdir(dev_name(priv->dev), NULL);
 	if (priv->tdm_stats) {
-		if (!proc_create("tdm_stats", 0444,
-				 priv->tdm_stats, &mv_phone_operations))
+		if (!proc_create_data("tdm_stats", 0444,
+				      priv->tdm_stats, &mv_phone_operations,
+				      priv))
 			return -ENOMEM;
 	}
 
@@ -573,7 +574,7 @@ int tdm_if_init(struct tal_params *tal_params)
 	irqs_requested = 0;
 	for (i = 0; i < priv->irq_count; i++) {
 		ret = request_irq(priv->irq[i], tdm_if_isr, 0x0,
-				  dev_name(priv->dev), NULL);
+				  dev_name(priv->dev), priv);
 		if (ret) {
 			dev_err(priv->dev, "%s: Failed to connect irq(%d)\n",
 				__func__, priv->irq[i]);
@@ -588,7 +589,7 @@ int tdm_if_init(struct tal_params *tal_params)
 
 err_irq:
 	for (i = 0; i < irqs_requested; i++)
-		free_irq(priv->irq[i], NULL);
+		free_irq(priv->irq[i], priv);
 
 	return ret;
 }
@@ -656,7 +657,7 @@ void tdm_if_exit(void)
 
 		/* Release interrupt */
 		for (i = 0; i < priv->irq_count; i++)
-			free_irq(priv->irq[i], NULL);
+			free_irq(priv->irq[i], priv);
 
 		priv->tdm_init = false;
 	}
@@ -983,18 +984,18 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->use_tdm_ext_stats = true;
 #endif
 		tasklet_init(&priv->tdm_if_rx_tasklet,
-			     tdm2c_if_pcm_rx_process, 0);
+			     tdm2c_if_pcm_rx_process, (unsigned long)priv);
 		tasklet_init(&priv->tdm_if_tx_tasklet,
-			     tdm2c_if_pcm_tx_process, 0);
+			     tdm2c_if_pcm_tx_process, (unsigned long)priv);
 		tasklet_init(&priv->tdm2c_if_reset_tasklet,
-			     tdm2c_if_reset_channels, 0);
+			     tdm2c_if_reset_channels, (unsigned long)priv);
 	}
 
 	if (priv->tdm_type == MV_TDM_UNIT_TDMMC) {
 		tasklet_init(&priv->tdm_if_rx_tasklet,
-			     tdmmc_if_pcm_rx_process, 0);
+			     tdmmc_if_pcm_rx_process, (unsigned long)priv);
 		tasklet_init(&priv->tdm_if_tx_tasklet,
-			     tdmmc_if_pcm_tx_process, 0);
+			     tdmmc_if_pcm_tx_process, (unsigned long)priv);
 	}
 
 	dev_info(&pdev->dev, "Registered TDM controller #%d\n", priv->id);
