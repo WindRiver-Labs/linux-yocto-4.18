@@ -417,7 +417,7 @@ void local_fiq_enable(void)
 void local_fiq_disable(void)
 {
 	if (simfiq_irq >= 0)
-		disable_irq(simfiq_irq);
+		disable_irq_nosync(simfiq_irq);
 }
 
 irqreturn_t fiq_irq_handler(int irq, void *dev_id)
