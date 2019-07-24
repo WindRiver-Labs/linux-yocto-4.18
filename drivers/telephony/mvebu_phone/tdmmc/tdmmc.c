@@ -10,9 +10,9 @@
 /* Globals */
 static struct tdmmc_dram_entry def_dpram_entry = {
 					0, 0, 0x1, 0x1, 0, 0, 0x1, 0, 0, 0, 0 };
-static struct tdmmc_dev *tdmmc;
 
-static void tdmmc_desc_init(u32 chan, u32 index, u32 buff_size)
+static void tdmmc_desc_init(struct tdmmc_dev *tdmmc, u32 chan, u32 index,
+			    u32 buff_size)
 {
 	/* Associate data buffers to descriptors physBuffPtr */
 	((struct tdmmc_mcdma_rx_desc *)
@@ -54,7 +54,7 @@ static void tdmmc_desc_init(u32 chan, u32 index, u32 buff_size)
 						 (CONFIG_MCDMA_DESC_CMD_STATUS);
 }
 
-static void tdmmc_desc_chain_build(void)
+static void tdmmc_desc_chain_build(struct tdmmc_dev *tdmmc)
 {
 	u32 chan, index, buff_size;
 
@@ -65,16 +65,16 @@ static void tdmmc_desc_chain_build(void)
 	/* Initialize descriptors fields */
 	for (chan = 0; chan < tdmmc->total_channels; chan++) {
 		for (index = 0; index < TOTAL_CHAINS; index++)
-			tdmmc_desc_init(chan, index, buff_size);
+			tdmmc_desc_init(tdmmc, chan, index, buff_size);
 	}
 }
 
-static void tdmmc_mcdma_mcsc_start(void)
+static void tdmmc_mcdma_mcsc_start(struct tdmmc_dev *tdmmc)
 {
 	u32 chan;
 	dma_addr_t rx_desc_phys_addr, tx_desc_phys_addr;
 
-	tdmmc_desc_chain_build();
+	tdmmc_desc_chain_build(tdmmc);
 
 	/* Set current Rx/Tx descriptors  */
 	for (chan = 0; chan < tdmmc->total_channels; chan++) {
@@ -150,7 +150,7 @@ static void tdmmc_mcdma_mcsc_start(void)
 	udelay(200);
 }
 
-static void tdmmc_mcdma_mcsc_abort(void)
+static void tdmmc_mcdma_mcsc_abort(struct tdmmc_dev *tdmmc)
 {
 	u32 chan;
 
@@ -174,7 +174,8 @@ static void tdmmc_mcdma_mcsc_abort(void)
 	}
 }
 
-static void tdmmc_mcdma_clear_rx_desc(u32 next_rx_buff, u32 chan)
+static void tdmmc_mcdma_clear_rx_desc(struct tdmmc_dev *tdmmc,
+				      u32 next_rx_buff, u32 chan)
 {
 	((struct tdmmc_mcdma_rx_desc *)
 	 (tdmmc->rx_desc_virt[next_rx_buff] + chan))->phys_next_desc_ptr = 0;
@@ -183,7 +184,8 @@ static void tdmmc_mcdma_clear_rx_desc(u32 next_rx_buff, u32 chan)
 							  (LAST_BIT | OWNER);
 }
 
-static void tdmmc_mcdma_clear_tx_desc(u32 next_tx_buff, u32 chan)
+static void tdmmc_mcdma_clear_tx_desc(struct tdmmc_dev *tdmmc,
+				      u32 next_tx_buff, u32 chan)
 {
 	((struct tdmmc_mcdma_tx_desc *)
 	 (tdmmc->tx_desc_virt[next_tx_buff] + chan))->phys_next_desc_ptr = 0;
@@ -192,7 +194,7 @@ static void tdmmc_mcdma_clear_tx_desc(u32 next_tx_buff, u32 chan)
 							  (LAST_BIT | OWNER);
 }
 
-static void tdmmc_mcdma_stop(void)
+static void tdmmc_mcdma_stop(struct tdmmc_dev *tdmmc)
 {
 	u32 index, chan, max_poll;
 	u32 curr_rx_desc, curr_tx_desc, next_tx_buff = 0, next_rx_buff = 0;
@@ -218,7 +220,7 @@ static void tdmmc_mcdma_stop(void)
 			break;
 		}
 
-		tdmmc_mcdma_clear_rx_desc(next_rx_buff, chan);
+		tdmmc_mcdma_clear_rx_desc(tdmmc, next_rx_buff, chan);
 	}
 
 	for (chan = 0; chan < tdmmc->total_channels; chan++) {
@@ -239,7 +241,7 @@ static void tdmmc_mcdma_stop(void)
 			return;
 		}
 
-		tdmmc_mcdma_clear_tx_desc(next_tx_buff, chan);
+		tdmmc_mcdma_clear_tx_desc(tdmmc, next_tx_buff, chan);
 	}
 
 	for (chan = 0; chan < tdmmc->total_channels; chan++) {
@@ -289,7 +291,7 @@ static void tdmmc_mcdma_stop(void)
 	udelay(1);
 }
 
-void tdmmc_show(void)
+void tdmmc_show(struct tdmmc_dev *tdmmc)
 {
 	u32 index;
 
@@ -310,7 +312,8 @@ void tdmmc_show(void)
 	}
 }
 
-int tdmmc_init(void __iomem *base, struct device *dev,
+int tdmmc_init(struct tdmmc_dev *tdmmc,
+	       void __iomem *base, struct device *dev,
 	       struct mv_phone_params *tdm_params,
 	       enum mv_phone_frame_ts frame_ts,
 	       enum tdmmc_ip_version tdmmc_ip_ver)
@@ -320,15 +323,6 @@ int tdmmc_init(void __iomem *base, struct device *dev,
 	u32 max_poll, clk_sync_ctrl_reg, count, reg_val;
 	u16 pcm_slot, index;
 	int ret;
-
-	/* Initialize or reset main structure */
-	if (!tdmmc) {
-		tdmmc = devm_kzalloc(dev, sizeof(struct tdmmc_dev), GFP_KERNEL);
-		if (!tdmmc)
-			return -ENOMEM;
-	} else {
-		memset(tdmmc, 0,  sizeof(struct tdmmc_dev));
-	}
 
 	/* Initialize remaining parameters */
 	tdmmc->regs = base;
@@ -666,10 +660,10 @@ int tdmmc_init(void __iomem *base, struct device *dev,
 	       (count & TDM_SYNC_BIT_TX_MASK),
 	       tdmmc->regs + TDM_OUTPUT_SYNC_BIT_COUNT_REG);
 
-	tdmmc_show();
+	tdmmc_show(tdmmc);
 
 	/* Enable PCM */
-	tdmmc_pcm_start();
+	tdmmc_pcm_start(tdmmc);
 
 	/* Mark TDM I/F as enabled */
 	tdmmc->tdm_enable = true;
@@ -717,7 +711,7 @@ err_buff_virt:
 	return ret;
 }
 
-void tdmmc_release(void)
+void tdmmc_release(struct tdmmc_dev *tdmmc)
 {
 	u32 buff_size, total_rx_desc_size, total_tx_desc_size, index;
 
@@ -726,9 +720,9 @@ void tdmmc_release(void)
 		/* Mark TDM I/F as disabled */
 		tdmmc->tdm_enable = false;
 
-		tdmmc_pcm_stop();
+		tdmmc_pcm_stop(tdmmc);
 
-		tdmmc_mcdma_mcsc_abort();
+		tdmmc_mcdma_mcsc_abort(tdmmc);
 
 		udelay(10);
 		mv_phone_reset_bit(tdmmc->regs + MCSC_GLOBAL_CONFIG_REG,
@@ -775,7 +769,7 @@ void tdmmc_release(void)
 	}
 }
 
-void tdmmc_pcm_start(void)
+void tdmmc_pcm_start(struct tdmmc_dev *tdmmc)
 {
 	u32 mask_reg;
 
@@ -784,7 +778,7 @@ void tdmmc_pcm_start(void)
 		/* Mark PCM I/F as enabled  */
 		tdmmc->pcm_enable = true;
 
-		tdmmc_mcdma_mcsc_start();
+		tdmmc_mcdma_mcsc_start(tdmmc);
 
 		/* Clear TDM cause and mask registers */
 		writel(0, tdmmc->regs + COMM_UNIT_TOP_MASK_REG);
@@ -812,7 +806,7 @@ void tdmmc_pcm_start(void)
 	}
 }
 
-void tdmmc_pcm_stop(void)
+void tdmmc_pcm_stop(struct tdmmc_dev *tdmmc)
 {
 	u32 buff_size, index;
 
@@ -833,7 +827,7 @@ void tdmmc_pcm_stop(void)
 		       MCSC_GLOBAL_INT_CAUSE_REG);
 		writel(0, tdmmc->regs + MCSC_EXTENDED_INT_CAUSE_REG);
 
-		tdmmc_mcdma_stop();
+		tdmmc_mcdma_stop(tdmmc);
 
 		/* Calculate total Rx/Tx buffer size */
 		buff_size = (tdmmc->sample_size * MV_TDM_TOTAL_CH_SAMPLES *
@@ -850,7 +844,7 @@ void tdmmc_pcm_stop(void)
 	}
 }
 
-int tdmmc_tx(u8 *tdm_tx_buff)
+int tdmmc_tx(struct tdmmc_dev *tdmmc, u8 *tdm_tx_buff)
 {
 	u32 buff_size, index;
 	u8 tmp;
@@ -876,7 +870,7 @@ int tdmmc_tx(u8 *tdm_tx_buff)
 	return 0;
 }
 
-int tdmmc_rx(u8 *tdm_rx_buff)
+int tdmmc_rx(struct tdmmc_dev *tdmmc, u8 *tdm_rx_buff)
 {
 	u32 buff_size, index;
 	u8 tmp;
@@ -903,7 +897,8 @@ int tdmmc_rx(u8 *tdm_rx_buff)
 }
 
 /* Low level TDM interrupt service routine */
-int tdmmc_intr_low(struct mv_phone_intr_info *tdm_intr_info)
+int tdmmc_intr_low(struct tdmmc_dev *tdmmc,
+		   struct mv_phone_intr_info *tdm_intr_info)
 {
 	u32 cause_reg, mask_reg, cause_and_mask, curr_desc, int_ack_bits = 0;
 	u8 index;
@@ -989,7 +984,7 @@ int tdmmc_intr_low(struct mv_phone_intr_info *tdm_intr_info)
 	return 0;
 }
 
-int tdmmc_reset_slic(void)
+int tdmmc_reset_slic(struct tdmmc_dev *tdmmc)
 {
 	/* Enable SLIC reset */
 	mv_phone_reset_bit(tdmmc->regs + TDM_CLK_AND_SYNC_CONTROL_REG,

@@ -18,12 +18,10 @@
 
 #define DRV_NAME "mvebu_phone"
 
-/* Globals */
-static struct mv_phone_dev *priv;
-
 /* Statistic printout in userspace via /proc/tdm */
 static int mv_phone_status_show(struct seq_file *m, void *v)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)m->private;
 	struct mv_phone_extended_stats tdm_ext_stats;
 
 	seq_printf(m, "tdm_init:	%u\n", priv->tdm_init);
@@ -70,8 +68,9 @@ static const struct file_operations mv_phone_operations = {
 /* TAL callbacks */
 
 /* PCM start */
-static void tdm2c_if_pcm_start(void)
+static void tdm2c_if_pcm_start(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	unsigned long flags;
 	u32 max_poll = 0;
 
@@ -124,8 +123,9 @@ static void tdm2c_if_pcm_start(void)
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
-static void tdmmc_if_pcm_start(void)
+static void tdmmc_if_pcm_start(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&priv->lock, flags);
@@ -138,14 +138,15 @@ static void tdmmc_if_pcm_start(void)
 	priv->pcm_enable = true;
 	priv->rx_buff = NULL;
 	priv->tx_buff = NULL;
-	tdmmc_pcm_start();
+	tdmmc_pcm_start(priv->tdmmc);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 /* PCM stop */
-static void tdm2c_if_pcm_stop(void)
+static void tdm2c_if_pcm_stop(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&priv->lock, flags);
@@ -168,8 +169,9 @@ static void tdm2c_if_pcm_stop(void)
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
-static void tdmmc_if_pcm_stop(void)
+static void tdmmc_if_pcm_stop(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&priv->lock, flags);
@@ -180,14 +182,15 @@ static void tdmmc_if_pcm_stop(void)
 	}
 
 	priv->pcm_enable = false;
-	tdmmc_pcm_stop();
+	tdmmc_pcm_stop(priv->tdmmc);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 /* TDM low-level initialization */
-static int tdm_hw_init(struct mv_phone_params *tdm_params)
+static int tdm_hw_init(struct mv_phone_params *tdm_params, struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	enum mv_phone_frame_ts frame_ts;
 	int ret;
 
@@ -217,14 +220,26 @@ static int tdm_hw_init(struct mv_phone_params *tdm_params)
 
 		break;
 	case MV_TDM_UNIT_TDMMC:
-		ret = tdmmc_init(priv->tdm_base, priv->dev, tdm_params,
+		/* Allocate or reset the main tdmmc structure */
+		if (!priv->tdmmc) {
+			priv->tdmmc = devm_kzalloc(dev,
+						   sizeof(struct tdmmc_dev),
+						   GFP_KERNEL);
+			if (!priv->tdmmc)
+				return -ENOMEM;
+		} else {
+			memset(priv->tdmmc, 0,  sizeof(struct tdmmc_dev));
+		}
+
+		/* Initialize tdmmc HW */
+		ret = tdmmc_init(priv->tdmmc, priv->tdm_base, dev, tdm_params,
 				 frame_ts, priv->tdmmc_ip_ver);
 
 		/* Issue SLIC reset */
-		ret |= tdmmc_reset_slic();
+		ret |= tdmmc_reset_slic(priv->tdmmc);
 
 		/* WA to stop the MCDMA gracefully after tdmmc initialization */
-		tdmmc_if_pcm_stop();
+		tdmmc_if_pcm_stop(dev);
 
 		break;
 	default:
@@ -243,6 +258,7 @@ static int tdm_hw_init(struct mv_phone_params *tdm_params)
 /* Common interrupt top-half handler */
 static irqreturn_t tdm_if_isr(int irq, void *dev_id)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)dev_id;
 	struct mv_phone_intr_info tdm_int_info;
 	u32 int_type;
 	int ret = 0;
@@ -253,7 +269,7 @@ static irqreturn_t tdm_if_isr(int irq, void *dev_id)
 		ret = tdm2c_intr_low(&tdm_int_info);
 		break;
 	case MV_TDM_UNIT_TDMMC:
-		tdmmc_intr_low(&tdm_int_info);
+		tdmmc_intr_low(priv->tdmmc, &tdm_int_info);
 		break;
 	default:
 		dev_err(&priv->parent->dev,
@@ -283,7 +299,7 @@ static irqreturn_t tdm_if_isr(int irq, void *dev_id)
 		 */
 		if (!priv->rx_buff && !priv->tx_buff) {
 			dev_dbg(priv->dev, "Stopping the TDM\n");
-			tdm2c_if_pcm_stop();
+			tdm2c_if_pcm_stop(priv->dev);
 			priv->pcm_stop_flag = false;
 			tasklet_hi_schedule(&priv->tdm2c_if_reset_tasklet);
 		} else {
@@ -360,6 +376,7 @@ skip_rx_tx:
 /* Rx tasklets */
 static void tdm2c_if_pcm_rx_process(unsigned long arg)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)arg;
 	unsigned long flags;
 
 	if (priv->pcm_enable) {
@@ -372,7 +389,7 @@ static void tdm2c_if_pcm_rx_process(unsigned long arg)
 		/* Fill TDM Rx aggregated buffer */
 		if (tdm2c_rx(priv->rx_buff) == 0)
 			/* Dispatch Rx handler */
-			tal_mmp_rx(priv->rx_buff, priv->buff_size);
+			tal_mmp_rx(priv->dev, priv->rx_buff, priv->buff_size);
 		else
 			dev_warn(priv->dev, "%s: Could not fill Rx buffer\n",
 				 __func__);
@@ -385,7 +402,7 @@ static void tdm2c_if_pcm_rx_process(unsigned long arg)
 
 	if (priv->pcm_stop_flag && !priv->tx_buff) {
 		dev_dbg(priv->dev, "Stopping TDM from Rx tasklet\n");
-		tdm2c_if_pcm_stop();
+		tdm2c_if_pcm_stop(priv->dev);
 		spin_lock_irqsave(&priv->lock, flags);
 		priv->pcm_stop_flag = false;
 		spin_unlock_irqrestore(&priv->lock, flags);
@@ -395,6 +412,7 @@ static void tdm2c_if_pcm_rx_process(unsigned long arg)
 
 static void tdmmc_if_pcm_rx_process(unsigned long arg)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)arg;
 	unsigned long flags;
 
 	if (priv->pcm_enable) {
@@ -404,9 +422,9 @@ static void tdmmc_if_pcm_rx_process(unsigned long arg)
 			return;
 		}
 
-		if (tdmmc_rx(priv->rx_buff) == 0)
+		if (tdmmc_rx(priv->tdmmc, priv->rx_buff) == 0)
 			/* Dispatch Rx handler */
-			tal_mmp_rx(priv->rx_buff, priv->buff_size);
+			tal_mmp_rx(priv->dev, priv->rx_buff, priv->buff_size);
 		else
 			dev_warn(priv->dev, "%s: could not fill Rx buffer\n",
 				 __func__);
@@ -421,6 +439,7 @@ static void tdmmc_if_pcm_rx_process(unsigned long arg)
 /* Tx tasklets */
 static void tdm2c_if_pcm_tx_process(unsigned long arg)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)arg;
 	unsigned long flags;
 
 	if (priv->pcm_enable) {
@@ -431,7 +450,7 @@ static void tdm2c_if_pcm_tx_process(unsigned long arg)
 		}
 
 		/* Dispatch Tx handler */
-		tal_mmp_tx(priv->tx_buff, priv->buff_size);
+		tal_mmp_tx(priv->dev, priv->tx_buff, priv->buff_size);
 
 		if (!priv->test_enable) {
 			/* Fill Tx aggregated buffer */
@@ -449,7 +468,7 @@ static void tdm2c_if_pcm_tx_process(unsigned long arg)
 
 	if (priv->pcm_stop_flag && !priv->rx_buff) {
 		dev_dbg(priv->dev, "Stopping TDM from Tx tasklet\n");
-		tdm2c_if_pcm_stop();
+		tdm2c_if_pcm_stop(priv->dev);
 		spin_lock_irqsave(&priv->lock, flags);
 		priv->pcm_stop_flag = false;
 		spin_unlock_irqrestore(&priv->lock, flags);
@@ -459,6 +478,7 @@ static void tdm2c_if_pcm_tx_process(unsigned long arg)
 
 static void tdmmc_if_pcm_tx_process(unsigned long arg)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)arg;
 	unsigned long flags;
 
 	if (priv->pcm_enable) {
@@ -469,10 +489,10 @@ static void tdmmc_if_pcm_tx_process(unsigned long arg)
 		}
 
 		/* Dispatch Tx handler */
-		tal_mmp_tx(priv->tx_buff, priv->buff_size);
+		tal_mmp_tx(priv->dev, priv->tx_buff, priv->buff_size);
 
 		if (!priv->test_enable) {
-			if (tdmmc_tx(priv->tx_buff) != 0)
+			if (tdmmc_tx(priv->tdmmc, priv->tx_buff) != 0)
 				dev_warn(priv->dev,
 					 "%s: Could not fill Tx buffer\n",
 					 __func__);
@@ -488,6 +508,7 @@ static void tdmmc_if_pcm_tx_process(unsigned long arg)
 /* TDM2C restart channel callback */
 static void tdm2c_if_reset_channels(unsigned long arg)
 {
+	struct mv_phone_dev *priv = (struct mv_phone_dev *)arg;
 	u32 max_poll = 0;
 	unsigned long flags;
 
@@ -515,12 +536,13 @@ static void tdm2c_if_reset_channels(unsigned long arg)
 	spin_unlock_irqrestore(&priv->lock, flags);
 
 	/* Restart channels */
-	tdm2c_if_pcm_start();
+	tdm2c_if_pcm_start(priv->dev);
 }
 
 /* Main TDM initialization routine */
-int tdm_if_init(struct tal_params *tal_params)
+int tdm_if_init(struct device *dev, struct tal_params *tal_params)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	struct mv_phone_params tdm_params;
 	int i, irqs_requested, ret;
 
@@ -555,7 +577,7 @@ int tdm_if_init(struct tal_params *tal_params)
 	memcpy(&tdm_params, tal_params, sizeof(struct mv_phone_params));
 
 	/* TDM hardware initialization */
-	ret = tdm_hw_init(&tdm_params);
+	ret = tdm_hw_init(&tdm_params, priv->dev);
 	if (ret) {
 		dev_err(priv->dev, "%s: TDM initialization failed\n", __func__);
 		return ret;
@@ -595,11 +617,12 @@ err_irq:
 }
 
 /* Disable TDM2C PCM */
-void tdm2c_pcm_disable(void)
+void tdm2c_pcm_disable(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	u32 max_poll = 0;
 
-	tdm2c_if_pcm_stop();
+	tdm2c_if_pcm_stop(priv->dev);
 
 	while (priv->pcm_is_stopping && (max_poll <
 	       MV_TDM_STOP_POLLING_TIMEOUT)) {
@@ -614,8 +637,9 @@ void tdm2c_pcm_disable(void)
 }
 
 /* Main TDM deinitialization routine */
-void tdm_if_exit(void)
+void tdm_if_exit(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	int i;
 
 	/* Check if already stopped */
@@ -626,10 +650,10 @@ void tdm_if_exit(void)
 	if (priv->pcm_enable) {
 		switch (priv->tdm_type) {
 		case MV_TDM_UNIT_TDM2C:
-			tdm2c_pcm_disable();
+			tdm2c_pcm_disable(dev);
 			break;
 		case MV_TDM_UNIT_TDMMC:
-			tdmmc_if_pcm_stop();
+			tdmmc_if_pcm_stop(dev);
 			break;
 		default:
 			dev_err(&priv->parent->dev, "%s: undefined TDM type\n",
@@ -644,7 +668,7 @@ void tdm_if_exit(void)
 			tdm2c_release();
 			break;
 		case MV_TDM_UNIT_TDMMC:
-			tdmmc_release();
+			tdmmc_release(priv->tdmmc);
 			break;
 		default:
 			dev_err(&priv->parent->dev, "%s: undefined TDM type\n",
@@ -665,6 +689,9 @@ void tdm_if_exit(void)
 
 static int tdm_if_control(int cmd, void *arg)
 {
+	struct device *dev = (struct device *)arg;
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
+
 	switch (cmd) {
 	case TDM_DEV_TDM_TEST_MODE_ENABLE:
 		priv->test_enable = true;
@@ -681,24 +708,30 @@ static int tdm_if_control(int cmd, void *arg)
 	return 0;
 }
 
-static int tdm2c_if_write(u8 *buffer, int size)
+static int tdm2c_if_write(struct device *dev, u8 *buffer, int size)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
+
 	if (priv->test_enable)
 		return tdm2c_tx(buffer);
 
 	return 0;
 }
 
-static int tdmmc_if_write(u8 *buffer, int size)
+static int tdmmc_if_write(struct device *dev, u8 *buffer, int size)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
+
 	if (priv->test_enable)
-		return tdmmc_tx(buffer);
+		return tdmmc_tx(priv->tdmmc, buffer);
 
 	return 0;
 }
 
-static void tdm_if_stats_get(struct tal_stats *tdm_if_stats)
+static void tdm_if_stats_get(struct device *dev, struct tal_stats *tdm_if_stats)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
+
 	if (!priv->tdm_init)
 		return;
 
@@ -755,7 +788,8 @@ u32 mv_phone_get_slic_board_type(void)
 }
 
 /* Configure PLL to 24MHz */
-static int mv_phone_tdm_clk_pll_config(struct platform_device *pdev)
+static int mv_phone_tdm_clk_pll_config(struct platform_device *pdev,
+				       struct mv_phone_dev *priv)
 {
 	struct resource *mem;
 	u32 reg_val;
@@ -812,7 +846,7 @@ static int mv_phone_tdm_clk_pll_config(struct platform_device *pdev)
 
 /* Set DCO post divider in respect of 24MHz PLL output */
 static int mv_phone_dco_post_div_config(struct platform_device *pdev,
-					u32 pclk_freq_mhz)
+					struct mv_phone_dev *priv)
 {
 	struct resource *mem;
 	u32 reg_val, pcm_clk_ratio;
@@ -825,7 +859,7 @@ static int mv_phone_dco_post_div_config(struct platform_device *pdev,
 			return -ENOMEM;
 	}
 
-	switch (pclk_freq_mhz) {
+	switch (priv->pclk_freq_mhz) {
 	case 8:
 		pcm_clk_ratio = DCO_CLK_DIV_RATIO_8M;
 		break;
@@ -872,6 +906,7 @@ static int mv_phone_dco_post_div_config(struct platform_device *pdev,
 static int mvebu_phone_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
+	struct mv_phone_dev *priv;
 	struct resource *mem;
 	int err, i;
 
@@ -924,8 +959,8 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 
 	if (of_device_is_compatible(np, "marvell,armada-380-tdm")) {
 		priv->tdm_type = MV_TDM_UNIT_TDM2C;
-		err = mv_phone_tdm_clk_pll_config(pdev);
-		err |= mv_phone_dco_post_div_config(pdev, priv->pclk_freq_mhz);
+		err = mv_phone_tdm_clk_pll_config(pdev, priv);
+		err |= mv_phone_dco_post_div_config(pdev, priv);
 		err |= tdm2c_set_mbus_windows(&pdev->dev, priv->tdm_base,
 					      mv_mbus_dram_info());
 		if (err < 0)
@@ -933,7 +968,10 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 
 		priv->irq_count = 1;
 
-		tal_set_if(&tdm2c_if);
+		err = tal_set_if(&tdm2c_if, &pdev->dev, priv->id,
+				 &priv->miscdev, true);
+		if (err)
+			goto err_axi_clk;
 	}
 
 	if (of_device_is_compatible(priv->np, "marvell,armada-xp-tdm")) {
@@ -945,7 +983,10 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->irq_count = 1;
 		priv->tdmmc_ip_ver = TDMMC_REV1;
 
-		tal_set_if(&tdmmc_if);
+		err = tal_set_if(&tdmmc_if, &pdev->dev, priv->id,
+				 &priv->miscdev, true);
+		if (err)
+			goto err_axi_clk;
 	}
 
 	if (of_device_is_compatible(priv->np, "marvell,armada-a8k-tdm")) {
@@ -955,7 +996,10 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 		priv->irq_count = 3;
 		priv->tdmmc_ip_ver = TDMMC_REV1;
 
-		tal_set_if(&tdmmc_if);
+		err = tal_set_if(&tdmmc_if, &pdev->dev, priv->id,
+				 &priv->miscdev, true);
+		if (err)
+			goto err_axi_clk;
 	}
 
 	/* Obtain IRQ numbers */
@@ -1003,6 +1047,8 @@ static int mvebu_phone_probe(struct platform_device *pdev)
 	spin_lock_init(&priv->lock);
 	priv->dev = &pdev->dev;
 
+	dev_set_drvdata(&pdev->dev, priv);
+
 	return 0;
 
 err_core_clk:
@@ -1015,7 +1061,9 @@ err_axi_clk:
 
 static int mvebu_phone_remove(struct platform_device *pdev)
 {
-	tal_set_if(NULL);
+	struct mv_phone_dev *priv = dev_get_drvdata(&pdev->dev);
+
+	tal_set_if(NULL, priv->dev, priv->id, &priv->miscdev, true);
 
 	clk_disable_unprepare(priv->clk);
 	clk_disable_unprepare(priv->axi_clk);
@@ -1026,6 +1074,7 @@ static int mvebu_phone_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int mvebu_phone_suspend(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	int i;
 
 	for (i = 0; i < TDM_CTRL_REGS_NUM; i++)
@@ -1044,6 +1093,7 @@ static int mvebu_phone_suspend(struct device *dev)
 
 static int mvebu_phone_resume(struct device *dev)
 {
+	struct mv_phone_dev *priv = dev_get_drvdata(dev);
 	struct platform_device *pdev = priv->parent;
 	int err, i;
 
@@ -1053,8 +1103,8 @@ static int mvebu_phone_resume(struct device *dev)
 		return err;
 
 	if (of_device_is_compatible(priv->np, "marvell,armada-380-tdm")) {
-		err = mv_phone_tdm_clk_pll_config(pdev);
-		err |= mv_phone_dco_post_div_config(pdev, priv->pclk_freq_mhz);
+		err = mv_phone_tdm_clk_pll_config(pdev, priv);
+		err |= mv_phone_dco_post_div_config(pdev, priv);
 		if (err < 0)
 			return err;
 	}

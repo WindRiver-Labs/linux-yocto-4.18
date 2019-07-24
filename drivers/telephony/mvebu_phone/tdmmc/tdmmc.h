@@ -341,15 +341,15 @@ struct tdmmc_dev {
 };
 
 /* TDMMC APIs */
-void tdmmc_pcm_start(void);
-void tdmmc_pcm_stop(void);
-int tdmmc_tx(u8 *tdm_tx_buff);
-int tdmmc_rx(u8 *tdm_rx_buff);
-void tdmmc_show(void);
-void tdmmc_release(void);
-void tdmmc_intr_enable(u8 device_id);
-void tdmmc_intr_disable(u8 device_id);
-int tdmmc_reset_slic(void);
+void tdmmc_pcm_start(struct tdmmc_dev *tdmmc);
+void tdmmc_pcm_stop(struct tdmmc_dev *tdmmc);
+int tdmmc_tx(struct tdmmc_dev *tdmmc, u8 *tdm_tx_buff);
+int tdmmc_rx(struct tdmmc_dev *tdmmc, u8 *tdm_rx_buff);
+void tdmmc_show(struct tdmmc_dev *tdmmc);
+void tdmmc_release(struct tdmmc_dev *tdmmc);
+void tdmmc_intr_enable(struct tdmmc_dev *tdmmc, u8 device_id);
+void tdmmc_intr_disable(struct tdmmc_dev *tdmmc, u8 device_id);
+int tdmmc_reset_slic(struct tdmmc_dev *tdmmc);
 int tdmmc_set_mbus_windows(struct device *dev, void __iomem *regs);
 int tdmmc_set_a8k_windows(struct device *dev, void __iomem *regs);
 

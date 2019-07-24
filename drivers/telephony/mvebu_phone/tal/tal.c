@@ -11,7 +11,7 @@
 static struct tal_if *tal_if;
 static struct tal_mmp_ops *tal_mmp;
 
-enum tal_status tal_init(struct tal_params *tal_params,
+enum tal_status tal_init(struct device *dev, struct tal_params *tal_params,
 			 struct tal_mmp_ops *mmp_ops)
 {
 	if (!tal_params || !mmp_ops) {
@@ -26,33 +26,33 @@ enum tal_status tal_init(struct tal_params *tal_params,
 
 	tal_mmp = mmp_ops;
 	if (tal_if && tal_if->init)
-		if (tal_if->init(tal_params) != 0)
+		if (tal_if->init(dev, tal_params) != 0)
 			return TAL_STAT_INIT_ERROR;
 
 	return TAL_STAT_OK;
 }
 EXPORT_SYMBOL(tal_init);
 
-void tal_exit(void)
+void tal_exit(struct device *dev)
 {
 	if (tal_if && tal_if->exit)
-		tal_if->exit();
+		tal_if->exit(dev);
 
 	tal_mmp = NULL;
 }
 EXPORT_SYMBOL(tal_exit);
 
-void tal_pcm_start(void)
+void tal_pcm_start(struct device *dev)
 {
 	if (tal_if && tal_if->pcm_start)
-		tal_if->pcm_start();
+		tal_if->pcm_start(dev);
 }
 EXPORT_SYMBOL(tal_pcm_start);
 
-void tal_pcm_stop(void)
+void tal_pcm_stop(struct device *dev)
 {
 	if (tal_if && tal_if->pcm_stop)
-		tal_if->pcm_stop();
+		tal_if->pcm_stop(dev);
 }
 EXPORT_SYMBOL(tal_pcm_stop);
 
@@ -65,20 +65,20 @@ int tal_control(int cmd, void *data)
 }
 EXPORT_SYMBOL(tal_control);
 
-enum tal_status tal_write(u8 *buffer, int size)
+enum tal_status tal_write(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_if && tal_if->write)
-		if (tal_if->write(buffer, size) != 0)
+		if (tal_if->write(dev, buffer, size) != 0)
 			return TAL_STAT_BAD_PARAM;
 
 	return TAL_STAT_OK;
 }
 EXPORT_SYMBOL(tal_write);
 
-enum tal_status tal_stats_get(struct tal_stats *tal_stats)
+enum tal_status tal_stats_get(struct device *dev, struct tal_stats *tal_stats)
 {
 	if (tal_stats && tal_if && tal_if->stats_get) {
-		tal_if->stats_get(tal_stats);
+		tal_if->stats_get(dev, tal_stats);
 		return TAL_STAT_OK;
 	}
 
@@ -86,7 +86,9 @@ enum tal_status tal_stats_get(struct tal_stats *tal_stats)
 }
 EXPORT_SYMBOL(tal_stats_get);
 
-enum tal_status tal_set_if(struct tal_if *interface)
+enum tal_status tal_set_if(struct tal_if *interface, struct device *dev,
+			   u32 tdm_index, struct miscdevice *miscdev,
+			   bool create_tal_dev)
 {
 	if (interface && (!interface->init || !interface->exit ||
 			  !interface->pcm_start || !interface->pcm_stop)) {
@@ -96,14 +98,21 @@ enum tal_status tal_set_if(struct tal_if *interface)
 
 	tal_if = interface;
 
+	if (create_tal_dev) {
+		if (tal_if != NULL)
+			return tal_dev_init(dev, tdm_index, miscdev);
+
+		tal_dev_exit(miscdev);
+	}
+
 	return TAL_STAT_OK;
 }
 EXPORT_SYMBOL(tal_set_if);
 
-enum tal_status tal_mmp_rx(u8 *buffer, int size)
+enum tal_status tal_mmp_rx(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_mmp && tal_mmp->tal_mmp_rx_callback) {
-		tal_mmp->tal_mmp_rx_callback(buffer, size);
+		tal_mmp->tal_mmp_rx_callback(dev, buffer, size);
 		return TAL_STAT_OK;
 	}
 
@@ -111,10 +120,10 @@ enum tal_status tal_mmp_rx(u8 *buffer, int size)
 }
 EXPORT_SYMBOL(tal_mmp_rx);
 
-enum tal_status tal_mmp_tx(u8 *buffer, int size)
+enum tal_status tal_mmp_tx(struct device *dev, u8 *buffer, int size)
 {
 	if (tal_mmp && tal_mmp->tal_mmp_tx_callback) {
-		tal_mmp->tal_mmp_tx_callback(buffer, size);
+		tal_mmp->tal_mmp_tx_callback(dev, buffer, size);
 		return TAL_STAT_OK;
 	}
 

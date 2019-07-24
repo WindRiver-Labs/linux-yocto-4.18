@@ -15,6 +15,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/mbus.h>
+#include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -142,6 +143,7 @@ struct mv_phone_dev {
 	u32 tdm_misc_reg;
 
 	struct device *dev;
+	struct miscdevice miscdev;
 
 	/* Transmit buffers */
 	u8 *rx_buff;
@@ -173,6 +175,9 @@ struct mv_phone_dev {
 
 	/* TDMMC silicon revision */
 	enum tdmmc_ip_version tdmmc_ip_ver;
+
+	/* TDMMC low-level data */
+	struct tdmmc_dev *tdmmc;
 
 	/* Tasklets */
 	struct tasklet_struct tdm_if_rx_tasklet;
@@ -234,10 +239,12 @@ int tdm2c_intr_low(struct mv_phone_intr_info *tdm_intr_info);
 void tdm2c_ext_stats_get(struct mv_phone_extended_stats *tdm_ext_stats);
 
 /* TDMMC */
-int tdmmc_init(void __iomem *base, struct device *dev,
+int tdmmc_init(struct tdmmc_dev *tdmmc,
+	       void __iomem *base, struct device *dev,
 	       struct mv_phone_params *tdm_params,
 	       enum mv_phone_frame_ts frame_ts,
 	       enum tdmmc_ip_version tdmmc_ip_ver);
-int tdmmc_intr_low(struct mv_phone_intr_info *tdm_intr_info);
+int tdmmc_intr_low(struct tdmmc_dev *tdmmc,
+		   struct mv_phone_intr_info *tdm_intr_info);
 
 #endif /* _MV_PHONE_H_ */
