@@ -289,14 +289,6 @@ static void tdmmc_mcdma_stop(void)
 	udelay(1);
 }
 
-void tdmmc_intr_enable(u8 device_id)
-{
-}
-
-void tdmmc_intr_disable(u8 device_id)
-{
-}
-
 void tdmmc_show(void)
 {
 	u32 index;

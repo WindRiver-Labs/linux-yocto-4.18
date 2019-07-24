@@ -710,6 +710,18 @@ static void tdm_if_stats_get(struct tal_stats *tdm_if_stats)
 		tdm2c_ext_stats_get(&tdm_if_stats->tdm_ext_stats);
 }
 
+/* Enable device interrupts. */
+void tdm2c_if_intr_enable(void)
+{
+	tdm2c_intr_enable();
+}
+
+/* Disable device interrupts. */
+void tdm2c_if_intr_disable(void)
+{
+	tdm2c_intr_disable();
+}
+
 static struct tal_if tdm2c_if = {
 	.pcm_start	= tdm2c_if_pcm_start,
 	.pcm_stop	= tdm2c_if_pcm_stop,
@@ -718,6 +730,8 @@ static struct tal_if tdm2c_if = {
 	.control	= tdm_if_control,
 	.write		= tdm2c_if_write,
 	.stats_get	= tdm_if_stats_get,
+	.intr_enable	= tdm2c_if_intr_enable,
+	.intr_disable	= tdm2c_if_intr_disable,
 };
 
 static struct tal_if tdmmc_if = {
@@ -731,38 +745,6 @@ static struct tal_if tdmmc_if = {
 };
 
 /* Additional helper routines */
-
-/* Enable device interrupts. */
-void mv_phone_intr_enable(u8 dev_id)
-{
-	switch (priv->tdm_type) {
-	case MV_TDM_UNIT_TDM2C:
-		tdm2c_intr_enable();
-		break;
-	case MV_TDM_UNIT_TDMMC:
-		tdmmc_intr_enable(dev_id);
-		break;
-	default:
-		dev_err(&priv->parent->dev, "%s: undefined TDM type\n",
-			__func__);
-	}
-}
-
-/* Disable device interrupts. */
-void mv_phone_intr_disable(u8 dev_id)
-{
-	switch (priv->tdm_type) {
-	case MV_TDM_UNIT_TDM2C:
-		tdm2c_intr_disable();
-		break;
-	case MV_TDM_UNIT_TDMMC:
-		tdmmc_intr_disable(dev_id);
-		break;
-	default:
-		dev_err(&priv->parent->dev, "%s: undefined TDM type\n",
-			__func__);
-	}
-}
 
 /* Get board type for SLIC unit (pre-defined). */
 u32 mv_phone_get_slic_board_type(void)

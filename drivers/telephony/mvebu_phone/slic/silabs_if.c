@@ -5,19 +5,20 @@
  *
  */
 
+#include <tal/tal.h>
 #include "silabs_if.h"
 
 static void (*isi_handler)(unsigned long);
 
 void silabs_if_enable_irq(u32 device)
 {
-	mv_phone_intr_enable(device);
+	tal_intr_enable();
 }
 EXPORT_SYMBOL(silabs_if_enable_irq);
 
 void silabs_if_disable_irq(u32 device)
 {
-	mv_phone_intr_disable(device);
+	tal_intr_disable();
 }
 EXPORT_SYMBOL(silabs_if_disable_irq);
 

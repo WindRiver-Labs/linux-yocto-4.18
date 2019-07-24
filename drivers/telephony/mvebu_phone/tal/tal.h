@@ -59,6 +59,8 @@ struct tal_if {
 	int (*control)(int cmd, void *data);
 	int (*write)(u8 *buffer, int size);
 	void (*stats_get)(struct tal_stats *tal_stats);
+	void (*intr_enable)(void);
+	void (*intr_disable)(void);
 };
 
 /* API */
@@ -74,5 +76,7 @@ enum tal_status tal_set_if(struct tal_if *interface);
 enum tal_status tal_mmp_rx(u8 *buffer, int size);
 enum tal_status tal_mmp_tx(u8 *buffer, int size);
 enum tal_status tal_write(u8 *buffer, int size);
+void tal_intr_enable(void);
+void tal_intr_disable(void);
 
 #endif /* _TAL_H */

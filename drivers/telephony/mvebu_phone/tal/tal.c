@@ -121,3 +121,17 @@ enum tal_status tal_mmp_tx(u8 *buffer, int size)
 	return TAL_STAT_BAD_PARAM;
 }
 EXPORT_SYMBOL(tal_mmp_tx);
+
+void tal_intr_enable(void)
+{
+	if (tal_if && tal_if->intr_enable)
+		tal_if->intr_enable();
+}
+EXPORT_SYMBOL(tal_intr_enable);
+
+void tal_intr_disable(void)
+{
+	if (tal_if && tal_if->intr_disable)
+		tal_if->intr_disable();
+}
+EXPORT_SYMBOL(tal_intr_disable);

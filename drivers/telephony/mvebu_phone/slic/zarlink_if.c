@@ -5,19 +5,20 @@
  *
  */
 
+#include <tal/tal.h>
 #include "zarlink_if.h"
 
 static void (*zsi_handler)(unsigned long);
 
 void zarlink_if_enable_irq(u32 device)
 {
-	mv_phone_intr_enable(device);
+	tal_intr_enable();
 }
 EXPORT_SYMBOL(zarlink_if_enable_irq);
 
 void zarlink_if_disable_irq(u32 device)
 {
-	mv_phone_intr_disable(device);
+	tal_intr_disable();
 }
 EXPORT_SYMBOL(zarlink_if_disable_irq);
 

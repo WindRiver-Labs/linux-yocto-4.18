@@ -5,6 +5,7 @@
  *
  */
 
+#include <tal/tal.h>
 #include "drv_dxt_if.h"
 
 static int drv_dxt_spi_cs;
@@ -23,14 +24,14 @@ void drv_dxt_if_signal_interrupt(void)
 void drv_dxt_if_enable_irq(u32 irq)
 {
 	/* We have only one TDM channel */
-	mv_phone_intr_enable(0);
+	tal_intr_enable();
 }
 EXPORT_SYMBOL(drv_dxt_if_enable_irq);
 
 void drv_dxt_if_disable_irq(u32 irq)
 {
 	/* We have only one TDM channel */
-	mv_phone_intr_disable(0);
+	tal_intr_disable();
 }
 EXPORT_SYMBOL(drv_dxt_if_disable_irq);
 
