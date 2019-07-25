@@ -165,7 +165,7 @@
 		label = "wl18xx";
 
 		dais = <&rsnd_port3>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	lvds: lvds {
