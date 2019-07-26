@@ -315,6 +315,23 @@ int mv88e6390x_port_set_speed(struct mv88e6xxx_chip *chip, int port, int speed)
 	return mv88e6xxx_port_set_speed(chip, port, speed, true, true);
 }
 
+/* Support 10, 100, 200, 1000, 2500, 10000 Mbps. Port0 can be set 2500/10000
+ * which is difference from 6390X
+ */
+int mv88e6393x_port_set_speed(struct mv88e6xxx_chip *chip, int port, int speed)
+{
+	if (speed == SPEED_MAX)
+		speed = (port > 0 && port < 9) ? 1000 : 10000;
+
+	if (speed == 200 && port != 0)
+		return -EOPNOTSUPP;
+
+	if (speed >= 2500 && port < 9 && port > 0)
+		return -EOPNOTSUPP;
+
+	return mv88e6xxx_port_set_speed(chip, port, speed, true, true);
+}
+
 int mv88e6390x_port_set_cmode(struct mv88e6xxx_chip *chip, int port,
 			      phy_interface_t mode)
 {
@@ -345,6 +362,54 @@ int mv88e6390x_port_set_cmode(struct mv88e6xxx_chip *chip, int port,
 	case PHY_INTERFACE_MODE_RXAUI:
 		cmode = MV88E6XXX_PORT_STS_CMODE_RXAUI;
 		break;
+	default:
+		cmode = 0;
+	}
+
+	if (cmode) {
+		err = mv88e6xxx_port_read(chip, port, MV88E6XXX_PORT_STS, &reg);
+		if (err)
+			return err;
+
+		reg &= ~MV88E6XXX_PORT_STS_CMODE_MASK;
+		reg |= cmode;
+
+		err = mv88e6xxx_port_write(chip, port, MV88E6XXX_PORT_STS, reg);
+		if (err)
+			return err;
+	}
+
+	return 0;
+}
+
+int mv88e6393x_port_set_cmode(struct mv88e6xxx_chip *chip, int port,
+			      phy_interface_t mode)
+{
+	u16 reg;
+	u16 cmode;
+	int err;
+
+	/* The C_Mode bits are R/W for Ports 0, 9 & 10 only in 6393X*/
+	if (port != 9 && port != 10 && port != 0)
+		return -EOPNOTSUPP;
+
+	switch (mode) {
+	case PHY_INTERFACE_MODE_1000BASEX:
+		cmode = MV88E6XXX_PORT_STS_CMODE_1000BASE_X;
+		break;
+	case PHY_INTERFACE_MODE_SGMII:
+		cmode = MV88E6XXX_PORT_STS_CMODE_SGMII;
+		break;
+	case PHY_INTERFACE_MODE_2500BASEX:
+		cmode = MV88E6XXX_PORT_STS_CMODE_2500BASEX;
+		break;
+	case PHY_INTERFACE_MODE_10GKR:
+		cmode = MV88E6393x_PORT_STS_CMODE_10GBASE_R;
+		break;
+	case PHY_INTERFACE_MODE_5GKR:
+		cmode = MV88E6393x_PORT_STS_CMODE_5GBASE_R;
+		break;
+
 	default:
 		cmode = 0;
 	}
