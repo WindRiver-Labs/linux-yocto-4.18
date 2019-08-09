@@ -1369,7 +1369,6 @@ err_free_bridge:
 	return err;
 }
 
-<<<<<<< HEAD
 #ifdef CONFIG_PM_SLEEP
 static int rcar_pcie_suspend(struct device *dev)
 {
@@ -1430,29 +1429,11 @@ static SIMPLE_DEV_PM_OPS(rcar_pcie_pm_ops,
 #define DEV_PM_OPS NULL
 #endif /* CONFIG_PM_SLEEP */
 
-static int rcar_pcie_resume_noirq(struct device *dev)
-{
-	struct rcar_pcie *pcie = dev_get_drvdata(dev);
-
-	if (rcar_pci_read_reg(pcie, PMSR) &&
-	    !(rcar_pci_read_reg(pcie, PCIETCTLR) & DL_DOWN))
-		return 0;
-
-	/* Re-establish the PCIe link */
-	rcar_pci_write_reg(pcie, CFINIT, PCIETCTLR);
-	return rcar_pcie_wait_for_dl(pcie);
-}
-
-static const struct dev_pm_ops rcar_pcie_pm_ops = {
-	.resume_noirq = rcar_pcie_resume_noirq,
-};
-
 static struct platform_driver rcar_pcie_driver = {
 	.driver = {
 		.name = "rcar-pcie",
 		.pm	= DEV_PM_OPS,
 		.of_match_table = rcar_pcie_of_match,
-		.pm = &rcar_pcie_pm_ops,
 		.suppress_bind_attrs = true,
 	},
 	.probe = rcar_pcie_probe,
