@@ -380,6 +380,7 @@ struct mbox_wq_info {
 struct rvu_fwdata {
 #define RVU_FWDATA_HEADER_MAGIC	0xCFDA	/*Custom Firmware Data*/
 #define RVU_FWDATA_VERSION	0x0001
+#define RVU_FWDATA_VERSION_0	0x0000
 	u32 header_magic;
 	u32 version;		/* version id */
 
@@ -521,7 +522,8 @@ static inline int is_afvf(u16 pcifunc)
 static inline bool is_rvu_fwdata_valid(struct rvu *rvu)
 {
 	return (rvu->fwdata->header_magic == RVU_FWDATA_HEADER_MAGIC) &&
-		(rvu->fwdata->version == RVU_FWDATA_VERSION);
+		(rvu->fwdata->version == RVU_FWDATA_VERSION ||
+		 rvu->fwdata->version == RVU_FWDATA_VERSION_0);
 }
 
 int rvu_alloc_bitmap(struct rsrc_bmap *rsrc);
