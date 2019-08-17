@@ -43,8 +43,7 @@
 		/* device specific region for Lossy Decompression */
 		lossy_decompress: linux,lossy_decompress@54000000 {
 			no-map;
-			alloc-ranges = <0x0 0x6d000000 0x0 0x03000000>;
-			size = <0x0 0x03000000>;
+			reg = <0x00000000 0x54000000 0x0 0x03000000>;
 		};
 
 		/* global autoconfigured region for contiguous allocations */
