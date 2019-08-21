@@ -524,7 +524,7 @@ static long vc_mem_copy(struct bcm2708_fb *fb, unsigned long arg)
 	buf = dma_alloc_coherent(fb->fb.device, PAGE_ALIGN(size), &bus_addr,
 				 GFP_ATOMIC);
 	if (!buf) {
-		pr_err("[%s]: failed to dma_alloc_coherent(%d)\n",
+		pr_err("[%s]: failed to dma_alloc_coherent(%zu)\n",
 				__func__, size);
 		rc = -ENOMEM;
 		goto out;
@@ -533,7 +533,7 @@ static long vc_mem_copy(struct bcm2708_fb *fb, unsigned long arg)
 	for (offset = 0; offset < ioparam.length; offset += size) {
 		size_t remaining = ioparam.length - offset;
 		size_t s = min(size, remaining);
-		unsigned char *p = (unsigned char *)ioparam.src + offset;
+		unsigned char *p = (unsigned char *)(unsigned long)ioparam.src + offset;
 		unsigned char *q = (unsigned char *)ioparam.dst + offset;
 
 		dma_memcpy(fb, bus_addr,
@@ -865,8 +865,8 @@ static int bcm2708_fb_probe(struct platform_device *dev)
 		goto free_fb;
 	}
 
-	pr_info("BCM2708FB: allocated DMA memory %08x\n",
-	       fb->cb_handle);
+	pr_info("BCM2708FB: allocated DMA memory %pad\n",
+	       &fb->cb_handle);
 
 	ret = bcm_dma_chan_alloc(BCM_DMA_FEATURE_BULK,
 				 &fb->dma_chan_base, &fb->dma_irq);
