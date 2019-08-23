@@ -187,7 +187,7 @@ get_msg_context(struct vchiq_mmal_instance *instance)
 	 */
 	spin_lock(&instance->context_map_lock);
 	handle = idr_alloc(&instance->context_map, msg_context,
-			   0, 0, GFP_KERNEL);
+			   0, 0, GFP_ATOMIC);
 	spin_unlock(&instance->context_map_lock);
 
 	if (handle < 0) {
