@@ -1059,6 +1059,7 @@ static const struct amba_id etm4_ids[] = {
 	ETM4x_AMBA_ID(0x000bb95a),		/* Cortex-A72 */
 	ETM4x_AMBA_ID(0x000bb959),		/* Cortex-A73 */
 	ETM4x_AMBA_ID(0x000bb9da),		/* Cortex-A35 */
+	ETM4x_AMBA_ID(0x000cc210),		/* Marvell-OcteonTx-CN9xxx */
 	{},
 };
 
