@@ -450,6 +450,12 @@ static const struct amba_id tmc_ids[] = {
 		.id	= 0x000bb9ea,
 		.mask	= 0x000fffff,
 	},
+	{
+		/* Marvell OcteonTx CN9xxx */
+		.id	= OCTEONTX_CN9XXX_ETR,
+		.mask	= 0x000fffff,
+		.data	= (void *)(unsigned long)OCTEONTX_CN9XXX_ETR_CAPS,
+	},
 	{ 0, 0},
 };
 
