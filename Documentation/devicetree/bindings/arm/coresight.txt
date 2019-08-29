@@ -86,6 +86,10 @@ its hardware characteristcs.
 	* arm,buffer-size: size of contiguous buffer space for TMC ETR
 	 (embedded trace router)
 
+	* cache-lock: Enables cache locking for the allocated trace buffer.
+	  As of now, this is supported only for secure buffer allocations
+	  on Marvell OcteonTx2 platform.
+
 
 Example:
 

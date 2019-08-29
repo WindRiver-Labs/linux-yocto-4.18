@@ -6,6 +6,7 @@
 
 #include <linux/coresight.h>
 #include <linux/dma-mapping.h>
+#include <linux/arm-smccc.h>
 #include "coresight-priv.h"
 #include "coresight-tmc.h"
 
@@ -18,10 +19,16 @@ static void tmc_etr_enable_hw(struct tmc_drvdata *drvdata)
 
 	CS_UNLOCK(drvdata->base);
 
+	if (drvdata->etr_options & CORESIGHT_OPTS_RESET_CTL_REG)
+		tmc_disable_hw(drvdata);
+
 	/* Wait for TMCSReady bit to be set */
 	tmc_wait_for_tmcready(drvdata);
 
-	writel_relaxed(drvdata->size / 4, drvdata->base + TMC_RSZ);
+	if (drvdata && CORESIGHT_OPTS_BUFFSIZE_8BX)
+		writel_relaxed(drvdata->size / 8, drvdata->base + TMC_RSZ);
+	else
+		writel_relaxed(drvdata->size / 4, drvdata->base + TMC_RSZ);
 	writel_relaxed(TMC_MODE_CIRCULAR_BUFFER, drvdata->base + TMC_MODE);
 
 	axictl = readl_relaxed(drvdata->base + TMC_AXICTL);
@@ -35,7 +42,11 @@ static void tmc_etr_enable_hw(struct tmc_drvdata *drvdata)
 	}
 
 	writel_relaxed(axictl, drvdata->base + TMC_AXICTL);
-	tmc_write_dba(drvdata, drvdata->paddr);
+
+	if (drvdata->etr_options & CORESIGHT_OPTS_SECURE_BUFF)
+		tmc_write_dba(drvdata, drvdata->s_paddr);
+	else
+		tmc_write_dba(drvdata, drvdata->paddr);
 	/*
 	 * If the TMC pointers must be programmed before the session,
 	 * we have to set it properly (i.e, RRP/RWP to base address and
@@ -43,7 +54,10 @@ static void tmc_etr_enable_hw(struct tmc_drvdata *drvdata)
 	 */
 	if (tmc_etr_has_cap(drvdata, TMC_ETR_SAVE_RESTORE)) {
 		tmc_write_rrp(drvdata, drvdata->paddr);
-		tmc_write_rwp(drvdata, drvdata->paddr);
+		if (drvdata->etr_options & CORESIGHT_OPTS_SECURE_BUFF)
+			tmc_write_rwp(drvdata, drvdata->s_paddr);
+		else
+			tmc_write_rwp(drvdata, drvdata->paddr);
 		sts = readl_relaxed(drvdata->base + TMC_STS) & ~TMC_STS_FULL;
 		writel_relaxed(sts, drvdata->base + TMC_STS);
 	}
@@ -63,18 +77,29 @@ static void tmc_etr_dump_hw(struct tmc_drvdata *drvdata)
 	const u32 *barrier;
 	u32 val;
 	u32 *temp;
-	u64 rwp;
+	u64 rwp, offset;
 
 	rwp = tmc_read_rwp(drvdata);
 	val = readl_relaxed(drvdata->base + TMC_STS);
 
+	if (drvdata->etr_options & CORESIGHT_OPTS_SECURE_BUFF)
+		offset = rwp - drvdata->s_paddr;
+	else
+		offset = rwp - drvdata->paddr;
 	/*
 	 * Adjust the buffer to point to the beginning of the trace data
 	 * and update the available trace data.
 	 */
 	if (val & TMC_STS_FULL) {
-		drvdata->buf = drvdata->vaddr + rwp - drvdata->paddr;
+		drvdata->buf = drvdata->vaddr + offset;
 		drvdata->len = drvdata->size;
+
+		if (!drvdata->formatter_en) {
+			/* TODO Need to handle this differently when formatter
+			 * is not present
+			 */
+			return;
+		}
 
 		barrier = barrier_pkt;
 		temp = (u32 *)drvdata->buf;
@@ -87,7 +112,7 @@ static void tmc_etr_dump_hw(struct tmc_drvdata *drvdata)
 
 	} else {
 		drvdata->buf = drvdata->vaddr;
-		drvdata->len = rwp - drvdata->paddr;
+		drvdata->len = offset;
 	}
 }
 
@@ -109,11 +134,11 @@ static void tmc_etr_disable_hw(struct tmc_drvdata *drvdata)
 
 static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 {
-	int ret = 0;
+	int ret = 0, buff_sec_mapped = 0;
 	bool used = false;
 	unsigned long flags;
 	void __iomem *vaddr = NULL;
-	dma_addr_t paddr = 0;
+	dma_addr_t paddr, s_paddr = 0;
 	struct tmc_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 
 	/*
@@ -134,6 +159,25 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 		if (!vaddr)
 			return -ENOMEM;
 
+		if (!(drvdata->etr_options & CORESIGHT_OPTS_SECURE_BUFF))
+			goto skip_secure_buffer;
+
+		/* Register driver allocated dma buffer for necessary
+		 * mapping in the secure world
+		 */
+		if (tmc_register_drvbuf(drvdata, paddr, drvdata->size)) {
+			ret = -ENOMEM;
+			goto err;
+		}
+		buff_sec_mapped = 1;
+
+		/* Allocate secure trace buffer */
+		if (tmc_alloc_secbuf(drvdata, drvdata->size, &s_paddr)) {
+			ret = -ENOMEM;
+				goto err;
+		}
+
+skip_secure_buffer:
 		/* Let's try again */
 		spin_lock_irqsave(&drvdata->spinlock, flags);
 	}
@@ -160,6 +204,7 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 		used = true;
 		drvdata->vaddr = vaddr;
 		drvdata->paddr = paddr;
+		drvdata->s_paddr = s_paddr;
 		drvdata->buf = drvdata->vaddr;
 	}
 
@@ -167,10 +212,17 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 	tmc_etr_enable_hw(drvdata);
 out:
 	spin_unlock_irqrestore(&drvdata->spinlock, flags);
-
+err:
 	/* Free memory outside the spinlock if need be */
-	if (!used && vaddr)
+	if (!used && vaddr) {
+		if (buff_sec_mapped)
+			tmc_unregister_drvbuf(drvdata, drvdata->paddr,
+					      drvdata->size);
+		if (s_paddr)
+			tmc_free_secbuf(drvdata, drvdata->s_paddr,
+					drvdata->size);
 		dma_free_coherent(drvdata->dev, drvdata->size, vaddr, paddr);
+	}
 
 	if (!ret)
 		dev_info(drvdata->dev, "TMC-ETR enabled\n");
