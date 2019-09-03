@@ -1261,21 +1261,26 @@ static int rcar_pcie_probe(struct platform_device *pdev)
 
 	pcie->pcie3v3 = devm_regulator_get_optional(dev, "pcie3v3");
 	if (IS_ERR(pcie->pcie3v3)) {
-		if (PTR_ERR(pcie->pcie3v3) == -EPROBE_DEFER)
+		if (PTR_ERR(pcie->pcie3v3) == -EPROBE_DEFER) {
+			pci_free_host_bridge(bridge);
 			return -EPROBE_DEFER;
+		}
 		dev_info(dev, "no pcie3v3 regulator found\n");
 	}
 
 	pcie->pcie1v8 = devm_regulator_get_optional(dev, "pcie1v8");
 	if (IS_ERR(pcie->pcie1v8)) {
-		if (PTR_ERR(pcie->pcie1v8) == -EPROBE_DEFER)
+		if (PTR_ERR(pcie->pcie1v8) == -EPROBE_DEFER) {
+			pci_free_host_bridge(bridge);
 			return -EPROBE_DEFER;
+		}
 		dev_info(dev, "no pcie1v8 regulator found\n");
 	}
 
 	err = rcar_pcie_set_vpcie(pcie);
 	if (err) {
 		dev_err(dev, "failed to set pcie regulators\n");
+		pci_free_host_bridge(bridge);
 		return err;
 	}
 
@@ -1364,6 +1369,12 @@ err_pm_disable:
 	pci_free_resource_list(&pcie->resources);
 
 err_free_bridge:
+	if(!IS_ERR(pcie->pcie3v3))
+		if (regulator_is_enabled(pcie->pcie3v3))
+			regulator_disable(pcie->pcie3v3);
+	if(!IS_ERR(pcie->pcie1v8))
+		if (regulator_is_enabled(pcie->pcie1v8))
+			regulator_disable(pcie->pcie1v8);
 	pci_free_host_bridge(bridge);
 
 	return err;
