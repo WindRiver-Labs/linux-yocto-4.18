@@ -570,7 +570,6 @@ static void imx_free_resources(struct imx_pinctrl *ipctl)
 int imx_pinctrl_probe(struct platform_device *pdev,
 		      const struct imx_pinctrl_soc_info *info)
 {
-	struct regmap_config config = { .name = "gpr" };
 	struct device_node *dev_np = pdev->dev.of_node;
 	struct pinctrl_desc *imx_pinctrl_desc;
 	struct device_node *np;
