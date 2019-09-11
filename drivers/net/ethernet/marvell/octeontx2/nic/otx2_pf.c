@@ -1517,11 +1517,6 @@ int otx2_open(struct net_device *netdev)
 		napi_enable(&cq_poll->napi);
 	}
 
-	/* Set default mac address */
-	err = otx2_hw_set_mac_addr(pf, netdev);
-	if (err)
-		goto err_disable_napi;
-
 	/* Set default MTU in HW */
 	err = otx2_hw_set_mtu(pf, netdev->mtu);
 	if (err)
@@ -1582,10 +1577,6 @@ int otx2_open(struct net_device *netdev)
 	/* 'intf_down' may be checked on any cpu */
 	smp_wmb();
 
-	err = otx2_rxtx_enable(pf, true);
-	if (err)
-		goto err_free_cints;
-
 	/* we have already received link status notification */
 	if (pf->linfo.link_up && !(pf->pcifunc & RVU_PFVF_FUNC_MASK))
 		otx2_handle_link_event(pf);
@@ -1599,6 +1590,10 @@ int otx2_open(struct net_device *netdev)
 		pf->hw_rx_tstamp = 0;
 		otx2_config_hw_rx_tstamp(pf, true);
 	}
+
+	err = otx2_rxtx_enable(pf, true);
+	if (err)
+		goto err_free_cints;
 
 	return 0;
 
