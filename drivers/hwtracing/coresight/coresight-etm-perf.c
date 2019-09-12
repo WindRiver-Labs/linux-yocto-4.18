@@ -205,7 +205,7 @@ static void *etm_setup_aux(struct perf_event *event, void **pages,
 	 * while from perf, the perf tools will do it based on the choice made
 	 * on the cmd line.  As such the "enable_sink" flag in sysFS is reset.
 	 */
-	sink = coresight_get_enabled_sink(true);
+	sink = coresight_get_enabled_sink(NULL, true);
 	if (!sink)
 		goto err;
 

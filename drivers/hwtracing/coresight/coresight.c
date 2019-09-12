@@ -406,6 +406,7 @@ static int coresight_enabled_sink(struct device *dev, void *data)
 
 /**
  * coresight_get_enabled_sink - returns the first enabled sink found on the bus
+ * In case the child port is a single source ETR, returns the child port as sink
  * @deactivate:	Whether the 'enable_sink' flag should be reset
  *
  * When operated from perf the deactivate parameter should be set to 'true'.
@@ -416,10 +417,30 @@ static int coresight_enabled_sink(struct device *dev, void *data)
  * parameter should be set to 'false', hence mandating users to explicitly
  * clear the flag.
  */
-struct coresight_device *coresight_get_enabled_sink(bool deactivate)
+struct coresight_device *coresight_get_enabled_sink(struct coresight_device *s,
+						    bool deactivate)
 {
+	struct coresight_device *child;
 	struct device *dev = NULL;
 
+	if (s == NULL)
+		goto skip_single_source;
+
+	/* If the connected port is an ETR with single trace source,
+	 * nothing to search further.
+	 */
+	child = s->conns[0].child_dev;
+	if (s->nr_outport == 1 &&
+	    child->type == CORESIGHT_DEV_TYPE_SINK &&
+	    child->subtype.sink_subtype == CORESIGHT_DEV_SUBTYPE_SINK_BUFFER &&
+	    child->nr_inport == 1 &&
+	    child->activated) {
+		if (deactivate)
+			child->activated = false;
+		return child;
+	}
+
+skip_single_source:
 	dev = bus_find_device(&coresight_bustype, NULL, &deactivate,
 			      coresight_enabled_sink);
 
@@ -587,7 +608,7 @@ int coresight_enable(struct coresight_device *csdev)
 	 * Search for a valid sink for this session but don't reset the
 	 * "enable_sink" flag in sysFS.  Users get to do that explicitly.
 	 */
-	sink = coresight_get_enabled_sink(false);
+	sink = coresight_get_enabled_sink(csdev, false);
 	if (!sink) {
 		ret = -EINVAL;
 		goto out;
