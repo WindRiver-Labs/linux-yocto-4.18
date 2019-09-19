@@ -1696,7 +1696,7 @@ static void mvpp2_ethtool_get_strings(struct net_device *netdev, u32 sset,
 			        mvpp2_ethtool_regs[i].string, ETH_GSTRING_LEN);
 		break;
 	case ETH_SS_PRIV_FLAGS:
-		strscpy(data, mvpp22_priv_flags_strings,
+		memcpy(data, mvpp22_priv_flags_strings,
 		       ARRAY_SIZE(mvpp22_priv_flags_strings) * ETH_GSTRING_LEN);
 	}
 }
