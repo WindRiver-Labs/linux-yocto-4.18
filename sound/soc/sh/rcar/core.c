@@ -1514,6 +1514,8 @@ static int rsnd_probe(struct platform_device *pdev)
 		rsnd_dai_probe,
 	};
 	int ret, i;
+	struct rsnd_mod *ssi_mod;
+	struct rsnd_mod *src_mod;
 
 	/*
 	 *	init priv data
@@ -1533,6 +1535,28 @@ static int rsnd_probe(struct platform_device *pdev)
 		ret = probe_func[i](priv);
 		if (ret)
 			return ret;
+	}
+
+	/*
+	 * Disable interrupt, make sure all interrupts are
+	 * in disable status before registering ISR.
+	 */
+	for_each_rsnd_dai(rdai, priv, i) {
+		ssi_mod = rsnd_io_to_mod_ssi(&rdai->playback);
+		if (ssi_mod)
+			rsnd_mod_write(ssi_mod, SSI_INT_ENABLE, 0);
+
+		src_mod = rsnd_io_to_mod_src(&rdai->playback);
+		if (src_mod)
+			rsnd_mod_write(src_mod, SRC_INT_ENABLE0, 0);
+
+		ssi_mod = rsnd_io_to_mod_ssi(&rdai->capture);
+		if (ssi_mod)
+			rsnd_mod_write(ssi_mod, SSI_INT_ENABLE, 0);
+
+		src_mod = rsnd_io_to_mod_src(&rdai->capture);
+		if (src_mod)
+			rsnd_mod_write(src_mod, SRC_INT_ENABLE0, 0);
 	}
 
 	for_each_rsnd_dai(rdai, priv, i) {
