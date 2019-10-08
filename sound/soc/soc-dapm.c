@@ -4265,6 +4265,25 @@ void snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd, int stream,
 			      int event)
 {
 	struct snd_soc_card *card = rtd->card;
+	int i = 0;
+
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (rtd->cpu_dai->playback_widget)
+			rtd->cpu_dai->playback_widget->dapm->card = card;
+	} else {
+		if (rtd->cpu_dai->capture_widget)
+			rtd->cpu_dai->capture_widget->dapm->card = card;
+	}
+
+	for (i = 0; i < rtd->num_codecs; i++) {
+		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (rtd->codec_dais[i]->playback_widget)
+				rtd->codec_dais[i]->playback_widget->dapm->card = card;
+		} else {
+			if (rtd->codec_dais[i]->capture_widget)
+				rtd->codec_dais[i]->capture_widget->dapm->card = card;
+		}
+	}
 
 	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
 	soc_dapm_stream_event(rtd, stream, event);
