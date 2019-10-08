@@ -1237,6 +1237,8 @@ static int soc_probe_component(struct snd_soc_card *card,
 				card->name, component->card->name);
 			return -ENODEV;
 		}
+		dapm->card = card;
+
 		return 0;
 	}
 
