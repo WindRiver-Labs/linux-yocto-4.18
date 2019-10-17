@@ -615,7 +615,7 @@ static void thunderx_gpio_spi_irq_handler(struct irq_desc *desc)
 	for (line = 0; line < chip->ngpio; line++) {
 		if (readq(gpio->register_base + intr_reg(line)) &
 		    GPIO_INTR_INTR) {
-			generic_handle_irq(irq_find_mapping(chip->irqdomain,
+			generic_handle_irq(irq_find_mapping(gpio->irqd,
 							    line));
 			writeq(GPIO_INTR_INTR,
 			       gpio->register_base + intr_reg(line));

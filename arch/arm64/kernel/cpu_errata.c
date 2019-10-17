@@ -89,7 +89,7 @@ cpu_enable_trap_ctr_access(const struct arm64_cpu_capabilities *__unused)
 atomic_t arm64_el2_vector_last_slot = ATOMIC_INIT(-1);
 
 #ifdef CONFIG_CAVIUM_ERRATUM_36890
-static int cpu_enable_trap_zva_access(void *__unused)
+static void cpu_enable_trap_zva_access(const struct arm64_cpu_capabilities *__unused)
 {
 	/*
 	 * Clear SCTLR_EL2.DZE or SCTLR_EL1.DZE depending
@@ -528,6 +528,17 @@ static const struct midr_range arm64_harden_el2_vectors[] = {
 
 #endif
 
+#ifdef CONFIG_CAVIUM_ERRATUM_36890
+
+static const struct midr_range arm64_cavium_erratum_36890[] = {
+	MIDR_ALL_VERSIONS(MIDR_THUNDERX),
+	MIDR_ALL_VERSIONS(MIDR_OCTEON_T81),
+	MIDR_ALL_VERSIONS(MIDR_OCTEON_T83),
+	{},
+};
+
+#endif
+
 const struct arm64_cpu_capabilities arm64_errata[] = {
 #if	defined(CONFIG_ARM64_ERRATUM_826319) || \
 	defined(CONFIG_ARM64_ERRATUM_827319) || \
@@ -634,43 +645,29 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 #endif
 #ifdef CONFIG_CAVIUM_ERRATUM_36890
 	{
-		/* Cavium ThunderX, T88 all passes */
+		/* Cavium ThunderX, T88 / T81 / T83 all passes */
 		.desc = "Cavium erratum 36890",
 		.capability = ARM64_WORKAROUND_CAVIUM_36890,
-		MIDR_ALL_VERSIONS(MIDR_THUNDERX),
-		.enable = cpu_enable_trap_zva_access,
-	},
-	{
-		/* Cavium ThunderX, T81 all passes */
-		.desc = "Cavium erratum 36890",
-		.capability = ARM64_WORKAROUND_CAVIUM_36890,
-		MIDR_ALL_VERSIONS(MIDR_OCTEON_T81),
-		.enable = cpu_enable_trap_zva_access,
-	},
-	{
-		/* Cavium ThunderX, T83 all passes */
-		.desc = "Cavium erratum 36890",
-		.capability = ARM64_WORKAROUND_CAVIUM_36890,
-		MIDR_ALL_VERSIONS(MIDR_OCTEON_T83),
-		.enable = cpu_enable_trap_zva_access,
+		ERRATA_MIDR_RANGE_LIST(arm64_cavium_erratum_36890),
+		.cpu_enable = cpu_enable_trap_zva_access,
 	},
 	{
 		/* Marvell OcteonTX 2, 96xx pass A0, A1, and B0 */
 		.desc = "Cavium erratum 36890",
 		.capability = ARM64_WORKAROUND_CAVIUM_36890,
-		MIDR_RANGE(MIDR_MRVL_OCTEONTX2_96XX,
-				MIDR_CPU_VAR_REV(0, 0),
-				MIDR_CPU_VAR_REV(1, 0)),
-		.enable = cpu_enable_trap_zva_access,
+		ERRATA_MIDR_RANGE(MIDR_MRVL_OCTEONTX2_96XX,
+				0, 0,
+				1, 0),
+		.cpu_enable = cpu_enable_trap_zva_access,
 	},
 	{
 		/* Marvell OcteonTX 2, 95 pass A0/A1 */
 		.desc = "Cavium erratum 36890",
 		.capability = ARM64_WORKAROUND_CAVIUM_36890,
-		MIDR_RANGE(MIDR_MRVL_OCTEONTX2_95XX,
-				MIDR_CPU_VAR_REV(0, 0),
-				MIDR_CPU_VAR_REV(0, 1)),
-		.enable = cpu_enable_trap_zva_access,
+		ERRATA_MIDR_RANGE(MIDR_MRVL_OCTEONTX2_95XX,
+				0, 0,
+				0, 1),
+		.cpu_enable = cpu_enable_trap_zva_access,
 	},
 #endif
 	{
