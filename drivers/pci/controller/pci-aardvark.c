@@ -362,6 +362,7 @@ static void advk_pcie_check_pio_status(struct advk_pcie *pcie)
 	char *strcomp_status, *str_posted;
 
 	reg = advk_readl(pcie, PIO_STAT);
+	mdelay(5);
 	status = (reg & PIO_COMPLETION_STATUS_MASK) >>
 		PIO_COMPLETION_STATUS_SHIFT;
 
