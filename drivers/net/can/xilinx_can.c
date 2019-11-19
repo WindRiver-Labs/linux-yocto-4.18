@@ -1304,10 +1304,8 @@ static irqreturn_t xcan_interrupt(int irq, void *dev_id)
 
 	/* Check for the type of interrupt and Processing it */
 	if (isr & (XCAN_IXR_SLP_MASK | XCAN_IXR_WKUP_MASK)) {
-		if (isr & XCAN_IXR_SLP_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_SLP_MASK);
-		if (isr & XCAN_IXR_WKUP_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_WKUP_MASK);
+		priv->write_reg(priv, XCAN_ICR_OFFSET, (XCAN_IXR_SLP_MASK |
+				XCAN_IXR_WKUP_MASK));
 		xcan_state_interrupt(ndev, isr);
 	}
 
@@ -1319,15 +1317,7 @@ static irqreturn_t xcan_interrupt(int irq, void *dev_id)
 	isr_errors = isr & (XCAN_IXR_ERROR_MASK | XCAN_IXR_RXOFLW_MASK |
 			    XCAN_IXR_BSOFF_MASK | XCAN_IXR_ARBLST_MASK);
 	if (isr_errors) {
-		if (isr & XCAN_IXR_ERROR_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_ERROR_MASK);
-		if (isr & XCAN_IXR_RXOFLW_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_RXOFLW_MASK);
-		if (isr & XCAN_IXR_BSOFF_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_BSOFF_MASK);
-		if (isr & XCAN_IXR_ARBLST_MASK)
-			priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_ARBLST_MASK);
-
+		priv->write_reg(priv, XCAN_ICR_OFFSET, isr_errors);
 		xcan_err_interrupt(ndev, isr);
 	}
 	if (priv->quirks & CANFD_SUPPORT) {
