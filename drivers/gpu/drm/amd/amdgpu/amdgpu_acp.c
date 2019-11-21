@@ -276,7 +276,7 @@ static int acp_hw_init(void *handle)
 	u32 val = 0;
 	u32 count = 0;
 	struct device *dev;
-	struct i2s_platform_data *i2s_pdata;
+	struct i2s_platform_data *i2s_pdata = NULL;
 
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
@@ -299,38 +299,37 @@ static int acp_hw_init(void *handle)
 
 	acp_base = adev->rmmio_base;
 
-	if (adev->asic_type != CHIP_STONEY) {
-		adev->acp.acp_genpd = kzalloc(sizeof(struct acp_pm_domain), GFP_KERNEL);
-		if (adev->acp.acp_genpd == NULL)
-			return -ENOMEM;
+	adev->acp.acp_genpd = kzalloc(sizeof(struct acp_pm_domain), GFP_KERNEL);
+	if (adev->acp.acp_genpd == NULL)
+		return -ENOMEM;
 
-		adev->acp.acp_genpd->gpd.name = "ACP_AUDIO";
-		adev->acp.acp_genpd->gpd.power_off = acp_poweroff;
-		adev->acp.acp_genpd->gpd.power_on = acp_poweron;
+	adev->acp.acp_genpd->gpd.name = "ACP_AUDIO";
+	adev->acp.acp_genpd->gpd.power_off = acp_poweroff;
+	adev->acp.acp_genpd->gpd.power_on = acp_poweron;
 
 
-		adev->acp.acp_genpd->cgs_dev = adev->acp.cgs_device;
+	adev->acp.acp_genpd->cgs_dev = adev->acp.cgs_device;
 
-		pm_genpd_init(&adev->acp.acp_genpd->gpd, NULL, false);
-	}
+	pm_genpd_init(&adev->acp.acp_genpd->gpd, NULL, false);
 
 	adev->acp.acp_cell = kcalloc(ACP_DEVS, sizeof(struct mfd_cell),
 							GFP_KERNEL);
 
-	if (adev->acp.acp_cell == NULL)
-		return -ENOMEM;
+	if (adev->acp.acp_cell == NULL) {
+		r = -ENOMEM;
+		goto failure;
+	}
 
 	adev->acp.acp_res = kcalloc(5, sizeof(struct resource), GFP_KERNEL);
 	if (adev->acp.acp_res == NULL) {
-		kfree(adev->acp.acp_cell);
-		return -ENOMEM;
+		r = -ENOMEM;
+		goto failure;
 	}
 
 	i2s_pdata = kcalloc(3, sizeof(struct i2s_platform_data), GFP_KERNEL);
 	if (i2s_pdata == NULL) {
-		kfree(adev->acp.acp_res);
-		kfree(adev->acp.acp_cell);
-		return -ENOMEM;
+		r = -ENOMEM;
+		goto failure;
 	}
 
 	switch (adev->asic_type) {
@@ -427,18 +426,17 @@ static int acp_hw_init(void *handle)
 	r = mfd_add_hotplug_devices(adev->acp.parent, adev->acp.acp_cell,
 								ACP_DEVS);
 	if (r)
-		return r;
+		goto failure;
 
-	if (adev->asic_type != CHIP_STONEY) {
-		for (i = 0; i < ACP_DEVS ; i++) {
-			dev = get_mfd_cell_dev(adev->acp.acp_cell[i].name, i);
-			r = pm_genpd_add_device(&adev->acp.acp_genpd->gpd, dev);
-			if (r) {
-				dev_err(dev, "Failed to add dev to genpd\n");
-				return r;
-			}
+	for (i = 0; i < ACP_DEVS ; i++) {
+		dev = get_mfd_cell_dev(adev->acp.acp_cell[i].name, i);
+		r = pm_genpd_add_device(&adev->acp.acp_genpd->gpd, dev);
+		if (r) {
+			dev_err(dev, "Failed to add dev to genpd\n");
+			goto failure;
 		}
 	}
+
 
 	/* Assert Soft reset of ACP */
 	val = cgs_read_register(adev->acp.cgs_device, mmACP_SOFT_RESET);
@@ -454,7 +452,8 @@ static int acp_hw_init(void *handle)
 			break;
 		if (--count == 0) {
 			dev_err(&adev->pdev->dev, "Failed to reset ACP\n");
-			return -ETIMEDOUT;
+			r = -ETIMEDOUT;
+			goto failure;
 		}
 		udelay(100);
 	}
@@ -471,7 +470,8 @@ static int acp_hw_init(void *handle)
 			break;
 		if (--count == 0) {
 			dev_err(&adev->pdev->dev, "Failed to reset ACP\n");
-			return -ETIMEDOUT;
+			r = -ETIMEDOUT;
+			goto failure;
 		}
 		udelay(100);
 	}
@@ -480,6 +480,13 @@ static int acp_hw_init(void *handle)
 	val &= ~ACP_SOFT_RESET__SoftResetAud_MASK;
 	cgs_write_register(adev->acp.cgs_device, mmACP_SOFT_RESET, val);
 	return 0;
+
+failure:
+	kfree(i2s_pdata);
+	kfree(adev->acp.acp_res);
+	kfree(adev->acp.acp_cell);
+	kfree(adev->acp.acp_genpd);
+	return r;
 }
 
 /**
@@ -497,7 +504,7 @@ static int acp_hw_fini(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
 	/* return early if no ACP */
-	if (!adev->acp.acp_cell)
+	if (!adev->acp.acp_genpd)
 		return 0;
 
 	/* Assert Soft reset of ACP */
@@ -536,19 +543,17 @@ static int acp_hw_fini(void *handle)
 		udelay(100);
 	}
 
-	if (adev->acp.acp_genpd) {
-		for (i = 0; i < ACP_DEVS ; i++) {
-			dev = get_mfd_cell_dev(adev->acp.acp_cell[i].name, i);
-			ret = pm_genpd_remove_device(dev);
-			/* If removal fails, dont giveup and try rest */
-			if (ret)
-				dev_err(dev, "remove dev from genpd failed\n");
-		}
-		kfree(adev->acp.acp_genpd);
+	for (i = 0; i < ACP_DEVS ; i++) {
+		dev = get_mfd_cell_dev(adev->acp.acp_cell[i].name, i);
+		ret = pm_genpd_remove_device(dev);
+		/* If removal fails, dont giveup and try rest */
+		if (ret)
+			dev_err(dev, "remove dev from genpd failed\n");
 	}
 
 	mfd_remove_devices(adev->acp.parent);
 	kfree(adev->acp.acp_res);
+	kfree(adev->acp.acp_genpd);
 	kfree(adev->acp.acp_cell);
 
 	return 0;
