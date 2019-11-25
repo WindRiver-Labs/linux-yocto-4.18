@@ -1410,7 +1410,7 @@ put_timings_node:
 	of_node_put(timings_np);
 put_display_node:
 	if (timings)
-		kfree(timings);
+		display_timings_release(timings);
 	of_node_put(display_np);
 	return ret;
 }
