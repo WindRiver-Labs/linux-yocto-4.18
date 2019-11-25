@@ -100,7 +100,7 @@ static void cpu_enable_trap_zva_access(const struct arm64_cpu_capabilities *__un
 	else
 		config_sctlr_el2(SCTLR_EL1_DZE, 0);
 
-	return 0;
+	return;
 }
 #endif
 
