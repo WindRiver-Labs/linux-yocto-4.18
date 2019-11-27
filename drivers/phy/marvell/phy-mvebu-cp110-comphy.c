@@ -469,7 +469,7 @@ static int mvebu_comphy_probe(struct platform_device *pdev)
 		ret = mvebu_comphy_power_off(phy);
 		if (ret == COMPHY_FW_NOT_SUPPORTED) {
 			dev_warn(&pdev->dev, "RELYING ON BOTLOADER SETTINGS\n");
-			dev_WARN(&pdev->dev, "firmware updated needed\n");
+			dev_warn(&pdev->dev, "firmware updated needed\n");
 
 			/*
 			 * If comphy power off fails it means that the
