@@ -2253,7 +2253,7 @@ static int btrfs_find_device_by_path(struct btrfs_fs_info *fs_info,
 	disk_super = (struct btrfs_super_block *)bh->b_data;
 	devid = btrfs_stack_device_id(&disk_super->dev_item);
 	dev_uuid = disk_super->dev_item.uuid;
-	*device = btrfs_find_device(fs_info, devid, dev_uuid, disk_super->fsid);
+	*device = btrfs_find_device(fs_info->fs_devices, devid, dev_uuid, disk_super->fsid);
 	brelse(bh);
 	if (!*device)
 		ret = -ENOENT;
@@ -2299,7 +2299,7 @@ int btrfs_find_device_by_devspec(struct btrfs_fs_info *fs_info, u64 devid,
 
 	if (devid) {
 		ret = 0;
-		*device = btrfs_find_device(fs_info, devid, NULL, NULL);
+		*device = btrfs_find_device(fs_info->fs_devices, devid, NULL, NULL);
 		if (!*device)
 			ret = -ENOENT;
 	} else {
@@ -2431,7 +2431,7 @@ next_slot:
 				   BTRFS_UUID_SIZE);
 		read_extent_buffer(leaf, fs_uuid, btrfs_device_fsid(dev_item),
 				   BTRFS_FSID_SIZE);
-		device = btrfs_find_device(fs_info, devid, dev_uuid, fs_uuid);
+		device = btrfs_find_device(fs_info->fs_devices, devid, dev_uuid, fs_uuid);
 		BUG_ON(!device); /* Logic error */
 
 		if (device->fs_devices->seeding) {
@@ -6363,21 +6363,19 @@ blk_status_t btrfs_map_bio(struct btrfs_fs_info *fs_info, struct bio *bio,
 	return BLK_STS_OK;
 }
 
-struct btrfs_device *btrfs_find_device(struct btrfs_fs_info *fs_info, u64 devid,
-				       u8 *uuid, u8 *fsid)
+struct btrfs_device *btrfs_find_device(struct btrfs_fs_devices *fs_devices,
+				       u64 devid, u8 *uuid, u8 *fsid)
 {
 	struct btrfs_device *device;
-	struct btrfs_fs_devices *cur_devices;
 
-	cur_devices = fs_info->fs_devices;
-	while (cur_devices) {
+	while (fs_devices) {
 		if (!fsid ||
-		    !memcmp(cur_devices->fsid, fsid, BTRFS_FSID_SIZE)) {
-			device = find_device(cur_devices, devid, uuid);
+		    !memcmp(fs_devices->fsid, fsid, BTRFS_FSID_SIZE)) {
+			device = find_device(fs_devices, devid, uuid);
 			if (device)
 				return device;
 		}
-		cur_devices = cur_devices->seed;
+		fs_devices = fs_devices->seed;
 	}
 	return NULL;
 }
@@ -6622,7 +6620,7 @@ static int read_one_chunk(struct btrfs_fs_info *fs_info, struct btrfs_key *key,
 		read_extent_buffer(leaf, uuid, (unsigned long)
 				   btrfs_stripe_dev_uuid_nr(chunk, i),
 				   BTRFS_UUID_SIZE);
-		map->stripes[i].dev = btrfs_find_device(fs_info, devid,
+		map->stripes[i].dev = btrfs_find_device(fs_info->fs_devices, devid,
 							uuid, NULL);
 		if (!map->stripes[i].dev &&
 		    !btrfs_test_opt(fs_info, DEGRADED)) {
@@ -6762,7 +6760,7 @@ static int read_one_dev(struct btrfs_fs_info *fs_info,
 			return PTR_ERR(fs_devices);
 	}
 
-	device = btrfs_find_device(fs_info, devid, dev_uuid, fs_uuid);
+	device = btrfs_find_device(fs_info->fs_devices, devid, dev_uuid, fs_uuid);
 	if (!device) {
 		if (!btrfs_test_opt(fs_info, DEGRADED)) {
 			btrfs_report_missing_device(fs_info, devid,
@@ -7352,7 +7350,7 @@ int btrfs_get_dev_stats(struct btrfs_fs_info *fs_info,
 	int i;
 
 	mutex_lock(&fs_devices->device_list_mutex);
-	dev = btrfs_find_device(fs_info, stats->devid, NULL, NULL);
+	dev = btrfs_find_device(fs_info->fs_devices, stats->devid, NULL, NULL);
 	mutex_unlock(&fs_devices->device_list_mutex);
 
 	if (!dev) {
