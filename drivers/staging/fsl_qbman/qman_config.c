@@ -417,9 +417,10 @@ static void qm_reserve_memory(struct qman *qm, enum qm_memory memory, int zero)
 	end = min(addr + size, memblock_end_of_DRAM());
 	ret = memblock_reserve(addr, end - addr);
 	vaddr = (unsigned long)phys_to_virt(addr);
-	if (zero)
+	if (zero) {
 		memset((void *)vaddr, 0, end - addr);
-	flush_dcache_range(vaddr, vaddr + (end - addr));
+		flush_dcache_range(vaddr, vaddr + (end - addr));
+	}
 	WARN_ON(ret);
 }
 #else
