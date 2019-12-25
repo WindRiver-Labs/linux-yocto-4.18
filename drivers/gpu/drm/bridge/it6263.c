@@ -906,11 +906,7 @@ static int it6263_probe(struct i2c_client *client,
 
 	it6263->bridge.funcs = &it6263_bridge_funcs;
 	it6263->bridge.of_node = np;
-	ret = drm_bridge_add(&it6263->bridge);
-	if (ret) {
-		dev_err(dev, "Failed to add drm_bridge\n");
-		return ret;
-	}
+	drm_bridge_add(&it6263->bridge);
 
 	i2c_set_clientdata(client, it6263);
 
