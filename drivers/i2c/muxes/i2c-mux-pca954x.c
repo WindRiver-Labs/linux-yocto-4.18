@@ -181,6 +181,7 @@ static const struct chip_desc chips[] = {
 	[pca_9646] = {
 		.nchans = 4,
 		.muxtype = pca954x_isswi,
+		.id = { .manufacturer_id = I2C_DEVICE_ID_NONE },
 	},
 };
 
