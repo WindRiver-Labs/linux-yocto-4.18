@@ -784,8 +784,8 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 			if (!(flags & TTM_PAGE_FLAG_DMA32) &&
 			    (npages - i) >= HPAGE_PMD_NR) {
-				for (j = 0; j < HPAGE_PMD_NR; ++j)
-					if (p++ != pages[i + j])
+				for (j = 1; j < HPAGE_PMD_NR; ++j)
+					if (++p != pages[i + j])
 					    break;
 
 				if (j == HPAGE_PMD_NR)
@@ -819,8 +819,8 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 			if (!p)
 				break;
 
-			for (j = 0; j < HPAGE_PMD_NR; ++j)
-				if (p++ != pages[i + j])
+			for (j = 1; j < HPAGE_PMD_NR; ++j)
+				if (++p != pages[i + j])
 				    break;
 
 			if (j != HPAGE_PMD_NR)
