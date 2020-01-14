@@ -1267,9 +1267,10 @@ MODULE_DEVICE_TABLE(of, fsl_sai_ids);
 static unsigned int fsl_sai_calc_dl_off(unsigned int* dl_mask)
 {
 	int fbidx, nbidx, offset;
-
-	fbidx = find_first_bit((const unsigned long *)dl_mask, 8);
-	nbidx = find_next_bit((const unsigned long *)dl_mask, 8, fbidx+1);
+	unsigned long ulTemp = 0;
+	ulTemp = *dl_mask;
+	fbidx = find_first_bit(&ulTemp, 8);
+	nbidx = find_next_bit(&ulTemp, 8, fbidx+1);
 	offset = nbidx - fbidx - 1;
 
 	return (offset < 0 || offset >= 7 ? 0 : offset);
