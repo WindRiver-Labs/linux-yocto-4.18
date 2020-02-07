@@ -240,9 +240,6 @@ static int clk_gate2_scu_enable(struct clk_hw *hw)
 	if (!ccm_ipc_handle)
 		return -1;
 
-	if (gate->pd == NULL && gate->pd_name)
-		populate_gate_pd(gate);
-
 	if (IS_ERR_OR_NULL(gate->pd))
 		return -1;
 
@@ -267,9 +264,6 @@ static void clk_gate2_scu_disable(struct clk_hw *hw)
 	if (!ccm_ipc_handle)
 		return;
 
-	if (gate->pd == NULL && gate->pd_name)
-		populate_gate_pd(gate);
-
 	if (IS_ERR_OR_NULL(gate->pd))
 		return;
 
@@ -288,9 +282,6 @@ static int clk_gate2_scu_is_enabled(struct clk_hw *hw)
 	struct clk_gate2_scu *gate = to_clk_gate2_scu(hw);
 	u32 val;
 
-	if (gate->pd == NULL && gate->pd_name)
-		populate_gate_pd(gate);
-
 	if (IS_ERR_OR_NULL(gate->pd))
 		return 0;
 
@@ -306,8 +297,22 @@ static int clk_gate2_scu_is_enabled(struct clk_hw *hw)
 	return 0;
 }
 
+/* Prepare to get power domain. */
+static int clk_gate2_scu_prepare(struct clk_hw *hw)
+{
+	struct clk_gate2_scu *gate = to_clk_gate2_scu(hw);
+
+	if (!ccm_ipc_handle)
+		return -1;
+
+	if (gate->pd == NULL && gate->pd_name)
+		populate_gate_pd(gate);
+
+	return 0;
+}
 
 static struct clk_ops clk_gate2_scu_ops = {
+	.prepare = clk_gate2_scu_prepare,
 	.enable = clk_gate2_scu_enable,
 	.disable = clk_gate2_scu_disable,
 	.is_enabled = clk_gate2_scu_is_enabled,
